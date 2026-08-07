@@ -1,0 +1,11 @@
+{
+  "app": {
+    "name": "Inventory",
+    "description": "What's about to expire, and what to order."
+  },
+  "home": {
+    "signedOut": "Not signed in",
+    "noOrganization": "Your account is not a member of any organization yet.",
+    "signedInAs": "Signed in as {email}"
+  }
+}

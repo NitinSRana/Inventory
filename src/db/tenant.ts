@@ -31,3 +31,18 @@ export async function withTenant<T>(orgId: string, fn: (tx: Tx) => Promise<T>): 
     return fn(tx);
   });
 }
+
+/**
+ * The one query that legitimately runs without org context: finding which org a
+ * user belongs to, which is what withTenant needs before it can do anything.
+ *
+ * organization_members is RLS-protected by organization_id, so this goes through
+ * app.org_for_user() — a security definer function that exists for exactly this
+ * lookup. See supabase/migrations/0002_app_runtime_role.sql.
+ */
+export async function orgForUser(userId: string): Promise<string | null> {
+  const rows = await db.execute<{ org: string | null }>(
+    sql`select app.org_for_user(${userId}::uuid) as org`,
+  );
+  return rows[0]?.org ?? null;
+}
