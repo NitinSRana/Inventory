@@ -6,7 +6,7 @@
   "signIn": {
     "title": "Sign in",
     "subtitle": "We'll email you a link. No password to remember.",
-    "emailLabel": "Work email",
+    "emailLabel": "Email",
     "submit": "Email me a link",
     "sent": "Check your email for the sign-in link.",
     "error": "That didn't work. Check the address and try again."
