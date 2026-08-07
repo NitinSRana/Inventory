@@ -21,7 +21,17 @@ const scratchUrl = new URL(adminUrl);
 scratchUrl.pathname = `/${dbName}`;
 
 let failed = false;
-await admin`create database ${admin(dbName)}`;
+try {
+  await admin`create database ${admin(dbName)}`;
+} catch (e) {
+  const hint =
+    e.code === '28P01'
+      ? 'password authentication failed — check TEST_DATABASE_URL in .env.local'
+      : e.message;
+  console.error(`FAIL cannot reach Postgres at ${scratchUrl.host}: ${hint}`);
+  await admin.end();
+  process.exit(1);
+}
 const db = postgres(scratchUrl.toString(), { max: 1 });
 try {
   for (const file of ['0001_init.sql', '0001_init.test.sql']) {
