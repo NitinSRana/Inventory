@@ -1,0 +1,414 @@
+/**
+ * Drizzle schema — mirrors 0001_init.sql.
+ *
+ * The SQL migration is the source of truth for constraints, RLS policies and
+ * triggers. This file exists for type-safe queries; it deliberately does not
+ * try to express RLS or the append-only trigger, which live in the database.
+ *
+ * Place at: src/db/schema.ts
+ */
+
+import {
+  pgTable, pgSchema, uuid, text, boolean, integer, smallint, date,
+  timestamp, numeric, char, index, uniqueIndex, pgView,
+} from 'drizzle-orm/pg-core';
+import { sql, relations } from 'drizzle-orm';
+
+/* -------------------------------------------------------------------------- */
+/* Shared column helpers                                                       */
+/* -------------------------------------------------------------------------- */
+
+const timestamps = {
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+};
+
+const id = () => uuid('id').primaryKey().default(sql`gen_random_uuid()`);
+
+/* -------------------------------------------------------------------------- */
+/* Organizations & membership                                                  */
+/* -------------------------------------------------------------------------- */
+
+export const organizations = pgTable('organizations', {
+  id: id(),
+  name: text('name').notNull(),
+  countryCode: char('country_code', { length: 2 }).notNull(),
+  currencyCode: char('currency_code', { length: 3 }).notNull().default('EUR'),
+  timezone: text('timezone').notNull().default('Europe/Berlin'),
+  locale: text('locale').notNull().default('en'),
+  ...timestamps,
+});
+
+/** Every tenant-scoped table starts with this column. No exceptions. */
+const orgId = () =>
+  uuid('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' });
+
+export const organizationMembers = pgTable('organization_members', {
+  id: id(),
+  organizationId: orgId(),
+  userId: uuid('user_id').notNull(),
+  role: text('role', { enum: ['owner', 'manager', 'staff'] }).notNull(),
+  ...timestamps,
+}, (t) => ({
+  orgUser: uniqueIndex('organization_members_organization_id_user_id_key')
+    .on(t.organizationId, t.userId),
+  byUser: index('organization_members_user_id_idx').on(t.userId),
+}));
+
+/* -------------------------------------------------------------------------- */
+/* Locations                                                                   */
+/* -------------------------------------------------------------------------- */
+
+export const locations = pgTable('locations', {
+  id: id(),
+  organizationId: orgId(),
+  name: text('name').notNull(),
+  type: text('type', { enum: ['store', 'backroom', 'warehouse'] }).notNull().default('store'),
+  isDefault: boolean('is_default').notNull().default(false),
+  ...timestamps,
+});
+
+/* -------------------------------------------------------------------------- */
+/* VAT — per-tenant data, never hardcoded per country                          */
+/* -------------------------------------------------------------------------- */
+
+export const VAT_BANDS = ['standard', 'reduced', 'super_reduced', 'zero'] as const;
+
+export const vatRates = pgTable('vat_rates', {
+  id: id(),
+  organizationId: orgId(),
+  band: text('band', { enum: VAT_BANDS }).notNull(),
+  rate: numeric('rate', { precision: 5, scale: 4 }).notNull(),
+  label: text('label'),
+  validFrom: date('valid_from').notNull().defaultNow(),
+  ...timestamps,
+});
+
+/* -------------------------------------------------------------------------- */
+/* Categories & suppliers                                                      */
+/* -------------------------------------------------------------------------- */
+
+export const COUNT_FREQUENCIES = ['weekly', 'biweekly', 'monthly', 'quarterly'] as const;
+
+export const categories = pgTable('categories', {
+  id: id(),
+  organizationId: orgId(),
+  name: text('name').notNull(),
+  parentId: uuid('parent_id'),
+  defaultCountFrequency: text('default_count_frequency', { enum: COUNT_FREQUENCIES })
+    .notNull().default('monthly'),
+  ...timestamps,
+});
+
+export const suppliers = pgTable('suppliers', {
+  id: id(),
+  organizationId: orgId(),
+  name: text('name').notNull(),
+  contactName: text('contact_name'),
+  email: text('email'),
+  phone: text('phone'),
+  leadTimeDays: integer('lead_time_days').notNull().default(3),
+  minOrderValue: numeric('min_order_value', { precision: 12, scale: 4 }),
+  /** ISO weekdays: 1 = Monday .. 7 = Sunday */
+  deliveryWeekdays: smallint('delivery_weekdays').array().notNull().default(sql`'{}'`),
+  isActive: boolean('is_active').notNull().default(true),
+  ...timestamps,
+}, (t) => ({
+  orgName: uniqueIndex('suppliers_organization_id_name_key').on(t.organizationId, t.name),
+}));
+
+/* -------------------------------------------------------------------------- */
+/* Products                                                                    */
+/* -------------------------------------------------------------------------- */
+
+export const UNITS = ['each', 'kg', 'g', 'l', 'ml'] as const;
+
+export const products = pgTable('products', {
+  id: id(),
+  organizationId: orgId(),
+  /** EAN-13 / EAN-8. Null for weighed goods, which have no fixed barcode. */
+  gtin: text('gtin'),
+  sku: text('sku'),
+  name: text('name').notNull(),
+  categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'set null' }),
+  supplierId: uuid('supplier_id').references(() => suppliers.id, { onDelete: 'set null' }),
+  unit: text('unit', { enum: UNITS }).notNull().default('each'),
+  isWeighed: boolean('is_weighed').notNull().default(false),
+  costPrice: numeric('cost_price', { precision: 12, scale: 4 }),
+  sellPrice: numeric('sell_price', { precision: 12, scale: 4 }),
+  vatBand: text('vat_band', { enum: VAT_BANDS }).notNull().default('standard'),
+  minStock: numeric('min_stock', { precision: 14, scale: 3 }),
+  maxStock: numeric('max_stock', { precision: 14, scale: 3 }),
+  shelfLifeDays: integer('shelf_life_days'),
+  countFrequency: text('count_frequency', { enum: COUNT_FREQUENCIES }),
+  isActive: boolean('is_active').notNull().default(true),
+  ...timestamps,
+}, (t) => ({
+  bySupplier: index('products_organization_id_supplier_id_idx').on(t.organizationId, t.supplierId),
+  byCategory: index('products_organization_id_category_id_idx').on(t.organizationId, t.categoryId),
+}));
+
+/* -------------------------------------------------------------------------- */
+/* Batches — the unit of expiry tracking                                       */
+/* -------------------------------------------------------------------------- */
+
+export const batches = pgTable('batches', {
+  id: id(),
+  organizationId: orgId(),
+  productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  locationId: uuid('location_id').notNull().references(() => locations.id, { onDelete: 'cascade' }),
+  lotNumber: text('lot_number'),
+  expiryDate: date('expiry_date'),
+  receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+  unitCost: numeric('unit_cost', { precision: 12, scale: 4 }),
+  ...timestamps,
+}, (t) => ({
+  byExpiry: index('batches_expiry_idx').on(t.organizationId, t.expiryDate),
+  byProduct: index('batches_organization_id_product_id_location_id_idx')
+    .on(t.organizationId, t.productId, t.locationId),
+}));
+
+/* -------------------------------------------------------------------------- */
+/* Stock movements — APPEND-ONLY LEDGER                                        */
+/*                                                                             */
+/* Never write an UPDATE or DELETE against this table. A database trigger will  */
+/* reject it. To correct a mistake, post a compensating movement.               */
+/* -------------------------------------------------------------------------- */
+
+export const MOVEMENT_TYPES = [
+  'receipt',
+  'waste',
+  'count_adjustment',
+  'manual_adjustment',
+  'consumption', // reserved for a future POS/CSV depletion source
+] as const;
+
+export const REASON_CODES = [
+  'expired', 'damaged', 'theft', 'staff_use', 'sampling',
+  'supplier_return', 'correction', 'other',
+] as const;
+
+export const stockMovements = pgTable('stock_movements', {
+  id: id(),
+  organizationId: orgId(),
+  productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'restrict' }),
+  locationId: uuid('location_id').notNull().references(() => locations.id, { onDelete: 'restrict' }),
+  batchId: uuid('batch_id').references(() => batches.id, { onDelete: 'restrict' }),
+  /** Signed. Positive adds stock, negative removes it. Never zero. */
+  quantityDelta: numeric('quantity_delta', { precision: 14, scale: 3 }).notNull(),
+  movementType: text('movement_type', { enum: MOVEMENT_TYPES }).notNull(),
+  reasonCode: text('reason_code', { enum: REASON_CODES }),
+  referenceType: text('reference_type', { enum: ['purchase_order', 'count_session', 'manual'] }),
+  referenceId: uuid('reference_id'),
+  actorId: uuid('actor_id'),
+  note: text('note'),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  byProduct: index('stock_movements_organization_id_product_id_location_id_idx')
+    .on(t.organizationId, t.productId, t.locationId),
+  byBatch: index('stock_movements_organization_id_batch_id_idx').on(t.organizationId, t.batchId),
+  byTime: index('stock_movements_organization_id_occurred_at_idx')
+    .on(t.organizationId, t.occurredAt),
+  byReference: index('stock_movements_organization_id_reference_type_reference_id_idx')
+    .on(t.organizationId, t.referenceType, t.referenceId),
+}));
+
+/* -------------------------------------------------------------------------- */
+/* Purchase orders                                                             */
+/* -------------------------------------------------------------------------- */
+
+export const PO_STATUSES = [
+  'draft', 'sent', 'partially_received', 'received', 'cancelled',
+] as const;
+
+export const purchaseOrders = pgTable('purchase_orders', {
+  id: id(),
+  organizationId: orgId(),
+  supplierId: uuid('supplier_id').notNull().references(() => suppliers.id, { onDelete: 'restrict' }),
+  locationId: uuid('location_id').notNull().references(() => locations.id, { onDelete: 'restrict' }),
+  poNumber: text('po_number').notNull(),
+  status: text('status', { enum: PO_STATUSES }).notNull().default('draft'),
+  orderedAt: timestamp('ordered_at', { withTimezone: true }),
+  expectedAt: date('expected_at'),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+  note: text('note'),
+  createdBy: uuid('created_by'),
+  ...timestamps,
+}, (t) => ({
+  orgNumber: uniqueIndex('purchase_orders_organization_id_po_number_key')
+    .on(t.organizationId, t.poNumber),
+  byStatus: index('purchase_orders_organization_id_status_idx').on(t.organizationId, t.status),
+}));
+
+export const purchaseOrderLines = pgTable('purchase_order_lines', {
+  id: id(),
+  organizationId: orgId(),
+  purchaseOrderId: uuid('purchase_order_id').notNull()
+    .references(() => purchaseOrders.id, { onDelete: 'cascade' }),
+  productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'restrict' }),
+  quantityOrdered: numeric('quantity_ordered', { precision: 14, scale: 3 }).notNull(),
+  quantityReceived: numeric('quantity_received', { precision: 14, scale: 3 }).notNull().default('0'),
+  unitCost: numeric('unit_cost', { precision: 12, scale: 4 }),
+  ...timestamps,
+}, (t) => ({
+  poProduct: uniqueIndex('purchase_order_lines_purchase_order_id_product_id_key')
+    .on(t.purchaseOrderId, t.productId),
+}));
+
+/* -------------------------------------------------------------------------- */
+/* Cycle counting                                                              */
+/* -------------------------------------------------------------------------- */
+
+export const countSessions = pgTable('count_sessions', {
+  id: id(),
+  organizationId: orgId(),
+  locationId: uuid('location_id').notNull().references(() => locations.id, { onDelete: 'restrict' }),
+  name: text('name'),
+  scopeType: text('scope_type', { enum: ['full', 'category', 'supplier', 'custom'] })
+    .notNull().default('full'),
+  scopeId: uuid('scope_id'),
+  status: text('status', { enum: ['in_progress', 'completed', 'cancelled'] })
+    .notNull().default('in_progress'),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  startedBy: uuid('started_by'),
+  ...timestamps,
+});
+
+export const countLines = pgTable('count_lines', {
+  id: id(),
+  organizationId: orgId(),
+  countSessionId: uuid('count_session_id').notNull()
+    .references(() => countSessions.id, { onDelete: 'cascade' }),
+  productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'restrict' }),
+  batchId: uuid('batch_id').references(() => batches.id, { onDelete: 'restrict' }),
+  /** What the ledger believed at the moment of counting. */
+  expectedQuantity: numeric('expected_quantity', { precision: 14, scale: 3 }),
+  countedQuantity: numeric('counted_quantity', { precision: 14, scale: 3 }).notNull(),
+  countedAt: timestamp('counted_at', { withTimezone: true }).notNull().defaultNow(),
+  countedBy: uuid('counted_by'),
+  ...timestamps,
+});
+
+/* -------------------------------------------------------------------------- */
+/* Consumption rates                                                           */
+/*                                                                             */
+/* Derived from count-to-count deltas:                                         */
+/*   consumption = opening count + receipts - waste - closing count            */
+/*                                                                             */
+/* confidence === 'insufficient' means the UI must say "not enough data yet"   */
+/* rather than render a misleading zero.                                       */
+/* -------------------------------------------------------------------------- */
+
+export const consumptionRates = pgTable('consumption_rates', {
+  id: id(),
+  organizationId: orgId(),
+  productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  locationId: uuid('location_id').notNull().references(() => locations.id, { onDelete: 'cascade' }),
+  dailyRate: numeric('daily_rate', { precision: 14, scale: 4 }),
+  periodStart: timestamp('period_start', { withTimezone: true }).notNull(),
+  periodEnd: timestamp('period_end', { withTimezone: true }).notNull(),
+  sampleCount: integer('sample_count').notNull().default(0),
+  confidence: text('confidence', { enum: ['insufficient', 'low', 'medium', 'high'] })
+    .notNull().default('insufficient'),
+  calculatedAt: timestamp('calculated_at', { withTimezone: true }).notNull().defaultNow(),
+  ...timestamps,
+}, (t) => ({
+  orgProductLocation: uniqueIndex('consumption_rates_org_product_location_key')
+    .on(t.organizationId, t.productId, t.locationId),
+}));
+
+/* -------------------------------------------------------------------------- */
+/* Views — read-only, defined in SQL                                           */
+/* -------------------------------------------------------------------------- */
+
+export const stockLevels = pgView('stock_levels', {
+  organizationId: uuid('organization_id'),
+  productId: uuid('product_id'),
+  locationId: uuid('location_id'),
+  batchId: uuid('batch_id'),
+  quantity: numeric('quantity', { precision: 14, scale: 3 }),
+  lastMovementAt: timestamp('last_movement_at', { withTimezone: true }),
+}).existing();
+
+export const productStock = pgView('product_stock', {
+  organizationId: uuid('organization_id'),
+  productId: uuid('product_id'),
+  locationId: uuid('location_id'),
+  quantity: numeric('quantity', { precision: 14, scale: 3 }),
+  lastMovementAt: timestamp('last_movement_at', { withTimezone: true }),
+}).existing();
+
+export const expiringStock = pgView('expiring_stock', {
+  organizationId: uuid('organization_id'),
+  batchId: uuid('batch_id'),
+  productId: uuid('product_id'),
+  locationId: uuid('location_id'),
+  productName: text('product_name'),
+  gtin: text('gtin'),
+  lotNumber: text('lot_number'),
+  expiryDate: date('expiry_date'),
+  daysRemaining: integer('days_remaining'),
+  quantity: numeric('quantity', { precision: 14, scale: 3 }),
+  unitCost: numeric('unit_cost', { precision: 12, scale: 4 }),
+  valueAtRisk: numeric('value_at_risk', { precision: 20, scale: 7 }),
+}).existing();
+
+export const onOrderQuantities = pgView('on_order_quantities', {
+  organizationId: uuid('organization_id'),
+  productId: uuid('product_id'),
+  locationId: uuid('location_id'),
+  quantityOnOrder: numeric('quantity_on_order', { precision: 14, scale: 3 }),
+}).existing();
+
+/* -------------------------------------------------------------------------- */
+/* Relations                                                                   */
+/* -------------------------------------------------------------------------- */
+
+export const productsRelations = relations(products, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [products.organizationId], references: [organizations.id],
+  }),
+  category: one(categories, { fields: [products.categoryId], references: [categories.id] }),
+  supplier: one(suppliers, { fields: [products.supplierId], references: [suppliers.id] }),
+  batches: many(batches),
+  movements: many(stockMovements),
+}));
+
+export const batchesRelations = relations(batches, ({ one, many }) => ({
+  product: one(products, { fields: [batches.productId], references: [products.id] }),
+  location: one(locations, { fields: [batches.locationId], references: [locations.id] }),
+  movements: many(stockMovements),
+}));
+
+export const stockMovementsRelations = relations(stockMovements, ({ one }) => ({
+  product: one(products, { fields: [stockMovements.productId], references: [products.id] }),
+  location: one(locations, { fields: [stockMovements.locationId], references: [locations.id] }),
+  batch: one(batches, { fields: [stockMovements.batchId], references: [batches.id] }),
+}));
+
+export const purchaseOrdersRelations = relations(purchaseOrders, ({ one, many }) => ({
+  supplier: one(suppliers, { fields: [purchaseOrders.supplierId], references: [suppliers.id] }),
+  lines: many(purchaseOrderLines),
+}));
+
+export const purchaseOrderLinesRelations = relations(purchaseOrderLines, ({ one }) => ({
+  purchaseOrder: one(purchaseOrders, {
+    fields: [purchaseOrderLines.purchaseOrderId], references: [purchaseOrders.id],
+  }),
+  product: one(products, { fields: [purchaseOrderLines.productId], references: [products.id] }),
+}));
+
+export const countSessionsRelations = relations(countSessions, ({ one, many }) => ({
+  location: one(locations, { fields: [countSessions.locationId], references: [locations.id] }),
+  lines: many(countLines),
+}));
+
+export const countLinesRelations = relations(countLines, ({ one }) => ({
+  session: one(countSessions, {
+    fields: [countLines.countSessionId], references: [countSessions.id],
+  }),
+  product: one(products, { fields: [countLines.productId], references: [products.id] }),
+  batch: one(batches, { fields: [countLines.batchId], references: [batches.id] }),
+}));
