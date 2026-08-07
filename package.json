@@ -10,7 +10,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:test": "createdb inv_test_$$ && psql -v ON_ERROR_STOP=1 -d inv_test_$$ -f supabase/migrations/0001_init.sql -f supabase/migrations/0001_init.test.sql; dropdb inv_test_$$"
+    "db:test": "node scripts/db-test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.1",
