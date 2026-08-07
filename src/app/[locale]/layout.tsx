@@ -8,7 +8,8 @@ import { routing } from '@/i18n/routing';
 
 import '../globals.css';
 
-const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
+// Variable names match what shadcn's globals.css expects.
+const geistSans = Geist({ variable: '--font-sans', subsets: ['latin'] });
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
 
 export function generateStaticParams() {

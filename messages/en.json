@@ -3,9 +3,19 @@
     "name": "Inventory",
     "description": "What's about to expire, and what to order."
   },
+  "signIn": {
+    "title": "Sign in",
+    "subtitle": "We'll email you a link. No password to remember.",
+    "emailLabel": "Work email",
+    "submit": "Email me a link",
+    "sent": "Check your email for the sign-in link.",
+    "error": "That didn't work. Check the address and try again."
+  },
   "home": {
     "signedOut": "Not signed in",
-    "noOrganization": "Your account is not a member of any organization yet.",
-    "signedInAs": "Signed in as {email}"
+    "signIn": "Sign in",
+    "noOrganization": "Your account isn't a member of any organization yet. Ask an owner to add you.",
+    "signedInAs": "Signed in as {email}",
+    "signOut": "Sign out"
   }
 }

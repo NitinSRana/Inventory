@@ -32,6 +32,7 @@ export default async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except Next internals and files with an extension.
-  matcher: '/((?!api|_next|_vercel|.*\\..*).*)',
+  // Everything except Next internals, files with an extension, and /auth —
+  // the magic-link callback must not be locale-redirected before it runs.
+  matcher: '/((?!api|auth|_next|_vercel|.*\\..*).*)',
 };
