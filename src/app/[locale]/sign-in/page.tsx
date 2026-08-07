@@ -19,7 +19,12 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
     const email = String(formData.get('email') ?? '').trim();
     if (!email) redirect(`/${locale}/sign-in?error=1`);
 
-    const origin = (await headers()).get('origin') ?? '';
+    // `origin` is absent on some proxied requests; the env var is the fallback.
+    const h = await headers();
+    const origin =
+      h.get('origin') ??
+      process.env.NEXT_PUBLIC_SITE_URL ??
+      `http://${h.get('host') ?? 'localhost:3000'}`;
     const supabase = await createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -58,6 +63,7 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
           {error && (
             <p role="alert" className="text-destructive text-sm">
               {t('error')}
+              {error !== '1' && <span className="block font-mono text-xs">{error}</span>}
             </p>
           )}
 
