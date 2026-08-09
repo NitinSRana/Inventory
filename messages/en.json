@@ -11,6 +11,35 @@
     "sent": "Check your email for the sign-in link.",
     "error": "That didn't work. Check the address and try again."
   },
+  "scan": {
+    "barcodeLabel": "Barcode",
+    "scan": "Scan",
+    "stop": "Stop",
+    "cameraUnavailable": "Camera unavailable. Type the barcode instead."
+  },
+  "waste": {
+    "title": "Write off",
+    "lookUp": "Look up",
+    "notFound": "No product with barcode {barcode}.",
+    "addProduct": "Add it",
+    "onHand": "on hand",
+    "quantity": "Quantity to write off",
+    "reason": "Reason",
+    "submit": "Write off",
+    "recorded": "Written off.",
+    "notEnoughStock": "That's more than the stock on hand.",
+    "failed": "Couldn't record that. Try again.",
+    "reasons": {
+      "expired": "Expired",
+      "damaged": "Damaged",
+      "theft": "Theft",
+      "staff_use": "Staff use",
+      "sampling": "Sampling",
+      "supplier_return": "Returned to supplier",
+      "correction": "Correction",
+      "other": "Other"
+    }
+  },
   "dashboard": {
     "title": "Expiring soon",
     "atRisk": "at risk",
@@ -19,7 +48,8 @@
     "daysLeft": "{days, plural, =0 {Expires today} one {# day left} other {# days left}}",
     "expiredDaysAgo": "{days, plural, one {Expired # day ago} other {Expired # days ago}}",
     "units": "on hand",
-    "viewProducts": "All products"
+    "viewProducts": "All products",
+    "writeOff": "Write off"
   },
   "products": {
     "title": "Products",

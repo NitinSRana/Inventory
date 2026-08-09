@@ -31,11 +31,28 @@ export async function ExpiryDashboard({
   const money = (v: string | null) =>
     format.number(Number(v ?? 0), { style: 'currency', currency });
 
+  const actions = (
+    <div className="flex flex-wrap gap-2">
+      <Link href={`/${locale}/waste`} className={buttonVariants({ className: 'h-11' })}>
+        {t('writeOff')}
+      </Link>
+      <Link
+        href={`/${locale}/products`}
+        className={buttonVariants({ variant: 'outline', className: 'h-11' })}
+      >
+        {t('viewProducts')}
+      </Link>
+    </div>
+  );
+
+  // The empty state still carries the actions: "nothing expiring" is exactly
+  // when someone is here to write something off or check the catalogue.
   if (rows.length === 0) {
     return (
       <section className="flex flex-col gap-4">
         <h2 className="text-lg font-medium">{t('title')}</h2>
         <p className="text-muted-foreground text-sm">{t('nothingExpiring')}</p>
+        {actions}
       </section>
     );
   }
@@ -82,12 +99,7 @@ export async function ExpiryDashboard({
         })}
       </ul>
 
-      <Link
-        href={`/${locale}/products`}
-        className={buttonVariants({ variant: 'outline', className: 'h-11 w-fit' })}
-      >
-        {t('viewProducts')}
-      </Link>
+      {actions}
     </section>
   );
 }
