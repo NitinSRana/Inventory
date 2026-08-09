@@ -50,7 +50,8 @@
     "units": "on hand",
     "viewProducts": "All products",
     "writeOff": "Write off",
-    "startCount": "Count stock"
+    "startCount": "Count stock",
+    "reorder": "What to order"
   },
   "products": {
     "title": "Products",
@@ -105,5 +106,16 @@
     "expectedVsCounted": "expected {expected}, counted {counted}",
     "keepCounting": "Keep counting",
     "postAdjustments": "{count, plural, =0 {Finish count} one {Post # adjustment} other {Post # adjustments}}"
+  },
+  "reorder": {
+    "title": "What to order",
+    "nothingToOrder": "Nothing needs ordering right now.",
+    "noSupplier": "No supplier set",
+    "leadTime": "{days, plural, one {# day lead time} other {# days lead time}}",
+    "belowMinimum": "Below this supplier’s {minimum} minimum order.",
+    "onHandAndRate": "{onHand} on hand · {rate}/day",
+    "lowConfidence": "based on one count window",
+    "alreadyOnOrder": "{quantity} already on order",
+    "notEnoughData": "{count, plural, one {# product has} other {# products have}} no consumption rate yet. Count them twice to get a suggestion."
   }
 }

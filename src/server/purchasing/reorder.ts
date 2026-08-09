@@ -38,7 +38,17 @@ export type SupplierSuggestions = {
  * Products without a consumption rate are omitted rather than guessed at. A
  * suggestion built on no data is worse than no suggestion.
  */
-export async function getReorderSuggestions(orgId: string): Promise<SupplierSuggestions[]> {
+export type ReorderReport = {
+  groups: SupplierSuggestions[];
+  /**
+   * Active products with no consumption rate yet. Surfaced rather than hidden:
+   * "we can't advise on 40 of your products" is information the owner needs,
+   * and silence would read as "nothing to order".
+   */
+  withoutRate: number;
+};
+
+export async function getReorderSuggestions(orgId: string): Promise<ReorderReport> {
   const rows = await withTenant(orgId, (tx) =>
     tx
       .select({
@@ -67,8 +77,11 @@ export async function getReorderSuggestions(orgId: string): Promise<SupplierSugg
   );
 
   const groups = new Map<string, SupplierSuggestions>();
+  let withoutRate = 0;
 
   for (const r of rows) {
+    if (r.dailyRate === null) withoutRate += 1;
+
     const quantity = suggestedOrderQuantity({
       dailyRate: r.dailyRate,
       leadTimeDays: r.leadTimeDays ?? 3,
@@ -116,5 +129,5 @@ export async function getReorderSuggestions(orgId: string): Promise<SupplierSugg
       .toString();
   }
 
-  return [...groups.values()];
+  return { groups: [...groups.values()], withoutRate };
 }

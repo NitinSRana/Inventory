@@ -6,6 +6,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 import { requireOrg } from '@/server/auth/session';
+import { recalculateConsumptionRates } from '@/server/consumption/calculate';
 import { completeCountSession, getOpenSession, getVarianceReport } from '@/server/counting/sessions';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
@@ -31,7 +32,12 @@ export default async function CountReviewPage({ params }: PageProps<'/[locale]/c
     'use server';
     const { orgId, userId } = await requireOrg(locale);
     const open = await getOpenSession(orgId);
-    if (open) await completeCountSession(orgId, open.id, userId);
+    if (open) {
+      await completeCountSession(orgId, open.id, userId);
+      // A completed count is exactly what makes a new rate computable, so
+      // refresh here rather than leaving rates stale until someone asks.
+      await recalculateConsumptionRates(orgId);
+    }
     redirect(`/${locale}`);
   }
 

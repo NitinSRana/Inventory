@@ -33,7 +33,13 @@ export async function ExpiryDashboard({
 
   const actions = (
     <div className="flex flex-wrap gap-2">
-      <Link href={`/${locale}/count`} className={buttonVariants({ className: 'h-11' })}>
+      <Link href={`/${locale}/reorder`} className={buttonVariants({ className: 'h-11' })}>
+        {t('reorder')}
+      </Link>
+      <Link
+        href={`/${locale}/count`}
+        className={buttonVariants({ variant: 'outline', className: 'h-11' })}
+      >
         {t('startCount')}
       </Link>
       <Link
