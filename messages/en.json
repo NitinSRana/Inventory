@@ -11,6 +11,16 @@
     "sent": "Check your email for the sign-in link.",
     "error": "That didn't work. Check the address and try again."
   },
+  "dashboard": {
+    "title": "Expiring soon",
+    "atRisk": "at risk",
+    "batchCount": "{count, plural, =0 {No batches} one {# batch} other {# batches}} expiring within 14 days",
+    "nothingExpiring": "Nothing expiring in the next 14 days.",
+    "daysLeft": "{days, plural, =0 {Expires today} one {# day left} other {# days left}}",
+    "expiredDaysAgo": "{days, plural, one {Expired # day ago} other {Expired # days ago}}",
+    "units": "on hand",
+    "viewProducts": "All products"
+  },
   "products": {
     "title": "Products",
     "addTitle": "Add product",
