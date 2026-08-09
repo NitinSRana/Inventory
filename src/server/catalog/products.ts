@@ -24,9 +24,12 @@ export type ProductInput = {
 };
 
 export class InvalidBarcodeError extends Error {
-  constructor(readonly raw: string) {
+  readonly raw: string;
+
+  constructor(raw: string) {
     super(`Not a valid EAN-13 or EAN-8: ${raw}`);
     this.name = 'InvalidBarcodeError';
+    this.raw = raw;
   }
 }
 
