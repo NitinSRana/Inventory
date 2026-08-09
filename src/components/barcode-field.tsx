@@ -16,7 +16,16 @@ import { Label } from '@/components/ui/label';
  *
  * The camera opens inline rather than in a modal: modals need two hands.
  */
-export function BarcodeField({ name = 'gtin', defaultValue = '' }: { name?: string; defaultValue?: string }) {
+export function BarcodeField({
+  name = 'gtin',
+  defaultValue = '',
+  autoFocus = false,
+}: {
+  name?: string;
+  defaultValue?: string;
+  /** Counting scans back to back; the field should be live without a tap. */
+  autoFocus?: boolean;
+}) {
   const t = useTranslations('scan');
   const inputRef = useRef<HTMLInputElement>(null);
   const regionRef = useRef<HTMLDivElement>(null);
@@ -77,6 +86,7 @@ export function BarcodeField({ name = 'gtin', defaultValue = '' }: { name?: stri
           inputMode="numeric"
           autoComplete="off"
           defaultValue={defaultValue}
+          autoFocus={autoFocus}
           className="h-12 flex-1 font-mono"
         />
         <Button

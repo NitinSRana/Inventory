@@ -49,7 +49,8 @@
     "expiredDaysAgo": "{days, plural, one {Expired # day ago} other {Expired # days ago}}",
     "units": "on hand",
     "viewProducts": "All products",
-    "writeOff": "Write off"
+    "writeOff": "Write off",
+    "startCount": "Count stock"
   },
   "products": {
     "title": "Products",
@@ -81,5 +82,28 @@
     "signedInAs": "Signed in as {email}",
     "products": "Products",
     "signOut": "Sign out"
+  },
+  "count": {
+    "title": "Stock count",
+    "noSession": "No count in progress.",
+    "sectionLabel": "What are you counting?",
+    "sectionPlaceholder": "e.g. Chiller shelf 3",
+    "start": "Start count",
+    "lookUp": "Look up",
+    "notFound": "No product with barcode {barcode}.",
+    "countedLabel": "Counted ({unit})",
+    "saveAndNext": "Save and next",
+    "counted": "Counted so far",
+    "countedSoFar": "{count, plural, =0 {nothing counted} one {# counted} other {# counted}}",
+    "review": "Review and finish",
+    "reviewTitle": "Variance",
+    "noVariance": "Everything matches the ledger. Nothing to adjust.",
+    "netImpact": "net impact",
+    "varianceCount": "{count, plural, one {# line differs} other {# lines differ}}",
+    "short": "Short",
+    "over": "Over",
+    "expectedVsCounted": "expected {expected}, counted {counted}",
+    "keepCounting": "Keep counting",
+    "postAdjustments": "{count, plural, =0 {Finish count} one {Post # adjustment} other {Post # adjustments}}"
   }
 }
