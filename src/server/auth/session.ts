@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation';
+
 import { orgForUser } from '@/db/tenant';
 import { createClient } from '@/lib/supabase/server';
 
@@ -29,4 +31,16 @@ export async function getSessionState(): Promise<SessionState> {
   if (!orgId) return { status: 'noOrganization', userId: user.id, email };
 
   return { status: 'ready', userId: user.id, email, orgId };
+}
+
+/**
+ * For pages that cannot render without a tenant. Sends anyone who is signed out
+ * to sign-in, and anyone without a membership home, where that state has its own
+ * explanation rather than looking like an error.
+ */
+export async function requireOrg(locale: string) {
+  const session = await getSessionState();
+  if (session.status === 'signedOut') redirect(`/${locale}/sign-in`);
+  if (session.status === 'noOrganization') redirect(`/${locale}`);
+  return session;
 }

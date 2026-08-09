@@ -8,6 +8,10 @@ import { withTenant } from '@/db/tenant';
 import { createClient } from '@/lib/supabase/server';
 import { getSessionState } from '@/server/auth/session';
 
+// Reads the session, so it must never be prerendered or cached: a cached page
+// behind auth is a cross-tenant leak waiting to happen.
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage({ params }: PageProps<'/[locale]'>) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -49,6 +53,9 @@ export default async function HomePage({ params }: PageProps<'/[locale]'>) {
     <main className="flex flex-1 flex-col justify-center gap-4 p-6">
       <h1 className="text-2xl font-semibold">{org.name}</h1>
       <p className="text-muted-foreground text-sm">{t('signedInAs', { email: session.email })}</p>
+      <Link href={`/${locale}/products`} className={buttonVariants({ className: 'h-11 w-fit' })}>
+        {t('products')}
+      </Link>
       <form action={signOut}>
         <Button type="submit" variant="outline" className="h-11">
           {t('signOut')}

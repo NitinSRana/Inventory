@@ -73,6 +73,13 @@ export async function listProducts(
   );
 }
 
+export async function getProduct(orgId: string, productId: string) {
+  const [product] = await withTenant(orgId, (tx) =>
+    tx.select().from(products).where(eq(products.id, productId)).limit(1),
+  );
+  return product ?? null;
+}
+
 /** Barcode lookup for the scanning flows. Returns null on an unknown or malformed code. */
 export async function findProductByBarcode(orgId: string, barcode: string) {
   const gtin = normalizeGtin(barcode);

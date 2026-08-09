@@ -11,11 +11,35 @@
     "sent": "Check your email for the sign-in link.",
     "error": "That didn't work. Check the address and try again."
   },
+  "products": {
+    "title": "Products",
+    "addTitle": "Add product",
+    "searchLabel": "Search by name or barcode",
+    "empty": "No products yet.",
+    "noMatches": "Nothing matches that search.",
+    "name": "Name",
+    "barcode": "Barcode",
+    "noBarcode": "No barcode",
+    "unit": "Unit",
+    "cost": "Cost",
+    "price": "Price",
+    "shelfLife": "Shelf life (days)",
+    "supplier": "Supplier",
+    "noSupplier": "No supplier",
+    "add": "Add product",
+    "save": "Save",
+    "deactivate": "Deactivate",
+    "invalidBarcode": "That isn't a valid EAN-13 or EAN-8 barcode.",
+    "saveFailed": "Couldn't save that. Check the fields and try again.",
+    "loadFailed": "Couldn't load products.",
+    "retry": "Try again"
+  },
   "home": {
     "signedOut": "Not signed in",
     "signIn": "Sign in",
     "noOrganization": "Your account isn't a member of any organization yet. Ask an owner to add you.",
     "signedInAs": "Signed in as {email}",
+    "products": "Products",
     "signOut": "Sign out"
   }
 }
