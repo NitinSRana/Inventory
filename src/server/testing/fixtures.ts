@@ -32,6 +32,6 @@ export async function createTestOrg(name: string): Promise<TestOrg> {
 /** Raw admin access, for asserting on state the app layer deliberately hides. */
 export const adminSql = admin;
 
-export async function closeFixtures() {
-  await admin.end();
-}
+// No close helper on purpose: several describe blocks share this process, and a
+// per-block teardown closed the pool out from under the next one. The runner is
+// started with --test-force-exit, which reaps it.

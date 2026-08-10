@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import { after, before, describe, test } from 'node:test';
+import { before, describe, test } from 'node:test';
 
 import { createProduct } from '@/server/catalog/products';
 import { InsufficientStockError } from '@/server/stock/fefo';
 import { getBatchStock, getExpiringStock, getProductStock } from '@/server/stock/levels';
 import { adjustStock, receiveStock, recordWaste } from '@/server/stock/movements';
-import { adminSql, closeFixtures, createTestOrg, type TestOrg } from '@/server/testing/fixtures';
+import { adminSql, createTestOrg, type TestOrg } from '@/server/testing/fixtures';
 
 /**
  * The ledger against a real database. These cover what unit tests cannot: the
@@ -26,7 +26,6 @@ describe('stock ledger', () => {
     productId = product.id;
   });
 
-  after(closeFixtures);
 
   test('receipts accumulate and quantity is derived, never stored', async () => {
     await receiveStock(org.orgId, { productId, quantity: '10', expiryDate: '2026-09-30' });

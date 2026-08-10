@@ -145,8 +145,9 @@ export async function getPurchaseOrder(orgId: string, poId: string) {
 
     const total = lines
       .reduce((acc, l) => acc.plus(new Decimal(l.quantityOrdered).times(l.unitCost ?? 0)), new Decimal(0))
-      .toDecimalPlaces(2)
-      .toString();
+      // toFixed, not toString: 15.8 and 15.80 must not both be possible for the
+      // same order. listPurchaseOrders rounds in SQL and yields 15.80.
+      .toFixed(2);
 
     return { ...po, lines, total };
   });
