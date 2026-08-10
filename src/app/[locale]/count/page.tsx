@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { requireOrg } from '@/server/auth/session';
 import { findProductByBarcode } from '@/server/catalog/products';
+import { getDueForCount } from '@/server/counting/due';
 import { getOpenSession, getSessionLines, recordCount, startCountSession } from '@/server/counting/sessions';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
@@ -33,10 +34,14 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
   }
 
   if (!session) {
+    // What's overdue, so the queue decides where to walk rather than habit.
+    const due = await getDueForCount(orgId, 20);
+
     return (
       <main className="flex flex-1 flex-col gap-6 p-4">
         <h1 className="text-2xl font-semibold">{t('title')}</h1>
         <p className="text-muted-foreground text-sm">{t('noSession')}</p>
+
         <form action={start} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="name">{t('sectionLabel')}</Label>
@@ -46,6 +51,31 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
             {t('start')}
           </Button>
         </form>
+
+        {due.length > 0 && (
+          <section className="flex flex-col gap-2 border-t pt-4">
+            <h2 className="text-sm font-medium">{t('dueTitle', { count: due.length })}</h2>
+            <ul className="flex flex-col gap-1">
+              {due.slice(0, 10).map((p) => (
+                <li key={p.id} className="flex justify-between gap-3 border-b py-2 text-sm">
+                  <span className="truncate">{p.name}</span>
+                  {/* Stated in words as well as by position — "never counted"
+                      and "3 days over" are different kinds of urgent. */}
+                  <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
+                    {p.lastCountedAt
+                      ? t('daysOver', { days: p.daysOverdue })
+                      : t('neverCounted')}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {due.length > 10 && (
+              <p className="text-muted-foreground text-xs tabular-nums">
+                {t('andMore', { count: due.length - 10 })}
+              </p>
+            )}
+          </section>
+        )}
       </main>
     );
   }

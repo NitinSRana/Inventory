@@ -108,7 +108,11 @@
     "over": "Over",
     "expectedVsCounted": "expected {expected}, counted {counted}",
     "keepCounting": "Keep counting",
-    "postAdjustments": "{count, plural, =0 {Finish count} one {Post # adjustment} other {Post # adjustments}}"
+    "postAdjustments": "{count, plural, =0 {Finish count} one {Post # adjustment} other {Post # adjustments}}",
+    "dueTitle": "{count, plural, one {# product due a count} other {# products due a count}}",
+    "daysOver": "{days, plural, =0 {due today} one {# day over} other {# days over}}",
+    "neverCounted": "never counted",
+    "andMore": "+{count} more"
   },
   "reorder": {
     "title": "What to order",
