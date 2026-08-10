@@ -1,9 +1,16 @@
-// Applies 0001_init.sql + 0001_init.test.sql to a throwaway database.
-// Node rather than the bash one-liner in SETUP.md: pnpm runs scripts through
-// cmd.exe on Windows, where `$$` is not a PID and `;` does not chain.
-// Needs a Postgres server, not psql — TEST_DATABASE_URL points at its
-// maintenance database. Never point it at Supabase; this creates and drops.
-import { readFileSync } from 'node:fs';
+// Applies every migration plus 0001_init.test.sql to a throwaway database.
+//
+// By default it starts its own Postgres — a portable server unpacked into
+// .pgtest/, no Docker, no admin rights, no password to remember. That matters:
+// this suite is the merge gate for schema changes, and a gate nobody can run is
+// not a gate.
+//
+// Set TEST_DATABASE_URL to point at an existing server instead. Never point it
+// at Supabase; this creates and drops databases.
+import { readFileSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import EmbeddedPostgres from 'embedded-postgres';
 import postgres from 'postgres';
 
 try {
@@ -12,32 +19,93 @@ try {
   // Optional locally, absent in CI.
 }
 
-const adminUrl =
-  process.env.TEST_DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:5432/postgres';
-const dbName = `inv_test_${process.pid}`;
+// Unique per run. On Windows the shared-memory key is derived from the data
+// directory path, so a fixed path collides with any other postmaster that has
+// ever used it — including a system PostgreSQL service.
+const RUN_ID = `${process.pid}-${Date.now().toString(36)}`;
+const PORT = 49152 + (process.pid % 15000);
+const DATA_DIR = join(tmpdir(), `inv-pgtest-${RUN_ID}`);
 
+let pg = null;
+let adminUrl = process.env.TEST_DATABASE_URL;
+
+if (!adminUrl) {
+  // A fresh cluster every run, so a half-finished previous run cannot leave
+  // state that makes the next one pass for the wrong reason.
+  rmSync(DATA_DIR, { recursive: true, force: true });
+  pg = new EmbeddedPostgres({
+    databaseDir: DATA_DIR,
+    user: 'postgres',
+    password: 'postgres',
+    port: PORT,
+    persistent: false,
+  });
+  await pg.initialise();
+  await pg.start();
+  adminUrl = `postgresql://postgres:postgres@127.0.0.1:${PORT}/postgres`;
+}
+
+const dbName = `inv_test_${process.pid}`;
 const admin = postgres(adminUrl, { max: 1 });
 const scratchUrl = new URL(adminUrl);
 scratchUrl.pathname = `/${dbName}`;
 
-let failed = false;
+async function shutdown(code) {
+  await admin.end().catch(() => {});
+  if (pg) {
+    await pg.stop().catch(() => {});
+    rmSync(DATA_DIR, { recursive: true, force: true });
+  }
+  process.exit(code);
+}
+
 try {
-  await admin`create database ${admin(dbName)}`;
+  // UTF8 from template0, explicitly. On Windows initdb picks WIN1252 from the
+  // system locale, and the migrations contain real UTF-8 characters — a "−" in
+  // a comment is enough to abort the whole file.
+  await admin.unsafe(
+    `create database "${dbName}" encoding 'UTF8' template template0 lc_collate 'C' lc_ctype 'C'`,
+  );
 } catch (e) {
   const hint =
     e.code === '28P01'
       ? 'password authentication failed — check TEST_DATABASE_URL in .env.local'
       : e.message;
   console.error(`FAIL cannot reach Postgres at ${scratchUrl.host}: ${hint}`);
-  await admin.end();
-  process.exit(1);
+  await shutdown(1);
 }
-const db = postgres(scratchUrl.toString(), { max: 1 });
+
+// Every migration in order, then the checks. Running all of them — not just
+// 0001 — is the point: a later migration that breaks an earlier invariant is
+// exactly what this needs to catch.
+const migrations = readdirSync('supabase/migrations')
+  .filter((f) => f.endsWith('.sql') && !f.endsWith('.test.sql'))
+  .sort();
+
+let failed = false;
+// The suite reports itself through RAISE NOTICE; without this handler the run
+// is silent and "ok" proves only that nothing threw.
+let checks = 0;
+const db = postgres(scratchUrl.toString(), {
+  max: 1,
+  onnotice: (n) => {
+    const msg = n.message ?? '';
+    if (msg.startsWith('PASS')) checks += 1;
+    if (/^(PASS|---)/.test(msg)) console.log('     ' + msg);
+  },
+});
 try {
-  for (const file of ['0001_init.sql', '0001_init.test.sql']) {
+  for (const file of [...migrations, '0001_init.test.sql']) {
+    // Drop psql meta-commands (\echo, \set …). They are client directives, not
+    // SQL, and this runs over a driver rather than through psql.
+    const sqlText = readFileSync(`supabase/migrations/${file}`, 'utf8')
+      .split('\n')
+      .filter((line) => !/^\s*\\/.test(line))
+      .join('\n');
+
     // .simple() uses the simple query protocol, so one file = one round trip and
     // $$-quoted function bodies survive intact.
-    await db.unsafe(readFileSync(`supabase/migrations/${file}`, 'utf8')).simple();
+    await db.unsafe(sqlText).simple();
     console.log(`ok   ${file}`);
   }
 } catch (e) {
@@ -45,8 +113,9 @@ try {
   console.error(`FAIL ${e.message}${e.position ? ` (at position ${e.position})` : ''}`);
 } finally {
   await db.end();
-  await admin`drop database ${admin(dbName)}`;
-  await admin.end();
+  await admin`drop database ${admin(dbName)}`.catch(() => {});
 }
 
-process.exit(failed ? 1 : 0);
+if (!failed) console.log(`
+${checks} checks passed`);
+await shutdown(failed ? 1 : 0);
