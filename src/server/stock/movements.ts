@@ -80,12 +80,12 @@ async function findOrCreateBatch(
 }
 
 /** A delivery arrives. Captures expiry at the moment it is knowable. */
-export async function receiveStock(orgId: string, input: ReceiveInput) {
+export async function receiveStock(orgId: string, input: ReceiveInput, tx?: Tx) {
   if (new Decimal(input.quantity).lessThanOrEqualTo(0)) {
     throw new Error('Receipt quantity must be positive');
   }
 
-  return withTenant(orgId, async (tx) => {
+  const run = async (tx: Tx) => {
     const locationId = input.locationId ?? (await defaultLocationId(tx));
     const batchId = await findOrCreateBatch(tx, orgId, { ...input, locationId });
 
@@ -106,7 +106,13 @@ export async function receiveStock(orgId: string, input: ReceiveInput) {
       })
       .returning();
     return movement;
-  });
+  };
+
+  // Joins the caller's transaction when given one. Receiving against a purchase
+  // order has to update the order lines and post the ledger rows together, and
+  // opening a second transaction here would take a second connection and could
+  // deadlock against the first.
+  return tx ? run(tx) : withTenant(orgId, run);
 }
 
 /**
