@@ -177,22 +177,38 @@ export async function adjustStock(
 
   return withTenant(orgId, async (tx) => {
     const locationId = input.locationId ?? (await defaultLocationId(tx));
-    const [movement] = await tx
+    const delta = new Decimal(input.quantityDelta);
+
+    // A negative adjustment with no batch named must still come out of real
+    // batches, FEFO, exactly as waste does. Posting it against batch_id null
+    // lowers the product total while leaving every batch untouched — which makes
+    // expiring_stock overstate value at risk, on the dashboard that sells the
+    // product. Found by stock.itest.ts.
+    const allocations =
+      !input.batchId && delta.isNegative()
+        ? allocateFefo(await getBatchStock(orgId, input.productId, locationId, tx), delta.abs().toString())
+        : [{ batchId: input.batchId ?? null, quantity: delta.abs().toString() }];
+
+    const rows = await tx
       .insert(stockMovements)
-      .values({
-        organizationId: orgId,
-        productId: input.productId,
-        locationId,
-        batchId: input.batchId ?? null,
-        quantityDelta: input.quantityDelta,
-        movementType: 'manual_adjustment',
-        reasonCode: input.reasonCode ?? 'correction',
-        referenceType: 'manual',
-        actorId: input.actorId ?? null,
-        note: input.note ?? null,
-        ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
-      })
+      .values(
+        allocations.map((a) => ({
+          organizationId: orgId,
+          productId: input.productId,
+          locationId,
+          batchId: a.batchId,
+          quantityDelta: delta.isNegative()
+            ? new Decimal(a.quantity).negated().toString()
+            : a.quantity,
+          movementType: 'manual_adjustment' as const,
+          reasonCode: input.reasonCode ?? ('correction' as const),
+          referenceType: 'manual' as const,
+          actorId: input.actorId ?? null,
+          note: input.note ?? null,
+          ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
+        })),
+      )
       .returning();
-    return movement;
+    return rows[0];
   });
 }

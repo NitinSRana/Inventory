@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit tests
+        run: pnpm test
+
+      # These three start their own throwaway Postgres, so CI needs no database
+      # service and no secrets. The suite must be runnable by anyone who clones
+      # the repo — a gate that needs credentials is a gate nobody runs.
+      - name: Schema and RLS checks
+        run: pnpm db:test
+
+      - name: Integration tests
+        run: pnpm test:integration
+
+      - name: Build
+        run: pnpm build
+        env:
+          # Build-time only. src/db/tenant.ts throws without it, and no query
+          # runs during a build.
+          DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build
+          NEXT_PUBLIC_SUPABASE_URL: https://build.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: build-placeholder

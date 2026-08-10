@@ -11,7 +11,9 @@
     "test": "node --test \"src/**/*.test.ts\"",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:test": "node scripts/db-test.mjs"
+    "db:test": "node scripts/db-test.mjs",
+    "test:integration": "node scripts/integration-test.mjs",
+    "test:all": "pnpm test && pnpm test:integration && pnpm db:test"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -47,5 +49,8 @@
     "tsx": "^4.23.9",
     "typescript": "^5"
   },
-  "packageManager": "pnpm@11.20.0"
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=22.6"
+  }
 }
