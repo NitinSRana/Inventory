@@ -54,7 +54,8 @@
     "reorder": "What to order",
     "receive": "Receive",
     "actionsLabel": "Stock actions",
-    "reports": "Reports"
+    "reports": "Reports",
+    "orders": "Orders"
   },
   "products": {
     "title": "Products",
@@ -123,7 +124,8 @@
     "onHandAndRate": "{onHand} on hand · {rate}/day",
     "lowConfidence": "based on one count window",
     "alreadyOnOrder": "{quantity} already on order",
-    "notEnoughData": "{count, plural, one {# product has} other {# products have}} no consumption rate yet. Count them twice to get a suggestion."
+    "notEnoughData": "{count, plural, one {# product has} other {# products have}} no consumption rate yet. Count them twice to get a suggestion.",
+    "createOrder": "Create draft order"
   },
   "receive": {
     "title": "Receive delivery",
@@ -205,5 +207,30 @@
       "minimum": "Minimum",
       "supplier": "Supplier"
     }
+  },
+  "orders": {
+    "title": "Purchase orders",
+    "empty": "No purchase orders yet.",
+    "fromSuggestions": "See what to order",
+    "lineCount": "{count, plural, one {# line} other {# lines}}",
+    "status": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "partially_received": "Part delivered",
+      "received": "Complete",
+      "cancelled": "Cancelled"
+    },
+    "receivedOfOrdered": "{received} of {ordered} {unit} received",
+    "outstanding": "Outstanding",
+    "complete": "Complete",
+    "sendHint": "Send this order to the supplier yourself, then mark it sent. Only then does it count against future reorder suggestions.",
+    "markSent": "Mark as sent",
+    "receiveTitle": "Record a delivery",
+    "receiveHint": "Quantities are pre-filled with what is still outstanding. Clear a line to skip it.",
+    "quantity": "Quantity",
+    "expiry": "Expiry",
+    "lot": "Lot number",
+    "recordDelivery": "Record delivery",
+    "overDelivered": "{count, plural, one {# line was} other {# lines were}} over-delivered. The stock is recorded — check the invoice."
   }
 }

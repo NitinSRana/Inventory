@@ -1,9 +1,12 @@
 import { getFormatter, getTranslations, setRequestLocale } from 'next-intl/server';
+import { redirect } from 'next/navigation';
 import Decimal from 'decimal.js';
 
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 import { requireOrg } from '@/server/auth/session';
+import { Button } from '@/components/ui/button';
+import { createPurchaseOrder } from '@/server/purchasing/orders';
 import { getReorderSuggestions } from '@/server/purchasing/reorder';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
@@ -21,6 +24,29 @@ export default async function ReorderPage({ params }: PageProps<'/[locale]/reord
   const [org] = await withTenant(orgId, (tx) => tx.select().from(organizations));
   const { groups, withoutRate } = await getReorderSuggestions(orgId);
   const money = (v: string) => format.number(Number(v), { style: 'currency', currency: org.currencyCode });
+
+  async function draftOrder(formData: FormData) {
+    'use server';
+    const { orgId, userId } = await requireOrg(locale);
+    const supplierId = String(formData.get('supplierId'));
+    const { groups } = await getReorderSuggestions(orgId);
+    const group = groups.find((g) => g.supplierId === supplierId);
+    if (!group) redirect(`/${locale}/reorder`);
+
+    // Re-read the suggestions server-side rather than trusting quantities posted
+    // from the page: the numbers may have moved since it rendered, and they must
+    // never come from the client.
+    const po = await createPurchaseOrder(orgId, {
+      supplierId,
+      createdBy: userId,
+      lines: group.lines.map((l) => ({
+        productId: l.productId,
+        quantity: l.suggestedQuantity,
+        unitCost: l.costPrice,
+      })),
+    });
+    redirect(`/${locale}/orders/${po.id}`);
+  }
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4">
@@ -72,6 +98,15 @@ export default async function ReorderPage({ params }: PageProps<'/[locale]/reord
                   </li>
                 ))}
               </ul>
+
+              {g.supplierId && (
+                <form action={draftOrder}>
+                  <input type="hidden" name="supplierId" value={g.supplierId} />
+                  <Button type="submit" className="h-11 w-fit">
+                    {t('createOrder')}
+                  </Button>
+                </form>
+              )}
             </section>
           );
         })
