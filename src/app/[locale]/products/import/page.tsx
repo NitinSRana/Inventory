@@ -113,9 +113,19 @@ export default async function ImportPage({ params, searchParams }: PageProps<'/[
           </ul>
 
           {report.s?.length > 0 && (
-            <p className="text-muted-foreground text-sm">
-              {t('unknownSuppliers', { names: report.s.join(', ') })}
-            </p>
+            <div className="flex flex-col items-start gap-2">
+              <p className="text-muted-foreground text-sm">
+                {t('unknownSuppliers', { names: report.s.join(', ') })}
+              </p>
+              {/* Telling someone to add a supplier without a way to do it was a
+                  dead end. `next` brings them straight back here. */}
+              <Link
+                href={`/${locale}/suppliers/new?next=${encodeURIComponent(`/${locale}/products/import`)}`}
+                className={buttonVariants({ variant: 'outline', className: 'h-11' })}
+              >
+                {t('addSupplier')}
+              </Link>
+            </div>
           )}
         </div>
       )}

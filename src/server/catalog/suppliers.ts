@@ -37,6 +37,25 @@ export async function createSupplier(orgId: string, input: SupplierInput) {
   return supplier;
 }
 
+export async function getSupplier(orgId: string, supplierId: string) {
+  const [supplier] = await withTenant(orgId, (tx) =>
+    tx.select().from(suppliers).where(eq(suppliers.id, supplierId)).limit(1),
+  );
+  return supplier ?? null;
+}
+
+/** Deactivated, never deleted — products and purchase orders still reference them. */
+export async function deactivateSupplier(orgId: string, supplierId: string) {
+  const [supplier] = await withTenant(orgId, (tx) =>
+    tx
+      .update(suppliers)
+      .set({ isActive: false })
+      .where(eq(suppliers.id, supplierId))
+      .returning(),
+  );
+  return supplier ?? null;
+}
+
 export async function updateSupplier(orgId: string, supplierId: string, input: SupplierInput) {
   const name = input.name.trim();
   if (!name) throw new Error('Supplier name is required');

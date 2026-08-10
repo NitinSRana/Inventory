@@ -55,7 +55,8 @@
     "receive": "Receive",
     "actionsLabel": "Stock actions",
     "reports": "Reports",
-    "orders": "Orders"
+    "orders": "Orders",
+    "suppliers": "Suppliers"
   },
   "products": {
     "title": "Products",
@@ -168,7 +169,8 @@
       "unknownSupplier": "Supplier is not in your supplier list",
       "missingNameColumn": "No name column found. The first row must be headers.",
       "empty": "The file is empty."
-    }
+    },
+    "addSupplier": "Add a supplier"
   },
   "reports": {
     "title": "Reports",
@@ -232,5 +234,32 @@
     "lot": "Lot number",
     "recordDelivery": "Record delivery",
     "overDelivered": "{count, plural, one {# line was} other {# lines were}} over-delivered. The stock is recorded — check the invoice."
+  },
+  "suppliers": {
+    "title": "Suppliers",
+    "addTitle": "Add supplier",
+    "empty": "No suppliers yet. Add one before importing a catalogue that names them.",
+    "add": "Add supplier",
+    "name": "Name",
+    "contact": "Contact person",
+    "email": "Email",
+    "phone": "Phone",
+    "leadTime": "Lead time (days)",
+    "leadTimeHint": "How many days between ordering and delivery. Drives every reorder quantity.",
+    "minOrder": "Minimum order",
+    "deliveryDays": "Delivery days",
+    "leadTimeShort": "{days, plural, one {# day} other {# days}}",
+    "save": "Save",
+    "deactivate": "Deactivate",
+    "saveFailed": "Couldn’t save that. A supplier with this name may already exist.",
+    "weekdays": {
+      "1": "Mon",
+      "2": "Tue",
+      "3": "Wed",
+      "4": "Thu",
+      "5": "Fri",
+      "6": "Sat",
+      "7": "Sun"
+    }
   }
 }

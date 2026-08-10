@@ -43,6 +43,7 @@ export async function ExpiryDashboard({
             ['count', 'startCount'],
             ['reorder', 'reorder'],
             ['products', 'viewProducts'],
+            ['suppliers', 'suppliers'],
             ['orders', 'orders'],
             ['reports', 'reports'],
           ] as const
