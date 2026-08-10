@@ -9,6 +9,7 @@ import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 import { requireOrg, requireRole } from '@/server/auth/session';
 import {
+  cancelPurchaseOrder,
   getPurchaseOrder,
   markPurchaseOrderSent,
   receiveAgainstPurchaseOrder,
@@ -61,6 +62,13 @@ export default async function OrderPage({ params, searchParams }: PageProps<'/[l
 
     const { discrepancies } = await receiveAgainstPurchaseOrder(orgId, id, receipts, userId);
     redirect(`/${locale}/orders/${id}${discrepancies.length ? `?over=${discrepancies.length}` : ''}`);
+  }
+
+  async function cancel() {
+    'use server';
+    const { orgId } = await requireRole(locale, 'manager');
+    await cancelPurchaseOrder(orgId, id);
+    redirect(`/${locale}/orders`);
   }
 
   const outstanding = po.lines.filter((l) =>
@@ -116,7 +124,17 @@ export default async function OrderPage({ params, searchParams }: PageProps<'/[l
         </form>
       )}
 
-      {outstanding.length > 0 && po.status !== 'draft' && (
+      {po.status !== 'received' && po.status !== 'cancelled' && (
+        <form action={cancel}>
+          {/* Stops the outstanding quantity so reorder suggestions come back.
+              Anything already delivered stays in the ledger. */}
+          <Button type="submit" variant="outline" className="h-11">
+            {t('cancelOrder')}
+          </Button>
+        </form>
+      )}
+
+      {outstanding.length > 0 && po.status !== 'draft' && po.status !== 'cancelled' && (
         <form action={receive} className="flex flex-col gap-4">
           <h2 className="text-lg font-medium">{t('receiveTitle')}</h2>
           <p className="text-muted-foreground text-sm">{t('receiveHint')}</p>

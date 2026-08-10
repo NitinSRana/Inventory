@@ -1,5 +1,5 @@
 import Decimal from 'decimal.js';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 
 import { locations, products, purchaseOrderLines, purchaseOrders, suppliers } from '@/db/schema';
 import { withTenant, type Tx } from '@/db/tenant';
@@ -165,6 +165,34 @@ export async function markPurchaseOrderSent(orgId: string, poId: string) {
       .where(and(eq(purchaseOrders.id, poId), eq(purchaseOrders.status, 'draft')))
       .returning();
     if (!po) throw new Error('Purchase order is not a draft');
+    return po;
+  });
+}
+
+/**
+ * Cancels an order that is not coming.
+ *
+ * Anything already delivered stays in the ledger — that stock is physically on
+ * the shelf and the ledger is append-only. Cancelling only stops the
+ * outstanding quantity, which drops out of on_order_quantities and lets the
+ * reorder suggestion come back.
+ *
+ * A fully received order cannot be cancelled: there is nothing outstanding to
+ * cancel, and pretending otherwise would misreport history.
+ */
+export async function cancelPurchaseOrder(orgId: string, poId: string, note?: string | null) {
+  return withTenant(orgId, async (tx) => {
+    const [po] = await tx
+      .update(purchaseOrders)
+      .set({ status: 'cancelled', note: note ?? null })
+      .where(
+        and(
+          eq(purchaseOrders.id, poId),
+          inArray(purchaseOrders.status, ['draft', 'sent', 'partially_received']),
+        ),
+      )
+      .returning();
+    if (!po) throw new Error('Only an open purchase order can be cancelled');
     return po;
   });
 }

@@ -240,7 +240,8 @@
     "expiry": "Expiry",
     "lot": "Lot number",
     "recordDelivery": "Record delivery",
-    "overDelivered": "{count, plural, one {# line was} other {# lines were}} over-delivered. The stock is recorded — check the invoice."
+    "overDelivered": "{count, plural, one {# line was} other {# lines were}} over-delivered. The stock is recorded — check the invoice.",
+    "cancelOrder": "Cancel order"
   },
   "suppliers": {
     "title": "Suppliers",
