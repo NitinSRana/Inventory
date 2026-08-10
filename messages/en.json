@@ -83,7 +83,6 @@
     "signIn": "Sign in",
     "noOrganization": "Your account isn't a member of any organization yet. Ask an owner to add you.",
     "signedInAs": "Signed in as {email}",
-    "products": "Products",
     "signOut": "Sign out"
   },
   "count": {
