@@ -51,7 +51,9 @@
     "viewProducts": "All products",
     "writeOff": "Write off",
     "startCount": "Count stock",
-    "reorder": "What to order"
+    "reorder": "What to order",
+    "receive": "Receive",
+    "actionsLabel": "Stock actions"
   },
   "products": {
     "title": "Products",
@@ -117,5 +119,20 @@
     "lowConfidence": "based on one count window",
     "alreadyOnOrder": "{quantity} already on order",
     "notEnoughData": "{count, plural, one {# product has} other {# products have}} no consumption rate yet. Count them twice to get a suggestion."
+  },
+  "receive": {
+    "title": "Receive delivery",
+    "lookUp": "Look up",
+    "notFound": "No product with barcode {barcode}.",
+    "addProduct": "Add it",
+    "onHand": "on hand",
+    "quantity": "Quantity received ({unit})",
+    "expiry": "Expiry date",
+    "expiryHint": "Suggested from a {days}-day shelf life. Change it if the label differs.",
+    "lot": "Lot number",
+    "unitCost": "Unit cost",
+    "submit": "Receive",
+    "received": "Delivery recorded.",
+    "failed": "Couldn’t record that. Check the quantity and try again."
   }
 }

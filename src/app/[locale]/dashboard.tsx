@@ -31,30 +31,31 @@ export async function ExpiryDashboard({
   const money = (v: string | null) =>
     format.number(Number(v ?? 0), { style: 'currency', currency });
 
+  // A hub, not a screen with five competing primary actions: equal weight, two
+  // columns, every target comfortably past 44px for a gloved thumb.
   const actions = (
-    <div className="flex flex-wrap gap-2">
-      <Link href={`/${locale}/reorder`} className={buttonVariants({ className: 'h-11' })}>
-        {t('reorder')}
-      </Link>
-      <Link
-        href={`/${locale}/count`}
-        className={buttonVariants({ variant: 'outline', className: 'h-11' })}
-      >
-        {t('startCount')}
-      </Link>
-      <Link
-        href={`/${locale}/waste`}
-        className={buttonVariants({ variant: 'outline', className: 'h-11' })}
-      >
-        {t('writeOff')}
-      </Link>
-      <Link
-        href={`/${locale}/products`}
-        className={buttonVariants({ variant: 'outline', className: 'h-11' })}
-      >
-        {t('viewProducts')}
-      </Link>
-    </div>
+    <nav aria-label={t('actionsLabel')}>
+      <ul className="grid grid-cols-2 gap-2">
+        {(
+          [
+            ['receive', 'receive'],
+            ['waste', 'writeOff'],
+            ['count', 'startCount'],
+            ['reorder', 'reorder'],
+            ['products', 'viewProducts'],
+          ] as const
+        ).map(([path, key]) => (
+          <li key={path}>
+            <Link
+              href={`/${locale}/${path}`}
+              className={buttonVariants({ variant: 'outline', className: 'h-12 w-full' })}
+            >
+              {t(key)}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 
   // The empty state still carries the actions: "nothing expiring" is exactly

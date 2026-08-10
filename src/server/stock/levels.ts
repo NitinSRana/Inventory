@@ -71,6 +71,22 @@ export async function getExpiringStock(orgId: string, withinDays = 14) {
   );
 }
 
+/**
+ * Today plus a shelf life, as an ISO date.
+ *
+ * Deliberately asked of the database rather than the Node clock: expiring_stock
+ * derives days_remaining from `current_date`, and a suggestion computed in a
+ * different timezone would be off by a day against the dashboard that judges it.
+ */
+export async function suggestedExpiryDate(orgId: string, shelfLifeDays: number) {
+  const rows = await withTenant(orgId, (tx) =>
+    // The ::int cast is required: without it Postgres cannot resolve which
+    // `date + ?` operator is meant and fails with "operator is not unique".
+    tx.execute<{ d: string }>(sql`select (current_date + ${shelfLifeDays}::int)::text as d`),
+  );
+  return rows[0]?.d ?? null;
+}
+
 /** Total value of stock past or nearing expiry — the headline number. */
 export async function getExpiryExposure(orgId: string, withinDays = 14) {
   const [row] = await withTenant(orgId, (tx) =>
