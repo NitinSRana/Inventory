@@ -7,11 +7,13 @@
 //
 // Set TEST_DATABASE_URL to point at an existing server instead. Never point it
 // at Supabase; this creates and drops databases.
-import { readFileSync, readdirSync, rmSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import EmbeddedPostgres from 'embedded-postgres';
 import postgres from 'postgres';
+
+import { listMigrations } from './lib/migrations.mjs';
 
 try {
   process.loadEnvFile('.env.local');
@@ -78,9 +80,7 @@ try {
 // Every migration in order, then the checks. Running all of them — not just
 // 0001 — is the point: a later migration that breaks an earlier invariant is
 // exactly what this needs to catch.
-const migrations = readdirSync('supabase/migrations')
-  .filter((f) => f.endsWith('.sql') && !f.endsWith('.test.sql'))
-  .sort();
+const migrations = listMigrations();
 
 let failed = false;
 // The suite reports itself through RAISE NOTICE; without this handler the run
@@ -94,19 +94,20 @@ const db = postgres(scratchUrl.toString(), {
     if (/^(PASS|---)/.test(msg)) console.log('     ' + msg);
   },
 });
-try {
-  for (const file of [...migrations, '0001_init.test.sql']) {
-    // Drop psql meta-commands (\echo, \set …). They are client directives, not
-    // SQL, and this runs over a driver rather than through psql.
-    const sqlText = readFileSync(`supabase/migrations/${file}`, 'utf8')
-      .split('\n')
-      .filter((line) => !/^\s*\\/.test(line))
-      .join('\n');
+// The check suite is loaded the same way migrations are, so the psql-stripping
+// lives in exactly one place.
+const checkSuite = {
+  name: '0001_init.test.sql',
+  sql: readFileSync('supabase/migrations/0001_init.test.sql', 'utf8')
+    .split('\n')
+    .filter((line) => !/^\s*\\/.test(line))
+    .join('\n'),
+};
 
-    // .simple() uses the simple query protocol, so one file = one round trip and
-    // $$-quoted function bodies survive intact.
-    await db.unsafe(sqlText).simple();
-    console.log(`ok   ${file}`);
+try {
+  for (const file of [...migrations, checkSuite]) {
+    await db.unsafe(file.sql).simple();
+    console.log(`ok   ${file.name}`);
   }
 } catch (e) {
   failed = true;

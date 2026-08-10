@@ -9,8 +9,7 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "node --test \"src/**/*.test.ts\"",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "node scripts/db-migrate.mjs",
     "db:test": "node scripts/db-test.mjs",
     "test:integration": "node scripts/integration-test.mjs",
     "test:all": "pnpm test && pnpm test:integration && pnpm db:test"

@@ -7,11 +7,13 @@
 //
 // Spins up the same throwaway server db:test uses — no Docker, no credentials.
 import { spawn } from 'node:child_process';
-import { readFileSync, readdirSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import EmbeddedPostgres from 'embedded-postgres';
 import postgres from 'postgres';
+
+import { listMigrations } from './lib/migrations.mjs';
 
 const RUN_ID = `${process.pid}-${Date.now().toString(36)}`;
 const PORT = 49152 + ((process.pid + 7) % 15000);
@@ -49,17 +51,11 @@ await root.end();
 const adminUrl = `postgresql://postgres:postgres@127.0.0.1:${PORT}/${DB_NAME}`;
 const admin = postgres(adminUrl, { max: 1 });
 
-const migrations = readdirSync('supabase/migrations')
-  .filter((f) => f.endsWith('.sql') && !f.endsWith('.test.sql'))
-  .sort();
+const migrations = listMigrations();
 
 try {
-  for (const file of migrations) {
-    const sqlText = readFileSync(`supabase/migrations/${file}`, 'utf8')
-      .split('\n')
-      .filter((line) => !/^\s*\\/.test(line))
-      .join('\n');
-    await admin.unsafe(sqlText).simple();
+  for (const migration of migrations) {
+    await admin.unsafe(migration.sql).simple();
   }
   // 0002 creates app_runtime without a password on purpose — secrets do not
   // belong in committed migrations. The tests need to connect as it, so give it
