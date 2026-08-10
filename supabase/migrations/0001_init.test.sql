@@ -43,6 +43,10 @@ insert into public.products (id, organization_id, gtin, name, unit, cost_price, 
   ('a0000000-0000-0000-0000-000000000003', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '4001234567890', 'Vollmilch 1L', 'each', 0.80, 1.29, 'reduced', 40, 10, 'a0000000-0000-0000-0000-000000000002'),
   ('b0000000-0000-0000-0000-000000000003', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '8712345678901', 'Volkorenbrood', 'each', 0.95, 2.10, 'reduced', 20,  3, 'b0000000-0000-0000-0000-000000000002');
 
+insert into public.organization_invitations (organization_id, email, role) values
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'newstaff@alpha.example', 'staff'),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'newstaff@beta.example',  'manager');
+
 insert into public.batches (id, organization_id, product_id, location_id, lot_number, expiry_date, unit_cost) values
   ('a0000000-0000-0000-0000-000000000004', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'LOT-A1', current_date + 5, 0.80);
 
@@ -259,6 +263,25 @@ begin
     raise exception 'FAIL: org A referenced org B''s product from the ledger';
   end if;
   raise notice 'PASS  cross-tenant foreign key reference blocked';
+
+  -- Invitations are tenant data like anything else: org A must not see who org
+  -- B is hiring, and must not be able to plant an invitation into org B.
+  perform set_config('app.current_org_id', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', true);
+  select count(*) into n from public.organization_invitations;
+  if n <> 1 then raise exception 'FAIL: org A sees % invitations, expected 1', n; end if;
+  raise notice 'PASS  invitations isolated to their organization';
+
+  failed := false;
+  begin
+    insert into public.organization_invitations (organization_id, email, role)
+    values ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'mole@example.com', 'owner');
+  exception when others then
+    failed := true;
+  end;
+  if not failed then
+    raise exception 'FAIL: org A planted an invitation into org B';
+  end if;
+  raise notice 'PASS  cross-tenant invitation blocked by WITH CHECK';
 end
 $t$;
 

@@ -55,6 +55,23 @@ export const organizationMembers = pgTable('organization_members', {
   byUser: index('organization_members_user_id_idx').on(t.userId),
 }));
 
+/**
+ * Pending invitations. Claimed on the invitee's first sign-in via
+ * app.claim_invitation — nothing here creates a Supabase auth user.
+ */
+export const organizationInvitations = pgTable('organization_invitations', {
+  id: id(),
+  organizationId: orgId(),
+  email: text('email').notNull(),
+  role: text('role', { enum: ['owner', 'manager', 'staff'] }).notNull(),
+  invitedBy: uuid('invited_by'),
+  acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+  acceptedBy: uuid('accepted_by'),
+  ...timestamps,
+}, (t) => ({
+  byEmail: index('organization_invitations_email_idx').on(t.email),
+}));
+
 /* -------------------------------------------------------------------------- */
 /* Locations                                                                   */
 /* -------------------------------------------------------------------------- */

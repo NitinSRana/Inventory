@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 
 import { organizationMembers } from '@/db/schema';
-import { orgForUser, withTenant } from '@/db/tenant';
+import { claimInvitation, orgForUser, withTenant } from '@/db/tenant';
 import { createClient } from '@/lib/supabase/server';
 
 import { roleAtLeast, type Role } from './roles';
@@ -31,7 +31,9 @@ export async function getSessionState(): Promise<SessionState> {
   if (!user) return { status: 'signedOut' };
 
   const email = user.email ?? '';
-  const orgId = await orgForUser(user.id);
+  // A pending invitation is claimed on first sign-in, so an invited person never
+  // sees the "not a member of anything" screen at all.
+  const orgId = (await orgForUser(user.id)) ?? (await claimInvitation(user.id, email));
   if (!orgId) return { status: 'noOrganization', userId: user.id, email };
 
   // Safe to read normally now: with org context set, RLS scopes this to the

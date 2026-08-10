@@ -57,7 +57,8 @@
     "reports": "Reports",
     "orders": "Orders",
     "suppliers": "Suppliers",
-    "settings": "VAT rates"
+    "settings": "VAT rates",
+    "team": "Team"
   },
   "products": {
     "title": "Products",
@@ -287,6 +288,32 @@
       "unknownCountry": "No starting rates for that country yet. Enter them by hand instead.",
       "alreadyConfigured": "Rates are already set up.",
       "invalidRate": "A rate must be between 0 and 100."
+    }
+  },
+  "team": {
+    "title": "Team",
+    "intro": "Invite someone by email. They sign in with a link like everyone else, and join automatically the first time.",
+    "membersTitle": "{count, plural, one {# member} other {# members}}",
+    "pendingTitle": "{count, plural, one {# pending invitation} other {# pending invitations}}",
+    "inviteTitle": "Invite someone",
+    "emailLabel": "Email",
+    "roleLabel": "Role",
+    "roleHint": "Staff scan, receive, count and write off. Managers also edit products, suppliers and orders. Owners also change settings and the team.",
+    "invite": "Send invitation",
+    "invitedNote": "Invitation recorded. They join when they first sign in — tell them to expect it.",
+    "revoke": "Revoke",
+    "remove": "Remove",
+    "save": "Save",
+    "you": "You",
+    "roles": {
+      "owner": "Owner",
+      "manager": "Manager",
+      "staff": "Staff"
+    },
+    "errors": {
+      "invalidEmail": "That does not look like an email address.",
+      "lastOwner": "An organization must keep at least one owner.",
+      "unknown": "That did not work. Try again."
     }
   }
 }

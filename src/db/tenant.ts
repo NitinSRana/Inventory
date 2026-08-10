@@ -40,6 +40,22 @@ export async function withTenant<T>(orgId: string, fn: (tx: Tx) => Promise<T>): 
  * app.org_for_user() — a security definer function that exists for exactly this
  * lookup. See supabase/migrations/0002_app_runtime_role.sql.
  */
+/**
+ * Claims a pending invitation for this email, if there is one, and returns the
+ * organization it joined.
+ *
+ * The other query that legitimately runs without org context — same reason as
+ * orgForUser: the caller has no tenant yet, so it cannot read an RLS-protected
+ * table to discover the one inviting it. Idempotent; see
+ * supabase/migrations/0004_organization_invitations.sql.
+ */
+export async function claimInvitation(userId: string, email: string): Promise<string | null> {
+  const rows = await db.execute<{ org: string | null }>(
+    sql`select app.claim_invitation(${userId}::uuid, ${email}) as org`,
+  );
+  return rows[0]?.org ?? null;
+}
+
 export async function orgForUser(userId: string): Promise<string | null> {
   const rows = await db.execute<{ org: string | null }>(
     sql`select app.org_for_user(${userId}::uuid) as org`,
