@@ -1,7 +1,11 @@
+import { eq } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 
-import { orgForUser } from '@/db/tenant';
+import { organizationMembers } from '@/db/schema';
+import { orgForUser, withTenant } from '@/db/tenant';
 import { createClient } from '@/lib/supabase/server';
+
+import { roleAtLeast, type Role } from './roles';
 
 /**
  * Signed out, signed in but not yet a member of anything, or ready to query.
@@ -11,10 +15,10 @@ import { createClient } from '@/lib/supabase/server';
 export type SessionState =
   | { status: 'signedOut' }
   | { status: 'noOrganization'; userId: string; email: string }
-  | { status: 'ready'; userId: string; email: string; orgId: string };
+  | { status: 'ready'; userId: string; email: string; orgId: string; role: string };
 
 /**
- * Resolves the caller's user and organization.
+ * Resolves the caller's user, organization and role.
  *
  * orgId comes from the session, never from the client, and is the only value
  * withTenant should ever be given.
@@ -30,7 +34,17 @@ export async function getSessionState(): Promise<SessionState> {
   const orgId = await orgForUser(user.id);
   if (!orgId) return { status: 'noOrganization', userId: user.id, email };
 
-  return { status: 'ready', userId: user.id, email, orgId };
+  // Safe to read normally now: with org context set, RLS scopes this to the
+  // caller's own tenant.
+  const [membership] = await withTenant(orgId, (tx) =>
+    tx
+      .select({ role: organizationMembers.role })
+      .from(organizationMembers)
+      .where(eq(organizationMembers.userId, user.id))
+      .limit(1),
+  );
+
+  return { status: 'ready', userId: user.id, email, orgId, role: membership?.role ?? '' };
 }
 
 /**
@@ -44,3 +58,18 @@ export async function requireOrg(locale: string) {
   if (session.status === 'noOrganization') redirect(`/${locale}`);
   return session;
 }
+
+/**
+ * As requireOrg, but also demands a minimum role.
+ *
+ * Call this inside the server action too, not only in the page that renders the
+ * button. Hiding a control is presentation; a check that only runs at render is
+ * bypassed by posting the action directly.
+ */
+export async function requireRole(locale: string, required: Role) {
+  const session = await requireOrg(locale);
+  if (!roleAtLeast(session.role, required)) redirect(`/${locale}?denied=${required}`);
+  return session;
+}
+
+export { roleAtLeast, type Role } from './roles';

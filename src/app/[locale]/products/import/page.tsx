@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { requireOrg } from '@/server/auth/session';
+import { requireRole } from '@/server/auth/session';
 import { importProductsCsv, type RowError } from '@/server/catalog/import';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
@@ -29,11 +29,11 @@ export default async function ImportPage({ params, searchParams }: PageProps<'/[
 
   const { created, updated } = await searchParams;
   const t = await getTranslations('import');
-  await requireOrg(locale);
+  await requireRole(locale, 'manager');
 
   async function upload(formData: FormData) {
     'use server';
-    const { orgId } = await requireOrg(locale);
+    const { orgId } = await requireRole(locale, 'manager');
     const file = formData.get('file');
     if (!(file instanceof File) || file.size === 0) {
       redirect(`/${locale}/products/import?empty=1`);

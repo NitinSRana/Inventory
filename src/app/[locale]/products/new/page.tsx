@@ -2,7 +2,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 
 import { ProductForm, productInputFrom } from '@/components/product-form';
-import { requireOrg } from '@/server/auth/session';
+import { requireRole } from '@/server/auth/session';
 import { InvalidBarcodeError, createProduct } from '@/server/catalog/products';
 import { listSuppliers } from '@/server/catalog/suppliers';
 
@@ -19,12 +19,12 @@ export default async function NewProductPage({
 
   const { error } = await searchParams;
   const t = await getTranslations('products');
-  const { orgId } = await requireOrg(locale);
+  const { orgId } = await requireRole(locale, 'manager');
   const suppliers = await listSuppliers(orgId);
 
   async function create(formData: FormData) {
     'use server';
-    const { orgId } = await requireOrg(locale);
+    const { orgId } = await requireRole(locale, 'manager');
     try {
       await createProduct(orgId, productInputFrom(formData));
     } catch (e) {

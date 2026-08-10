@@ -2,7 +2,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 
 import { SupplierForm, supplierInputFrom } from '@/components/supplier-form';
-import { requireOrg } from '@/server/auth/session';
+import { requireRole } from '@/server/auth/session';
 import { createSupplier } from '@/server/catalog/suppliers';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
@@ -18,11 +18,11 @@ export default async function NewSupplierPage({
 
   const { error, next } = await searchParams;
   const t = await getTranslations('suppliers');
-  await requireOrg(locale);
+  await requireRole(locale, 'manager');
 
   async function create(formData: FormData) {
     'use server';
-    const { orgId } = await requireOrg(locale);
+    const { orgId } = await requireRole(locale, 'manager');
     try {
       await createSupplier(orgId, supplierInputFrom(formData));
     } catch {

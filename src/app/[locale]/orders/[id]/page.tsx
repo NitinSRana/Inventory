@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
-import { requireOrg } from '@/server/auth/session';
+import { requireOrg, requireRole } from '@/server/auth/session';
 import {
   getPurchaseOrder,
   markPurchaseOrderSent,
@@ -37,13 +37,14 @@ export default async function OrderPage({ params, searchParams }: PageProps<'/[l
 
   async function send() {
     'use server';
-    const { orgId } = await requireOrg(locale);
+    const { orgId } = await requireRole(locale, 'manager');
     await markPurchaseOrderSent(orgId, id);
     redirect(`/${locale}/orders/${id}`);
   }
 
   async function receive(formData: FormData) {
     'use server';
+    // Staff book in deliveries — that is who unloads the van.
     const { orgId, userId } = await requireOrg(locale);
     const receipts: ReceiptLineInput[] = [];
     for (const [key, value] of formData.entries()) {

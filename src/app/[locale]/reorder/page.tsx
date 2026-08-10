@@ -4,7 +4,7 @@ import Decimal from 'decimal.js';
 
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
-import { requireOrg } from '@/server/auth/session';
+import { requireRole } from '@/server/auth/session';
 import { Button } from '@/components/ui/button';
 import { createPurchaseOrder } from '@/server/purchasing/orders';
 import { getReorderSuggestions } from '@/server/purchasing/reorder';
@@ -19,7 +19,7 @@ export default async function ReorderPage({ params }: PageProps<'/[locale]/reord
 
   const t = await getTranslations('reorder');
   const format = await getFormatter();
-  const { orgId } = await requireOrg(locale);
+  const { orgId } = await requireRole(locale, 'manager');
 
   const [org] = await withTenant(orgId, (tx) => tx.select().from(organizations));
   const { groups, withoutRate } = await getReorderSuggestions(orgId);
@@ -27,7 +27,7 @@ export default async function ReorderPage({ params }: PageProps<'/[locale]/reord
 
   async function draftOrder(formData: FormData) {
     'use server';
-    const { orgId, userId } = await requireOrg(locale);
+    const { orgId, userId } = await requireRole(locale, 'manager');
     const supplierId = String(formData.get('supplierId'));
     const { groups } = await getReorderSuggestions(orgId);
     const group = groups.find((g) => g.supplierId === supplierId);

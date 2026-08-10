@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 
 import { ProductForm, productInputFrom } from '@/components/product-form';
 import { Button } from '@/components/ui/button';
-import { requireOrg } from '@/server/auth/session';
+import { requireRole } from '@/server/auth/session';
 import { InvalidBarcodeError, deactivateProduct, getProduct, updateProduct } from '@/server/catalog/products';
 import { listSuppliers } from '@/server/catalog/suppliers';
 
@@ -20,7 +20,7 @@ export default async function EditProductPage({
 
   const { error } = await searchParams;
   const t = await getTranslations('products');
-  const { orgId } = await requireOrg(locale);
+  const { orgId } = await requireRole(locale, 'manager');
 
   // RLS scopes this, so another tenant's id is indistinguishable from a missing one.
   const product = await getProduct(orgId, id);
@@ -30,7 +30,7 @@ export default async function EditProductPage({
 
   async function save(formData: FormData) {
     'use server';
-    const { orgId } = await requireOrg(locale);
+    const { orgId } = await requireRole(locale, 'manager');
     try {
       await updateProduct(orgId, id, productInputFrom(formData));
     } catch (e) {
@@ -43,7 +43,7 @@ export default async function EditProductPage({
 
   async function deactivate() {
     'use server';
-    const { orgId } = await requireOrg(locale);
+    const { orgId } = await requireRole(locale, 'manager');
     await deactivateProduct(orgId, id);
     redirect(`/${locale}/products`);
   }

@@ -87,7 +87,11 @@
     "signIn": "Sign in",
     "noOrganization": "Your account isn't a member of any organization yet. Ask an owner to add you.",
     "signedInAs": "Signed in as {email}",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "denied": {
+      "manager": "That needs a manager account. Ask an owner to change your role.",
+      "owner": "That needs the owner account."
+    }
   },
   "count": {
     "title": "Stock count",

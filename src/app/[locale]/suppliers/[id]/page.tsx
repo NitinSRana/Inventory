@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 
 import { SupplierForm, supplierInputFrom } from '@/components/supplier-form';
 import { Button } from '@/components/ui/button';
-import { requireOrg } from '@/server/auth/session';
+import { requireRole } from '@/server/auth/session';
 import { deactivateSupplier, getSupplier, updateSupplier } from '@/server/catalog/suppliers';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
@@ -19,7 +19,7 @@ export default async function EditSupplierPage({
 
   const { error } = await searchParams;
   const t = await getTranslations('suppliers');
-  const { orgId } = await requireOrg(locale);
+  const { orgId } = await requireRole(locale, 'manager');
 
   // RLS scopes this, so another tenant's id is indistinguishable from a missing one.
   const supplier = await getSupplier(orgId, id);
@@ -27,7 +27,7 @@ export default async function EditSupplierPage({
 
   async function save(formData: FormData) {
     'use server';
-    const { orgId } = await requireOrg(locale);
+    const { orgId } = await requireRole(locale, 'manager');
     try {
       await updateSupplier(orgId, id, supplierInputFrom(formData));
     } catch {
@@ -38,7 +38,7 @@ export default async function EditSupplierPage({
 
   async function deactivate() {
     'use server';
-    const { orgId } = await requireOrg(locale);
+    const { orgId } = await requireRole(locale, 'manager');
     await deactivateSupplier(orgId, id);
     redirect(`/${locale}/suppliers`);
   }

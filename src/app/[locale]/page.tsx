@@ -13,8 +13,9 @@ import { getSessionState } from '@/server/auth/session';
 // behind auth is a cross-tenant leak waiting to happen.
 export const dynamic = 'force-dynamic';
 
-export default async function HomePage({ params }: PageProps<'/[locale]'>) {
+export default async function HomePage({ params, searchParams }: PageProps<'/[locale]'>) {
   const { locale } = await params;
+  const { denied } = await searchParams;
   setRequestLocale(locale);
 
   const t = await getTranslations('home');
@@ -53,6 +54,13 @@ export default async function HomePage({ params }: PageProps<'/[locale]'>) {
   return (
     <main className="flex flex-1 flex-col gap-6 p-4">
       <h1 className="text-2xl font-semibold">{org.name}</h1>
+
+      {/* Says which role is needed, not just "no". */}
+      {denied && (
+        <p role="alert" className="text-destructive text-sm">
+          {t(`denied.${denied}`)}
+        </p>
+      )}
 
       <ExpiryDashboard orgId={session.orgId} locale={locale} currency={org.currencyCode} />
 
