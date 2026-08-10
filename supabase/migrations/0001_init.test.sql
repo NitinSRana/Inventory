@@ -232,6 +232,33 @@ begin
   select count(*) into n from public.products;
   if n <> 0 then raise exception 'FAIL: unscoped session sees % products, expected 0', n; end if;
   raise notice 'PASS  session with no org context sees nothing';
+
+  -- Foreign keys must be tenant-scoped too. RLS governs reads; it does not stop
+  -- one tenant REFERENCING another's row, because Postgres evaluates foreign
+  -- keys as the table owner with policies bypassed. Without composite keys, org
+  -- A can post a ledger row pointing at org B's product: nothing leaks, but A's
+  -- stock_levels counts a row expiring_stock drops on the join. Phantom stock.
+  --
+  -- Ids are literal on purpose: selecting org B's product under org A's context
+  -- returns nothing, so an INSERT..SELECT would insert zero rows and pass by
+  -- accident.
+  perform set_config('app.current_org_id', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', true);
+  failed := false;
+  begin
+    insert into public.stock_movements
+      (organization_id, product_id, location_id, quantity_delta, movement_type)
+    values (
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      'b0000000-0000-0000-0000-000000000003',  -- org B's product
+      'a0000000-0000-0000-0000-000000000001',  -- org A's own location
+      '1', 'receipt');
+  exception when others then
+    failed := true;
+  end;
+  if not failed then
+    raise exception 'FAIL: org A referenced org B''s product from the ledger';
+  end if;
+  raise notice 'PASS  cross-tenant foreign key reference blocked';
 end
 $t$;
 
