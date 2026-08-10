@@ -43,3 +43,7 @@ next-env.d.ts
 
 # throwaway Postgres from pnpm db:test
 .pgtest/
+
+# scratch scripts used while debugging; never part of the app
+.*.mjs
+.*.mts
