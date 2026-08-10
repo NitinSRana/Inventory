@@ -3,6 +3,9 @@ import { and, asc, desc, eq, gte, isNotNull, lt, sql } from 'drizzle-orm';
 import { expiringStock, productStock, products, stockMovements, suppliers } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 
+import { getRatesByBand } from '@/server/settings/vat';
+import { grossValue } from '@/server/settings/valuation';
+
 import type { Report } from './csv';
 
 /**
@@ -18,6 +21,7 @@ export type ReportSlug = (typeof REPORT_SLUGS)[number];
 
 /** Stock on hand and what it is worth. */
 async function stockOnHand(orgId: string): Promise<Report> {
+  const rates = await getRatesByBand(orgId);
   const rows = await withTenant(orgId, (tx) =>
     tx
       .select({
@@ -26,6 +30,7 @@ async function stockOnHand(orgId: string): Promise<Report> {
         unit: products.unit,
         quantity: sql<string>`coalesce(${productStock.quantity}, '0')::text`,
         costPrice: products.costPrice,
+        vatBand: products.vatBand,
         // Rounded here, not in the component: the CSV export reads the same rows,
         // and 19.2000000 in a spreadsheet is as unhelpful as it is on screen.
         value: sql<string>`round(coalesce(${productStock.quantity}, 0) * coalesce(${products.costPrice}, 0), 2)::text`,
@@ -44,6 +49,7 @@ async function stockOnHand(orgId: string): Promise<Report> {
       { key: 'unit', label: 'unit' },
       { key: 'costPrice', label: 'unitCost', numeric: true },
       { key: 'value', label: 'value', numeric: true },
+      { key: 'grossValue', label: 'grossValue', numeric: true },
     ],
     rows: rows.map((r) => ({
       name: r.name,
@@ -52,6 +58,9 @@ async function stockOnHand(orgId: string): Promise<Report> {
       unit: r.unit,
       costPrice: r.costPrice ?? '',
       value: r.value,
+      // Valuation only — this is not an invoice. Bands come from the tenant's
+      // own vat_rates rows, never a hardcoded country rate.
+      grossValue: grossValue(r.value, rates[r.vatBand] ?? '0'),
     })),
   };
 }

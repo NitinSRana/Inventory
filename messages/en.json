@@ -56,7 +56,8 @@
     "actionsLabel": "Stock actions",
     "reports": "Reports",
     "orders": "Orders",
-    "suppliers": "Suppliers"
+    "suppliers": "Suppliers",
+    "settings": "VAT rates"
   },
   "products": {
     "title": "Products",
@@ -211,7 +212,8 @@
       "lot": "Lot",
       "valueAtRisk": "At risk",
       "minimum": "Minimum",
-      "supplier": "Supplier"
+      "supplier": "Supplier",
+      "grossValue": "Incl. VAT"
     }
   },
   "orders": {
@@ -264,6 +266,27 @@
       "5": "Fri",
       "6": "Sat",
       "7": "Sun"
+    }
+  },
+  "vat": {
+    "title": "VAT rates",
+    "intro": "Used to value your stock. This is not an invoicing or tax-filing tool.",
+    "countryLabel": "Country",
+    "countryHint": "Sets your starting rates. You can change any of them afterwards.",
+    "seed": "Set up rates",
+    "save": "Save rates",
+    "saved": "Rates saved.",
+    "historyNote": "Changing a rate records a new one from today. Past valuations keep the rate that applied then.",
+    "bands": {
+      "standard": "Standard",
+      "reduced": "Reduced",
+      "super_reduced": "Super-reduced",
+      "zero": "Zero-rated"
+    },
+    "errors": {
+      "unknownCountry": "No starting rates for that country yet. Enter them by hand instead.",
+      "alreadyConfigured": "Rates are already set up.",
+      "invalidRate": "A rate must be between 0 and 100."
     }
   }
 }
