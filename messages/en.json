@@ -53,7 +53,8 @@
     "startCount": "Count stock",
     "reorder": "What to order",
     "receive": "Receive",
-    "actionsLabel": "Stock actions"
+    "actionsLabel": "Stock actions",
+    "reports": "Reports"
   },
   "products": {
     "title": "Products",
@@ -161,6 +162,44 @@
       "unknownSupplier": "Supplier is not in your supplier list",
       "missingNameColumn": "No name column found. The first row must be headers.",
       "empty": "The file is empty."
+    }
+  },
+  "reports": {
+    "title": "Reports",
+    "rowCount": "{count, plural, =0 {No rows} one {# row} other {# rows}}",
+    "empty": "Nothing to show for this period.",
+    "exportCsv": "Export CSV",
+    "allReports": "All reports",
+    "periodLabel": "Period",
+    "lastDays": "Last {days} days",
+    "names": {
+      "stock": "Stock on hand",
+      "waste": "Waste",
+      "expiry": "Expiry exposure",
+      "low-stock": "Low stock"
+    },
+    "blurbs": {
+      "stock": "Everything you hold and what it is worth.",
+      "waste": "What was binned, why, and what it cost you.",
+      "expiry": "Money sitting in stock that is about to stop being sellable.",
+      "low-stock": "Products under their minimum, with the supplier to call."
+    },
+    "columns": {
+      "product": "Product",
+      "barcode": "Barcode",
+      "onHand": "On hand",
+      "unit": "Unit",
+      "unitCost": "Unit cost",
+      "value": "Value",
+      "reason": "Reason",
+      "events": "Times",
+      "quantity": "Quantity",
+      "expires": "Expires",
+      "daysLeft": "Days left",
+      "lot": "Lot",
+      "valueAtRisk": "At risk",
+      "minimum": "Minimum",
+      "supplier": "Supplier"
     }
   }
 }

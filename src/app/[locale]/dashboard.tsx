@@ -43,6 +43,7 @@ export async function ExpiryDashboard({
             ['count', 'startCount'],
             ['reorder', 'reorder'],
             ['products', 'viewProducts'],
+            ['reports', 'reports'],
           ] as const
         ).map(([path, key]) => (
           <li key={path}>

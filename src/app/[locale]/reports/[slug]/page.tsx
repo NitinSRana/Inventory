@@ -1,0 +1,135 @@
+import { getTranslations, setRequestLocale } from 'next-intl/server';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+
+import { buttonVariants } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { requireOrg } from '@/server/auth/session';
+import { REPORT_SLUGS, buildReport, type ReportSlug } from '@/server/reports';
+
+// Reads the session, so it must never be prerendered or cached: a cached page
+// behind auth is a cross-tenant leak waiting to happen.
+export const dynamic = 'force-dynamic';
+
+const PERIODS = [7, 30, 90] as const;
+/** Only these two are time-bounded; stock and low-stock are point-in-time. */
+const TIME_BOUNDED: ReportSlug[] = ['waste', 'expiry'];
+
+export default async function ReportPage({ params, searchParams }: PageProps<'/[locale]/reports/[slug]'>) {
+  const { locale, slug } = await params;
+  setRequestLocale(locale);
+
+  if (!REPORT_SLUGS.includes(slug as ReportSlug)) notFound();
+  const reportSlug = slug as ReportSlug;
+
+  const { days } = await searchParams;
+  const period = PERIODS.includes(Number(days) as (typeof PERIODS)[number]) ? Number(days) : 30;
+
+  const t = await getTranslations('reports');
+  const { orgId } = await requireOrg(locale);
+  const report = await buildReport(orgId, reportSlug, period);
+
+  const showPeriod = TIME_BOUNDED.includes(reportSlug);
+  const exportHref =
+    `/${locale}/reports/${reportSlug}/export` + (showPeriod ? `?days=${period}` : '');
+
+  return (
+    <main className="flex flex-1 flex-col gap-4 p-4">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-semibold">{t(`names.${reportSlug}`)}</h1>
+        <p className="text-muted-foreground text-sm tabular-nums">
+          {t('rowCount', { count: report.rows.length })}
+        </p>
+      </div>
+
+      {showPeriod && (
+        <nav aria-label={t('periodLabel')} className="flex gap-2">
+          {PERIODS.map((p) => (
+            <Link
+              key={p}
+              href={`/${locale}/reports/${reportSlug}?days=${p}`}
+              aria-current={p === period ? 'page' : undefined}
+              className={buttonVariants({
+                variant: p === period ? 'default' : 'outline',
+                className: 'h-11',
+              })}
+            >
+              {t('lastDays', { days: p })}
+            </Link>
+          ))}
+        </nav>
+      )}
+
+      {report.rows.length === 0 ? (
+        <p className="text-muted-foreground py-12 text-sm">{t('empty')}</p>
+      ) : (
+        <>
+          {/* Stacked on a phone, table on desktop — never a sideways-scrolling table. */}
+          <ul className="flex flex-col gap-2 sm:hidden">
+            {report.rows.map((row, i) => (
+              <li key={i} className="flex flex-col gap-1 rounded-lg border p-3">
+                <span className="font-medium">{row[report.columns[0].key]}</span>
+                <dl className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-sm">
+                  {report.columns.slice(1).map((c) => (
+                    <div key={c.key} className="contents">
+                      <dt className="text-muted-foreground">{t(`columns.${c.label}`)}</dt>
+                      <dd className={c.numeric ? 'text-right tabular-nums' : ''}>
+                        {row[c.key] || '—'}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden overflow-x-auto sm:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {report.columns.map((c) => (
+                    <TableHead key={c.key} className={c.numeric ? 'text-right' : ''}>
+                      {t(`columns.${c.label}`)}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {report.rows.map((row, i) => (
+                  <TableRow key={i}>
+                    {report.columns.map((c) => (
+                      <TableCell
+                        key={c.key}
+                        className={c.numeric ? 'text-right tabular-nums' : ''}
+                      >
+                        {row[c.key] || '—'}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {report.rows.length > 0 && (
+          <a
+            href={exportHref}
+            download
+            className={buttonVariants({ variant: 'outline', className: 'h-11' })}
+          >
+            {t('exportCsv')}
+          </a>
+        )}
+        <Link
+          href={`/${locale}/reports`}
+          className={buttonVariants({ variant: 'ghost', className: 'h-11' })}
+        >
+          {t('allReports')}
+        </Link>
+      </div>
+    </main>
+  );
+}
