@@ -44,6 +44,16 @@ export default async function ProductsPage({ params, searchParams }: PageProps<'
       {rows.length === 0 ? (
         <div className="flex flex-col items-start gap-3 py-12">
           <p className="text-muted-foreground text-sm">{search ? t('noMatches') : t('empty')}</p>
+          {/* An empty catalogue is the onboarding moment: offer the bulk path,
+              not just the one-at-a-time form. */}
+          {!search && (
+            <Link
+              href={`/${locale}/products/import`}
+              className={buttonVariants({ variant: 'outline', className: 'h-11' })}
+            >
+              {t('import')}
+            </Link>
+          )}
         </div>
       ) : (
         <>
@@ -91,7 +101,16 @@ export default async function ProductsPage({ params, searchParams }: PageProps<'
         </>
       )}
 
-      {/* Primary action in the bottom third, thumb-reachable. */}
+      {/* Primary action in the bottom third, thumb-reachable. Import sits beside
+          it rather than competing for the same slot. */}
+      {rows.length > 0 && (
+        <Link
+          href={`/${locale}/products/import`}
+          className={buttonVariants({ variant: 'ghost', className: 'h-11 w-fit' })}
+        >
+          {t('import')}
+        </Link>
+      )}
       <Link
         href={`/${locale}/products/new`}
         className={buttonVariants({ className: 'fixed inset-x-4 bottom-6 h-12 sm:static sm:w-fit' })}

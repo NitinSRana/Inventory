@@ -76,7 +76,8 @@
     "invalidBarcode": "That isn't a valid EAN-13 or EAN-8 barcode.",
     "saveFailed": "Couldn't save that. Check the fields and try again.",
     "loadFailed": "Couldn't load products.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "import": "Import from CSV"
   },
   "home": {
     "signedOut": "Not signed in",
@@ -133,5 +134,33 @@
     "submit": "Receive",
     "received": "Delivery recorded.",
     "failed": "Couldn’t record that. Check the quantity and try again."
+  },
+  "import": {
+    "title": "Import products",
+    "intro": "Upload a spreadsheet exported as CSV. Rows are matched on barcode, so importing the same file again updates instead of duplicating.",
+    "fileLabel": "CSV file",
+    "submit": "Import",
+    "imported": "{created, plural, =0 {No new products} one {# product added} other {# products added}}, {updated, plural, =0 {none updated} one {# updated} other {# updated}}.",
+    "viewProducts": "View products",
+    "noFile": "Choose a file first.",
+    "nothingImported": "Nothing was imported.",
+    "problemSummary": "{rows} rows read, {problems} need fixing. Correct them in your spreadsheet and upload again.",
+    "onLines": "{count, plural, one {line} other {lines}} {lines}",
+    "unknownSuppliers": "Suppliers not in your list yet: {names}. Add them first, or clear the column.",
+    "formatTitle": "What the file needs",
+    "formatBody": "One row per product. Only a name column is required — everything else is optional. Commas, semicolons and Excel exports all work.",
+    "formatColumns": "Recognised columns: name, barcode, sku, unit, cost, price, min_stock, shelf_life_days, supplier.",
+    "downloadTemplate": "Download template",
+    "problems": {
+      "required": "Missing product name",
+      "invalidBarcode": "Barcode is not a valid EAN-13 or EAN-8",
+      "duplicateInFile": "The same barcode appears more than once in this file",
+      "invalidUnit": "Unit must be one of: each, kg, g, l, ml",
+      "notANumber": "Price or quantity is not a number",
+      "notAWholeNumber": "Shelf life must be a whole number of days",
+      "unknownSupplier": "Supplier is not in your supplier list",
+      "missingNameColumn": "No name column found. The first row must be headers.",
+      "empty": "The file is empty."
+    }
   }
 }
