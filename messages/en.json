@@ -82,6 +82,13 @@
     "denied": {
       "manager": "That needs a manager account. Ask an owner to change your role.",
       "owner": "That needs the owner account."
+    },
+    "signInHint": "We email you a link. There is no password.",
+    "noOrganizationTitle": "Almost there",
+    "pitch": {
+      "expiry": "See what is about to expire, worst value first.",
+      "reorder": "Get told what to order, from your own consumption.",
+      "noPos": "No till integration. Nothing to type in at the checkout."
     }
   },
   "count": {
