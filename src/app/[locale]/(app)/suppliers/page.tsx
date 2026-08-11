@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
 
+import { DataList, DataRow, PageTitle } from '@/components/data-list';
 import { buttonVariants } from '@/components/ui/button';
 import { requireOrg } from '@/server/auth/session';
 import { listSuppliers } from '@/server/catalog/suppliers';
@@ -19,31 +20,22 @@ export default async function SuppliersPage({ params }: PageProps<'/[locale]/sup
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 pb-24">
-      <h1 className="text-2xl font-semibold">{t('title')}</h1>
+      <PageTitle>{t('title')}</PageTitle>
 
       {suppliers.length === 0 ? (
         <p className="text-muted-foreground py-12 text-sm">{t('empty')}</p>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <DataList>
           {suppliers.map((s) => (
-            <li key={s.id}>
-              <Link
-                href={`/${locale}/suppliers/${s.id}`}
-                className="flex min-h-12 items-center justify-between gap-3 rounded-lg border p-3"
-              >
-                <div className="flex min-w-0 flex-col gap-0.5">
-                  <span className="truncate font-medium">{s.name}</span>
-                  {s.email && (
-                    <span className="text-muted-foreground truncate text-xs">{s.email}</span>
-                  )}
-                </div>
-                <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
-                  {t('leadTimeShort', { days: s.leadTimeDays })}
-                </span>
-              </Link>
-            </li>
+            <DataRow
+              key={s.id}
+              href={`/${locale}/suppliers/${s.id}`}
+              title={s.name}
+              subtitle={s.email ?? undefined}
+              meta={t('leadTimeShort', { days: s.leadTimeDays })}
+            />
           ))}
-        </ul>
+        </DataList>
       )}
 
       {/* Primary action in the bottom third, thumb-reachable. */}

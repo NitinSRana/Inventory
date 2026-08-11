@@ -5,6 +5,7 @@ import Decimal from 'decimal.js';
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 import { requireRole } from '@/server/auth/session';
+import { DataList, DataRow, PageTitle } from '@/components/data-list';
 import { Button } from '@/components/ui/button';
 import { createPurchaseOrder } from '@/server/purchasing/orders';
 import { getReorderSuggestions } from '@/server/purchasing/reorder';
@@ -50,7 +51,7 @@ export default async function ReorderPage({ params }: PageProps<'/[locale]/reord
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4">
-      <h1 className="text-2xl font-semibold">{t('title')}</h1>
+      <PageTitle>{t('title')}</PageTitle>
 
       {groups.length === 0 ? (
         <p className="text-muted-foreground text-sm">{t('nothingToOrder')}</p>
@@ -75,29 +76,29 @@ export default async function ReorderPage({ params }: PageProps<'/[locale]/reord
                 )}
               </div>
 
-              <ul className="flex flex-col gap-2">
+              {/* Quantities right-aligned and tabular so a column of them can be
+                  scanned down by eye. */}
+              <DataList>
                 {g.lines.map((l) => (
-                  <li key={l.productId} className="flex items-start justify-between gap-3 rounded-lg border p-3">
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                      <span className="truncate font-medium">{l.productName}</span>
-                      <span className="text-muted-foreground text-xs tabular-nums">
+                  <DataRow
+                    key={l.productId}
+                    title={l.productName}
+                    subtitle={
+                      <>
                         {t('onHandAndRate', { onHand: l.onHand, rate: l.dailyRate ?? '—' })}
                         {l.confidence === 'low' && ` · ${t('lowConfidence')}`}
-                      </span>
-                      {new Decimal(l.onOrder).greaterThan(0) && (
-                        <span className="text-muted-foreground text-xs tabular-nums">
-                          {t('alreadyOnOrder', { quantity: l.onOrder })}
-                        </span>
-                      )}
-                    </div>
-                    {/* Number before label, right-aligned, tabular so a column of
-                        quantities can be scanned by eye. */}
-                    <span className="shrink-0 text-right text-sm font-medium tabular-nums">
-                      {l.suggestedQuantity} <span className="opacity-70">{l.unit}</span>
-                    </span>
-                  </li>
+                        {new Decimal(l.onOrder).greaterThan(0) &&
+                          ` · ${t('alreadyOnOrder', { quantity: l.onOrder })}`}
+                      </>
+                    }
+                    value={
+                      <>
+                        {l.suggestedQuantity} <span className="opacity-70">{l.unit}</span>
+                      </>
+                    }
+                  />
                 ))}
-              </ul>
+              </DataList>
 
               {g.supplierId && (
                 <form action={draftOrder}>

@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
 
+import { DataList, DataRow, PageTitle } from '@/components/data-list';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -24,7 +25,7 @@ export default async function ProductsPage({ params, searchParams }: PageProps<'
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 pb-24">
-      <h1 className="text-2xl font-semibold">{t('title')}</h1>
+      <PageTitle>{t('title')}</PageTitle>
 
       {/* GET form so the search term lives in the URL, not in component state. */}
       <form role="search" className="flex flex-col gap-2">
@@ -57,22 +58,21 @@ export default async function ProductsPage({ params, searchParams }: PageProps<'
         </div>
       ) : (
         <>
-          {/* Stacked cards on a phone, table on desktop — never a table that scrolls sideways. */}
-          <ul className="flex flex-col gap-2 sm:hidden">
-            {rows.map((p) => (
-              <li key={p.id} className="rounded-lg border p-3">
-                <Link href={`/${locale}/products/${p.id}`} className="flex flex-col gap-1">
-                  <span className="font-medium">{p.name}</span>
-                  <span className="text-muted-foreground font-mono text-xs">
-                    {p.gtin ?? t('noBarcode')}
-                  </span>
-                  <span className="text-sm tabular-nums">
-                    {p.sellPrice ?? '—'} <span className="opacity-70">{p.unit}</span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          {/* Divided rows on a phone, table on desktop — never a table that scrolls sideways. */}
+          <div className="sm:hidden">
+            <DataList>
+              {rows.map((p) => (
+                <DataRow
+                  key={p.id}
+                  href={`/${locale}/products/${p.id}`}
+                  title={p.name}
+                  subtitle={<span className="font-mono">{p.gtin ?? t('noBarcode')}</span>}
+                  value={p.sellPrice ?? '—'}
+                  meta={p.unit}
+                />
+              ))}
+            </DataList>
+          </div>
 
           <Table className="hidden sm:table">
             <TableHeader>

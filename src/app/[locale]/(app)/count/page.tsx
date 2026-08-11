@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import { DataList, DataRow, PageTitle } from '@/components/data-list';
 import { BarcodeField } from '@/components/barcode-field';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,7 +40,7 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
 
     return (
       <main className="flex flex-1 flex-col gap-6 p-4">
-        <h1 className="text-2xl font-semibold">{t('title')}</h1>
+        <PageTitle>{t('title')}</PageTitle>
         <p className="text-muted-foreground text-sm">{t('noSession')}</p>
 
         <form action={start} className="flex flex-col gap-4">
@@ -55,20 +56,19 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
         {due.length > 0 && (
           <section className="flex flex-col gap-2 border-t pt-4">
             <h2 className="text-sm font-medium">{t('dueTitle', { count: due.length })}</h2>
-            <ul className="flex flex-col gap-1">
+            {/* Urgency stated in words, not by position alone — "never counted"
+                and "3 days over" are different kinds of urgent. */}
+            <DataList>
               {due.slice(0, 10).map((p) => (
-                <li key={p.id} className="flex justify-between gap-3 border-b py-2 text-sm">
-                  <span className="truncate">{p.name}</span>
-                  {/* Stated in words as well as by position — "never counted"
-                      and "3 days over" are different kinds of urgent. */}
-                  <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
-                    {p.lastCountedAt
-                      ? t('daysOver', { days: p.daysOverdue })
-                      : t('neverCounted')}
-                  </span>
-                </li>
+                <DataRow
+                  key={p.id}
+                  title={p.name}
+                  meta={
+                    p.lastCountedAt ? t('daysOver', { days: p.daysOverdue }) : t('neverCounted')
+                  }
+                />
               ))}
-            </ul>
+            </DataList>
             {due.length > 10 && (
               <p className="text-muted-foreground text-xs tabular-nums">
                 {t('andMore', { count: due.length - 10 })}
@@ -157,16 +157,19 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
       {lines.length > 0 && (
         <section className="flex flex-col gap-2">
           <h2 className="text-muted-foreground text-sm font-medium">{t('counted')}</h2>
-          <ul className="flex flex-col gap-1">
+          <DataList>
             {lines.map((l) => (
-              <li key={l.id} className="flex justify-between gap-3 border-b py-2 text-sm">
-                <span className="truncate">{l.productName}</span>
-                <span className="shrink-0 tabular-nums">
-                  {l.countedQuantity} <span className="opacity-70">{l.unit}</span>
-                </span>
-              </li>
+              <DataRow
+                key={l.id}
+                title={l.productName}
+                value={
+                  <>
+                    {l.countedQuantity} <span className="opacity-70">{l.unit}</span>
+                  </>
+                }
+              />
             ))}
-          </ul>
+          </DataList>
         </section>
       )}
 
