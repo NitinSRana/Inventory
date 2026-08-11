@@ -1,5 +1,6 @@
 import { getFormatter, getTranslations } from 'next-intl/server';
 
+import { DataList, DataRow, HeadlineFigure } from '@/components/data-list';
 import { UrgencyBadge, urgencyClass, urgencyOf } from '@/components/expiry-urgency';
 import { FirstRun } from '@/components/first-run';
 import { countProducts } from '@/server/catalog/import';
@@ -54,23 +55,20 @@ export async function ExpiryDashboard({
   return (
     <section className="flex flex-col gap-4">
       {/* Number before label, per the house rule: "12 expiring", not "Expiring: 12". */}
-      <div className="flex flex-col gap-1">
-        <p className="text-3xl font-semibold tabular-nums">
-          {money(exposure.valueAtRisk)}{' '}
-          <span className="text-muted-foreground text-base font-normal">{t('atRisk')}</span>
-        </p>
-        <p className="text-muted-foreground text-sm tabular-nums">
-          {t('batchCount', { count: exposure.batchCount })}
-        </p>
-      </div>
+      <HeadlineFigure
+        value={money(exposure.valueAtRisk)}
+        label={t('atRisk')}
+        sub={t('batchCount', { count: exposure.batchCount })}
+      />
 
-      <ul className="flex flex-col gap-2">
+      <DataList>
         {rows.map((r) => {
           const urgency = urgencyOf(r.daysRemaining);
           return (
-            <li key={r.batchId} className="flex items-start justify-between gap-3 rounded-lg border p-3">
-              <div className="flex min-w-0 flex-col gap-1">
-                <span className="truncate font-medium">{r.productName}</span>
+            <DataRow
+              key={r.batchId}
+              title={r.productName}
+              subtitle={
                 <UrgencyBadge
                   urgency={urgency}
                   label={
@@ -79,19 +77,18 @@ export async function ExpiryDashboard({
                       : t('daysLeft', { days: r.daysRemaining ?? 0 })
                   }
                 />
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <span className={`text-sm font-medium tabular-nums ${urgencyClass(urgency)}`}>
-                  {money(r.valueAtRisk)}
-                </span>
-                <span className="text-muted-foreground text-xs tabular-nums">
+              }
+              value={money(r.valueAtRisk)}
+              valueClassName={urgencyClass(urgency)}
+              meta={
+                <>
                   {r.quantity} <span className="opacity-70">{t('units')}</span>
-                </span>
-              </div>
-            </li>
+                </>
+              }
+            />
           );
         })}
-      </ul>
+      </DataList>
     </section>
   );
 }

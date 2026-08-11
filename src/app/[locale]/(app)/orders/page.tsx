@@ -1,6 +1,8 @@
 import { getFormatter, getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
 
+import { DataList, DataRow, PageTitle } from '@/components/data-list';
+import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
@@ -25,7 +27,7 @@ export default async function OrdersPage({ params }: PageProps<'/[locale]/orders
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4">
-      <h1 className="text-2xl font-semibold">{t('title')}</h1>
+      <PageTitle>{t('title')}</PageTitle>
 
       {orders.length === 0 ? (
         <div className="flex flex-col items-start gap-3 py-12">
@@ -39,28 +41,27 @@ export default async function OrdersPage({ params }: PageProps<'/[locale]/orders
           </Link>
         </div>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <DataList>
           {orders.map((o) => (
-            <li key={o.id}>
-              <Link
-                href={`/${locale}/orders/${o.id}`}
-                className="flex min-h-12 items-center justify-between gap-3 rounded-lg border p-3"
-              >
-                <div className="flex min-w-0 flex-col gap-0.5">
-                  <span className="truncate font-medium">{o.supplierName}</span>
-                  <span className="text-muted-foreground font-mono text-xs">{o.poNumber}</span>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-0.5">
-                  <span className="text-sm font-medium tabular-nums">{money(o.total)}</span>
-                  {/* Status as a word, never a colour alone. */}
-                  <span className="text-muted-foreground text-xs">
-                    {t(`status.${o.status}`)} · {t('lineCount', { count: o.lineCount })}
-                  </span>
-                </div>
-              </Link>
-            </li>
+            <DataRow
+              key={o.id}
+              href={`/${locale}/orders/${o.id}`}
+              title={o.supplierName}
+              subtitle={
+                <span className="flex items-center gap-2">
+                  {/* The badge carries the word, never a colour on its own —
+                      "Part delivered" has to survive being read in greyscale. */}
+                  <Badge variant={o.status === 'received' ? 'secondary' : 'outline'}>
+                    {t(`status.${o.status}`)}
+                  </Badge>
+                  <span className="font-mono">{o.poNumber}</span>
+                </span>
+              }
+              value={money(o.total)}
+              meta={t('lineCount', { count: o.lineCount })}
+            />
           ))}
-        </ul>
+        </DataList>
       )}
     </main>
   );
