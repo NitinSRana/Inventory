@@ -35,8 +35,11 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
   }
 
   return (
-    // Primary action sits in the bottom third: this is used one-handed on a phone.
-    <main className="flex flex-1 flex-col justify-end gap-8 p-6 sm:justify-center">
+    // On a phone: full width, action in the bottom third, one-handed.
+    // On anything wider: a centred column, because a form field stretched across
+    // 1900px is unreadable and looks broken.
+    <main className="flex flex-1 flex-col justify-end p-6 sm:items-center sm:justify-center">
+      <div className="flex w-full max-w-sm flex-col gap-8 sm:rounded-xl sm:border sm:p-8">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold">{t('title')}</h1>
         <p className="text-muted-foreground text-sm">{t('subtitle')}</p>
@@ -67,11 +70,12 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
             </p>
           )}
 
-          <Button type="submit" className="h-11 w-full">
+          <Button type="submit" className="h-12 w-full">
             {t('submit')}
           </Button>
         </form>
       )}
+      </div>
     </main>
   );
 }
