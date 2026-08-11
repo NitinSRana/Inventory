@@ -117,6 +117,16 @@ export function suggestedOrderQuantity(input: {
   const target = new Decimal(dailyRate).times(leadTimeDays + safetyDays);
   const floor = new Decimal(minStock ?? 0);
   const needed = Decimal.max(target, floor).minus(onHand).minus(onOrder);
+  if (!needed.greaterThan(0)) return null;
 
-  return needed.greaterThan(0) ? needed.toDecimalPlaces(3).toString() : null;
+  // Nobody orders 5.429 kg of apples, and 5.429 eggs is not a thing you can ask
+  // a supplier for. Rounded up, not to nearest: under-ordering causes the empty
+  // shelf this product exists to prevent, and the cost of one spare unit is the
+  // cheaper mistake.
+  //
+  // ponytail: whole units only. Suppliers actually sell in cases — 12 yoghurts,
+  // a 6-bottle tray — and the real answer is to round up to a pack size. There
+  // is no pack size column yet, so that stays a spec question rather than a
+  // number invented here.
+  return needed.ceil().toString();
 }

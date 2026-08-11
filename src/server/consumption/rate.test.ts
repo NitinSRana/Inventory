@@ -88,3 +88,17 @@ test('min stock acts as a floor when the rate is tiny', () => {
 test('an unknown rate suggests nothing at all', () => {
   assert.equal(suggestedOrderQuantity({ dailyRate: null, leadTimeDays: 5, onHand: '0', onOrder: '0' }), null);
 });
+
+test('order quantities are whole units, rounded up', () => {
+  // 3.4286/day over an 8-day cover is 27.4288, less 22 on hand = 5.4288. You
+  // cannot order 5.4288 apples, and rounding down would leave the shelf short.
+  const q = suggestedOrderQuantity({ dailyRate: '3.4286', leadTimeDays: 5, onHand: '22', onOrder: '0' });
+  assert.equal(q, '6');
+});
+
+test('a fractional shortfall still orders one unit', () => {
+  // Just under a tenth short. Rounding to nearest would say "order nothing",
+  // which is how a product quietly runs out.
+  const q = suggestedOrderQuantity({ dailyRate: '1', leadTimeDays: 1, onHand: '3.91', onOrder: '0' });
+  assert.equal(q, '1');
+});
