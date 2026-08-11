@@ -6,6 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createClient } from '@/lib/supabase/server';
+import {
+  SIGN_IN_PER_CLIENT,
+  SIGN_IN_PER_EMAIL,
+  checkRateLimit,
+  hashedBucket,
+} from '@/server/auth/rate-limit';
 
 export default async function SignInPage({ params, searchParams }: PageProps<'/[locale]/sign-in'>) {
   const { locale } = await params;
@@ -25,6 +31,21 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
       h.get('origin') ??
       process.env.NEXT_PUBLIC_SITE_URL ??
       `http://${h.get('host') ?? 'localhost:3000'}`;
+
+    // Throttled before a single mail is sent. Two buckets: the address, so
+    // nobody can flood a stranger's inbox, and the client, so nobody can walk a
+    // list of addresses a few attempts each.
+    const client = h.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const [emailOk, clientOk] = await Promise.all([
+      checkRateLimit(await hashedBucket('signin-email', email), SIGN_IN_PER_EMAIL),
+      checkRateLimit(await hashedBucket('signin-client', client), SIGN_IN_PER_CLIENT),
+    ]);
+    if (!emailOk || !clientOk) {
+      // Same response whether the address exists or not — a throttle that says
+      // "too many attempts for this account" confirms the account.
+      redirect(`/${locale}/sign-in?error=throttled`);
+    }
+
     const supabase = await createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -65,8 +86,12 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
 
           {error && (
             <p role="alert" className="text-destructive text-sm">
-              {t('error')}
-              {error !== '1' && <span className="block font-mono text-xs">{error}</span>}
+              {error === 'throttled' ? t('throttled') : t('error')}
+              {/* Supabase's own message, shown only for genuine failures — a
+                  throttle must not leak whether the address exists. */}
+              {error !== '1' && error !== 'throttled' && (
+                <span className="block font-mono text-xs">{error}</span>
+              )}
             </p>
           )}
 

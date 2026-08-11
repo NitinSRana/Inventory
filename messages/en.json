@@ -9,7 +9,8 @@
     "emailLabel": "Email",
     "submit": "Email me a link",
     "sent": "Check your email for the sign-in link.",
-    "error": "That didn't work. Check the address and try again."
+    "error": "That didn't work. Check the address and try again.",
+    "throttled": "Too many attempts. Wait a few minutes and try again."
   },
   "scan": {
     "barcodeLabel": "Barcode",

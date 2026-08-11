@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { sql, type SQL } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 
@@ -54,6 +54,17 @@ export async function claimInvitation(userId: string, email: string): Promise<st
     sql`select app.claim_invitation(${userId}::uuid, ${email}) as org`,
   );
   return rows[0]?.org ?? null;
+}
+
+/**
+ * Runs an `app` schema function that has nothing to do with tenants.
+ *
+ * Rate limiting happens before anyone is signed in, so there is no organization
+ * to scope to. Kept here rather than opening up `db`, so every route into the
+ * database still passes through this one file.
+ */
+export async function rateLimited<T extends Record<string, unknown>>(query: SQL) {
+  return db.execute<T>(query);
 }
 
 export async function orgForUser(userId: string): Promise<string | null> {
