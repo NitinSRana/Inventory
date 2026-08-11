@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { eq } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 
@@ -20,10 +21,15 @@ export type SessionState =
 /**
  * Resolves the caller's user, organization and role.
  *
+ * Wrapped in React cache(): the shell layout resolves the session and so does
+ * every page inside it, which meant three round trips happening twice per
+ * request. cache() dedupes within a single request only — it is not a cross-
+ * request cache, so one tenant can never be served another tenant's session.
+ *
  * orgId comes from the session, never from the client, and is the only value
  * withTenant should ever be given.
  */
-export async function getSessionState(): Promise<SessionState> {
+export const getSessionState = cache(async function getSessionState(): Promise<SessionState> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -47,7 +53,7 @@ export async function getSessionState(): Promise<SessionState> {
   );
 
   return { status: 'ready', userId: user.id, email, orgId, role: membership?.role ?? '' };
-}
+});
 
 /**
  * For pages that cannot render without a tenant. Sends anyone who is signed out
