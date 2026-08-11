@@ -12,6 +12,7 @@ import {
 
 import { requireOrg } from '@/server/auth/session';
 import { roleAtLeast, type Role } from '@/server/auth/roles';
+import { PageTitle } from '@/components/data-list';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
 // behind auth is a cross-tenant leak waiting to happen.
@@ -55,7 +56,7 @@ export default async function MorePage({ params }: PageProps<'/[locale]/more'>) 
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4">
-      <h1 className="text-2xl font-semibold">{t('title')}</h1>
+      <PageTitle>{t('title')}</PageTitle>
 
       {SECTIONS.map((section) => {
         // Hide what this person cannot use. The server action behind each screen

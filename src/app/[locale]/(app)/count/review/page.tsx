@@ -6,9 +6,11 @@ import { BackLink } from '@/components/back-link';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
+import { trimQuantity } from '@/lib/quantity';
 import { requireOrg } from '@/server/auth/session';
 import { recalculateConsumptionRates } from '@/server/consumption/calculate';
 import { completeCountSession, getOpenSession, getVarianceReport } from '@/server/counting/sessions';
+import { PageTitle } from '@/components/data-list';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
 // behind auth is a cross-tenant leak waiting to happen.
@@ -60,7 +62,7 @@ export default async function CountReviewPage({ params }: PageProps<'/[locale]/c
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
       <BackLink href={`/${locale}/count`} label={tBack('count')} />
-      <h1 className="text-2xl font-semibold">{t('reviewTitle')}</h1>
+      <PageTitle>{t('reviewTitle')}</PageTitle>
 
       {variances.length === 0 ? (
         <p className="text-sm">{t('noVariance')}</p>
@@ -87,12 +89,16 @@ export default async function CountReviewPage({ params }: PageProps<'/[locale]/c
                     {/* Sign is stated in words as well as by the number, so the
                         direction survives a glance and a colourblind reader. */}
                     <span className="text-muted-foreground text-xs">
-                      {short ? t('short') : t('over')} · {t('expectedVsCounted', { expected: v.expected, counted: v.counted })}
+                      {short ? t('short') : t('over')} ·{' '}
+                      {t('expectedVsCounted', {
+                        expected: trimQuantity(v.expected),
+                        counted: trimQuantity(v.counted),
+                      })}
                     </span>
                   </div>
                   <span className={`shrink-0 text-sm font-medium tabular-nums ${short ? 'text-destructive' : 'text-foreground'}`}>
                     {short ? '' : '+'}
-                    {v.delta}
+                    {trimQuantity(v.delta)}
                   </span>
                 </li>
               );

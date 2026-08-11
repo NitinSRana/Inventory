@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { requireRole } from '@/server/auth/session';
 import { InvalidBarcodeError, deactivateProduct, getProduct, updateProduct } from '@/server/catalog/products';
 import { listSuppliers } from '@/server/catalog/suppliers';
+import { PageTitle } from '@/components/data-list';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
 // behind auth is a cross-tenant leak waiting to happen.
@@ -53,7 +54,7 @@ export default async function EditProductPage({
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-24">
       <BackLink href={`/${locale}/products`} label={tBack('products')} />
-      <h1 className="text-2xl font-semibold">{product.name}</h1>
+      <PageTitle>{product.name}</PageTitle>
 
       <ProductForm
         action={save}

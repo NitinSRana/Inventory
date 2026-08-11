@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { requireOrg } from '@/server/auth/session';
 import { REPORT_SLUGS } from '@/server/reports';
+import { PageTitle } from '@/components/data-list';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
 // behind auth is a cross-tenant leak waiting to happen.
@@ -17,7 +18,7 @@ export default async function ReportsPage({ params }: PageProps<'/[locale]/repor
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4">
-      <h1 className="text-2xl font-semibold">{t('title')}</h1>
+      <PageTitle>{t('title')}</PageTitle>
       <ul className="flex flex-col gap-2">
         {REPORT_SLUGS.map((slug) => (
           <li key={slug}>

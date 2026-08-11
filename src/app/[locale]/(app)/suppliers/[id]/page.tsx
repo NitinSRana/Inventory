@@ -6,6 +6,7 @@ import { BackLink } from '@/components/back-link';
 import { Button } from '@/components/ui/button';
 import { requireRole } from '@/server/auth/session';
 import { deactivateSupplier, getSupplier, updateSupplier } from '@/server/catalog/suppliers';
+import { PageTitle } from '@/components/data-list';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
 // behind auth is a cross-tenant leak waiting to happen.
@@ -48,7 +49,7 @@ export default async function EditSupplierPage({
   return (
     <main className="flex flex-1 flex-col gap-6 p-4">
       <BackLink href={`/${locale}/suppliers`} label={tBack('suppliers')} />
-      <h1 className="text-2xl font-semibold">{supplier.name}</h1>
+      <PageTitle>{supplier.name}</PageTitle>
 
       <SupplierForm
         action={save}

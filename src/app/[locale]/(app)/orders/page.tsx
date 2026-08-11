@@ -1,7 +1,9 @@
 import { getFormatter, getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
+import { ClipboardList } from 'lucide-react';
 
 import { DataList, DataRow, PageTitle } from '@/components/data-list';
+import { EmptyState } from '@/components/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { organizations } from '@/db/schema';
@@ -30,16 +32,20 @@ export default async function OrdersPage({ params }: PageProps<'/[locale]/orders
       <PageTitle>{t('title')}</PageTitle>
 
       {orders.length === 0 ? (
-        <div className="flex flex-col items-start gap-3 py-12">
-          <p className="text-muted-foreground text-sm">{t('empty')}</p>
-          {/* The empty state points at where orders actually come from. */}
-          <Link
-            href={`/${locale}/reorder`}
-            className={buttonVariants({ variant: 'outline', className: 'h-11' })}
-          >
-            {t('fromSuggestions')}
-          </Link>
-        </div>
+        <EmptyState
+          icon={ClipboardList}
+          title={t('empty')}
+          body={t('emptyBody')}
+          // Points at where orders actually come from, rather than a blank form.
+          action={
+            <Link
+              href={`/${locale}/reorder`}
+              className={buttonVariants({ variant: 'outline', className: 'h-11' })}
+            >
+              {t('fromSuggestions')}
+            </Link>
+          }
+        />
       ) : (
         <DataList>
           {orders.map((o) => (

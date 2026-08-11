@@ -3,6 +3,7 @@ import { getFormatter, getTranslations } from 'next-intl/server';
 import { DataGroupHeader, DataList, DataRow, HeadlineFigure } from '@/components/data-list';
 import { UrgencyBadge, urgencyClass, urgencyOf } from '@/components/expiry-urgency';
 import { FirstRun } from '@/components/first-run';
+import { trimQuantity } from '@/lib/quantity';
 import { countProducts } from '@/server/catalog/import';
 import { getExpiringStock, getExpiryExposure, getProductStock } from '@/server/stock/levels';
 
@@ -127,7 +128,7 @@ export async function ExpiryDashboard({
                         valueClassName={urgencyClass(urgency)}
                         meta={
                           <>
-                            {r.quantity} <span className="opacity-70">{t('units')}</span>
+                            {trimQuantity(r.quantity ?? '0')} <span className="opacity-70">{t('units')}</span>
                           </>
                         }
                       />

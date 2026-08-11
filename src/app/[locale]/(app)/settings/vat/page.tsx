@@ -10,6 +10,7 @@ import { withTenant } from '@/db/tenant';
 import { requireRole } from '@/server/auth/session';
 import { SEEDED_COUNTRIES, type VatBand } from '@/server/settings/vat-seeds';
 import { getRatesByBand, seedVatRatesForCountry, setVatRate } from '@/server/settings/vat';
+import { PageTitle } from '@/components/data-list';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
 // behind auth is a cross-tenant leak waiting to happen.
@@ -62,7 +63,7 @@ export default async function VatSettingsPage({
     <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
       <BackLink href={`/${locale}/more`} label={tBack('more')} />
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">{t('title')}</h1>
+        <PageTitle>{t('title')}</PageTitle>
         {/* Says what these are for, and what they are not for. */}
         <p className="text-muted-foreground text-sm">{t('intro')}</p>
       </div>

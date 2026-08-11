@@ -6,6 +6,7 @@ import { ProductForm, productInputFrom } from '@/components/product-form';
 import { requireRole } from '@/server/auth/session';
 import { InvalidBarcodeError, createProduct } from '@/server/catalog/products';
 import { listSuppliers } from '@/server/catalog/suppliers';
+import { PageTitle } from '@/components/data-list';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
 // behind auth is a cross-tenant leak waiting to happen.
@@ -40,7 +41,7 @@ export default async function NewProductPage({
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-24">
       <BackLink href={`/${locale}/products`} label={tBack('products')} />
-      <h1 className="text-2xl font-semibold">{t('addTitle')}</h1>
+      <PageTitle>{t('addTitle')}</PageTitle>
       <ProductForm
         action={create}
         suppliers={suppliers}

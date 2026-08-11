@@ -1,7 +1,10 @@
 import { getFormatter, getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import Decimal from 'decimal.js';
+import { PackageCheck } from 'lucide-react';
 
+import { EmptyState } from '@/components/empty-state';
+import { formatRate, trimQuantity } from '@/lib/quantity';
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 import { requireRole } from '@/server/auth/session';
@@ -54,7 +57,7 @@ export default async function ReorderPage({ params }: PageProps<'/[locale]/reord
       <PageTitle>{t('title')}</PageTitle>
 
       {groups.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{t('nothingToOrder')}</p>
+        <EmptyState icon={PackageCheck} title={t('nothingToOrder')} body={t('nothingToOrderBody')} />
       ) : (
         groups.map((g) => {
           // A supplier minimum is a hard gate on placing the order, so it is
@@ -85,15 +88,18 @@ export default async function ReorderPage({ params }: PageProps<'/[locale]/reord
                     title={l.productName}
                     subtitle={
                       <>
-                        {t('onHandAndRate', { onHand: l.onHand, rate: l.dailyRate ?? '—' })}
+                        {t('onHandAndRate', {
+                          onHand: trimQuantity(l.onHand),
+                          rate: l.dailyRate ? formatRate(l.dailyRate) : '—',
+                        })}
                         {l.confidence === 'low' && ` · ${t('lowConfidence')}`}
                         {new Decimal(l.onOrder).greaterThan(0) &&
-                          ` · ${t('alreadyOnOrder', { quantity: l.onOrder })}`}
+                          ` · ${t('alreadyOnOrder', { quantity: trimQuantity(l.onOrder) })}`}
                       </>
                     }
                     value={
                       <>
-                        {l.suggestedQuantity} <span className="opacity-70">{l.unit}</span>
+                        {trimQuantity(l.suggestedQuantity)} <span className="opacity-70">{l.unit}</span>
                       </>
                     }
                   />

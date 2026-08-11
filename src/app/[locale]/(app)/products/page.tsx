@@ -1,7 +1,9 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
+import { PackageOpen, SearchX } from 'lucide-react';
 
 import { DataList, DataRow, PageTitle } from '@/components/data-list';
+import { EmptyState } from '@/components/empty-state';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -43,19 +45,23 @@ export default async function ProductsPage({ params, searchParams }: PageProps<'
       </form>
 
       {rows.length === 0 ? (
-        <div className="flex flex-col items-start gap-3 py-12">
-          <p className="text-muted-foreground text-sm">{search ? t('noMatches') : t('empty')}</p>
-          {/* An empty catalogue is the onboarding moment: offer the bulk path,
-              not just the one-at-a-time form. */}
-          {!search && (
-            <Link
-              href={`/${locale}/products/import`}
-              className={buttonVariants({ variant: 'outline', className: 'h-11' })}
-            >
-              {t('import')}
-            </Link>
-          )}
-        </div>
+        <EmptyState
+          icon={search ? SearchX : PackageOpen}
+          title={search ? t('noMatches') : t('empty')}
+          body={search ? t('noMatchesBody') : t('emptyBody')}
+          // An empty catalogue is the onboarding moment: offer the bulk path,
+          // not just the one-at-a-time form.
+          action={
+            !search && (
+              <Link
+                href={`/${locale}/products/import`}
+                className={buttonVariants({ variant: 'outline', className: 'h-11' })}
+              >
+                {t('import')}
+              </Link>
+            )
+          }
+        />
       ) : (
         <>
           {/* Divided rows on a phone, table on desktop — never a table that scrolls sideways. */}

@@ -7,11 +7,13 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { REASON_CODES } from '@/db/schema';
+import { trimQuantity } from '@/lib/quantity';
 import { requireOrg } from '@/server/auth/session';
 import { findProductByBarcode } from '@/server/catalog/products';
 import { InsufficientStockError } from '@/server/stock/fefo';
 import { getProductStock } from '@/server/stock/levels';
 import { recordWaste } from '@/server/stock/movements';
+import { PageTitle } from '@/components/data-list';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
 // behind auth is a cross-tenant leak waiting to happen.
@@ -48,7 +50,7 @@ export default async function WastePage({ params, searchParams }: PageProps<'/[l
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
-      <h1 className="text-2xl font-semibold">{t('title')}</h1>
+      <PageTitle>{t('title')}</PageTitle>
 
       {done && (
         <p role="status" className="text-sm">
@@ -87,7 +89,7 @@ export default async function WastePage({ params, searchParams }: PageProps<'/[l
           <div className="flex flex-col gap-1">
             <span className="text-lg font-medium">{product.name}</span>
             <span className="text-muted-foreground text-sm tabular-nums">
-              {stock?.quantity ?? '0'} <span className="opacity-70">{product.unit}</span>{' '}
+              {trimQuantity(stock?.quantity ?? '0')} <span className="opacity-70">{product.unit}</span>{' '}
               {t('onHand')}
             </span>
           </div>

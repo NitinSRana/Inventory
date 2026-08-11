@@ -1,8 +1,11 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { FileX2 } from 'lucide-react';
 
 import { BackLink } from '@/components/back-link';
+import { PageTitle } from '@/components/data-list';
+import { EmptyState } from '@/components/empty-state';
 import { buttonVariants } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { requireOrg } from '@/server/auth/session';
@@ -38,12 +41,9 @@ export default async function ReportPage({ params, searchParams }: PageProps<'/[
   return (
     <main className="flex flex-1 flex-col gap-4 p-4">
       <BackLink href={`/${locale}/reports`} label={tBack('reports')} />
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">{t(`names.${reportSlug}`)}</h1>
-        <p className="text-muted-foreground text-sm tabular-nums">
-          {t('rowCount', { count: report.rows.length })}
-        </p>
-      </div>
+      <PageTitle caption={<span className="tabular-nums">{t('rowCount', { count: report.rows.length })}</span>}>
+        {t(`names.${reportSlug}`)}
+      </PageTitle>
 
       {showPeriod && (
         <nav aria-label={t('periodLabel')} className="flex gap-2">
@@ -64,7 +64,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<'/[
       )}
 
       {report.rows.length === 0 ? (
-        <p className="text-muted-foreground py-12 text-sm">{t('empty')}</p>
+        <EmptyState icon={FileX2} title={t('empty')} body={t('emptyBody')} />
       ) : (
         <>
           {/* Stacked on a phone, table on desktop — never a sideways-scrolling table. */}

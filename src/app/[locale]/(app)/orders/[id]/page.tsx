@@ -3,6 +3,8 @@ import { getFormatter, getTranslations, setRequestLocale } from 'next-intl/serve
 import { notFound, redirect } from 'next/navigation';
 
 import { BackLink } from '@/components/back-link';
+import { PageTitle } from '@/components/data-list';
+import { trimQuantity } from '@/lib/quantity';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -81,7 +83,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<'/[l
     <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
       <BackLink href={`/${locale}/orders`} label={tBack('orders')} />
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">{po.supplierName}</h1>
+        <PageTitle>{po.supplierName}</PageTitle>
         <p className="text-muted-foreground text-sm">
           <span className="font-mono">{po.poNumber}</span> · {t(`status.${po.status}`)} ·{' '}
           <span className="tabular-nums">{money(po.total)}</span>
@@ -103,8 +105,8 @@ export default async function OrderPage({ params, searchParams }: PageProps<'/[l
                 <span className="truncate font-medium">{l.productName}</span>
                 <span className="text-muted-foreground text-xs tabular-nums">
                   {t('receivedOfOrdered', {
-                    received: l.quantityReceived,
-                    ordered: l.quantityOrdered,
+                    received: trimQuantity(l.quantityReceived),
+                    ordered: trimQuantity(l.quantityOrdered),
                     unit: l.unit,
                   })}
                 </span>

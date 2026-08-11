@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 
 import { BackLink } from '@/components/back-link';
+import { PageTitle } from '@/components/data-list';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -88,7 +89,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<'/[lo
     <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
       <BackLink href={`/${locale}/more`} label={tBack('more')} />
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">{t('title')}</h1>
+        <PageTitle>{t('title')}</PageTitle>
         <p className="text-muted-foreground text-sm">{t('intro')}</p>
       </div>
 

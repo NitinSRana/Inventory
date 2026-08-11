@@ -7,6 +7,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { requireRole } from '@/server/auth/session';
 import { importProductsCsv, type RowError } from '@/server/catalog/import';
+import { PageTitle } from '@/components/data-list';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
 // behind auth is a cross-tenant leak waiting to happen.
@@ -65,7 +66,7 @@ export default async function ImportPage({ params, searchParams }: PageProps<'/[
     <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
       <BackLink href={`/${locale}/products`} label={tBack('products')} />
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">{t('title')}</h1>
+        <PageTitle>{t('title')}</PageTitle>
         <p className="text-muted-foreground text-sm">{t('intro')}</p>
       </div>
 

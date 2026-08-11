@@ -5,6 +5,7 @@ import { BackLink } from '@/components/back-link';
 import { SupplierForm, supplierInputFrom } from '@/components/supplier-form';
 import { requireRole } from '@/server/auth/session';
 import { createSupplier } from '@/server/catalog/suppliers';
+import { PageTitle } from '@/components/data-list';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
 // behind auth is a cross-tenant leak waiting to happen.
@@ -38,7 +39,7 @@ export default async function NewSupplierPage({
   return (
     <main className="flex flex-1 flex-col gap-6 p-4">
       <BackLink href={`/${locale}/suppliers`} label={tBack('suppliers')} />
-      <h1 className="text-2xl font-semibold">{t('addTitle')}</h1>
+      <PageTitle>{t('addTitle')}</PageTitle>
       <SupplierForm action={create} error={typeof error === 'string' ? error : undefined} />
     </main>
   );

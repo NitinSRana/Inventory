@@ -1,7 +1,9 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
+import { Truck } from 'lucide-react';
 
 import { DataList, DataRow, PageTitle } from '@/components/data-list';
+import { EmptyState } from '@/components/empty-state';
 import { buttonVariants } from '@/components/ui/button';
 import { requireOrg } from '@/server/auth/session';
 import { listSuppliers } from '@/server/catalog/suppliers';
@@ -23,7 +25,7 @@ export default async function SuppliersPage({ params }: PageProps<'/[locale]/sup
       <PageTitle>{t('title')}</PageTitle>
 
       {suppliers.length === 0 ? (
-        <p className="text-muted-foreground py-12 text-sm">{t('empty')}</p>
+        <EmptyState icon={Truck} title={t('empty')} body={t('emptyBody')} />
       ) : (
         <DataList>
           {suppliers.map((s) => (

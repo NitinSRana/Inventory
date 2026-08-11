@@ -7,6 +7,7 @@ import { BarcodeField } from '@/components/barcode-field';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { trimQuantity } from '@/lib/quantity';
 import { requireOrg } from '@/server/auth/session';
 import { findProductByBarcode } from '@/server/catalog/products';
 import { getDueForCount } from '@/server/counting/due';
@@ -108,7 +109,7 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
   return (
     <main className="flex flex-1 flex-col gap-5 p-4 pb-28">
       <div className="flex items-baseline justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{session.name ?? t('title')}</h1>
+        <PageTitle>{session.name ?? t('title')}</PageTitle>
         <span className="text-muted-foreground text-sm tabular-nums">
           {t('countedSoFar', { count: lines.length })}
         </span>
@@ -164,7 +165,7 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
                 title={l.productName}
                 value={
                   <>
-                    {l.countedQuantity} <span className="opacity-70">{l.unit}</span>
+                    {trimQuantity(l.countedQuantity)} <span className="opacity-70">{l.unit}</span>
                   </>
                 }
               />
