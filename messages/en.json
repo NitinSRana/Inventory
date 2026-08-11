@@ -45,10 +45,24 @@
     "title": "Expiring soon",
     "atRisk": "at risk",
     "batchCount": "{count, plural, =0 {No batches} one {# batch} other {# batches}} expiring within 14 days",
-    "nothingExpiring": "Nothing expiring in the next 14 days.",
+    "nothingExpiring": "Not a single batch in the next 14 days. Keep it that way — count a shelf while you are ahead.",
     "daysLeft": "{days, plural, =0 {Expires today} one {# day left} other {# days left}}",
     "expiredDaysAgo": "{days, plural, one {Expired # day ago} other {Expired # days ago}}",
-    "units": "on hand"
+    "units": "on hand",
+    "atRiskLabel": "At risk · next 14 days",
+    "batchSummary": "{batches, plural, one {# batch} other {# batches}}{expired, plural, =0 {} other { · # already expired}}",
+    "bucketsLabel": "Jump to a group",
+    "emptyTitle": "Nothing expiring",
+    "buckets": {
+      "expired": "expired",
+      "critical": "≤ 3 days",
+      "soon": "≤ 14 days"
+    },
+    "groups": {
+      "expired": "Expired",
+      "critical": "Next 3 days",
+      "soon": "Next 14 days"
+    }
   },
   "products": {
     "title": "Products",
