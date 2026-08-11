@@ -78,7 +78,9 @@ const CATALOGUE = [
   ['Kartoffeln 2,5kg', '4012345678987', '1.9000', '2.99', 'each', 60, 'grosshandel', '15'],
   ['Spaghetti 500g', '4012345678994', '0.6500', '1.29', 'each', 540, 'grosshandel', '24'],
   ['Passierte Tomaten 500g', '4012345679007', '0.7000', '1.19', 'each', 400, 'grosshandel', '30'],
-  ['Olivenöl 500ml', '4012345679014', '4.2000', '6.99', 'ml', 540, 'grosshandel', '8'],
+  // Sold as a bottle, so counted as one. Unit 'ml' would have the reorder screen
+  // asking the shop to order six millilitres of olive oil.
+  ['Olivenöl 500ml', '4012345679014', '4.2000', '6.99', 'each', 540, 'grosshandel', '8'],
   ['Kaffee gemahlen 500g', '4012345679021', '3.8000', '5.99', 'each', 300, 'grosshandel', '12'],
   ['Mineralwasser 6x1,5L', '4012345679038', '2.4000', '3.49', 'each', 400, 'grosshandel', '20'],
 ] as const;
