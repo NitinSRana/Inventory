@@ -134,7 +134,7 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
               className="h-14 text-right text-lg tabular-nums"
             />
           </div>
-          <Button type="submit" className="fixed inset-x-4 bottom-6 h-12 sm:static sm:w-fit">
+          <Button type="submit" className="fixed inset-x-4 bottom-20 sm:bottom-6 h-12 sm:static sm:w-fit">
             {t('saveAndNext')}
           </Button>
         </form>

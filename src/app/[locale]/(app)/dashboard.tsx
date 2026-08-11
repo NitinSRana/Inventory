@@ -1,8 +1,6 @@
 import { getFormatter, getTranslations } from 'next-intl/server';
-import Link from 'next/link';
 
 import { UrgencyBadge, urgencyClass, urgencyOf } from '@/components/expiry-urgency';
-import { buttonVariants } from '@/components/ui/button';
 import { getExpiringStock, getExpiryExposure } from '@/server/stock/levels';
 
 /**
@@ -11,11 +9,9 @@ import { getExpiringStock, getExpiryExposure } from '@/server/stock/levels';
  */
 export async function ExpiryDashboard({
   orgId,
-  locale,
   currency,
 }: {
   orgId: string;
-  locale: string;
   currency: string;
 }) {
   const t = await getTranslations('dashboard');
@@ -31,38 +27,6 @@ export async function ExpiryDashboard({
   const money = (v: string | null) =>
     format.number(Number(v ?? 0), { style: 'currency', currency });
 
-  // A hub, not a screen with five competing primary actions: equal weight, two
-  // columns, every target comfortably past 44px for a gloved thumb.
-  const actions = (
-    <nav aria-label={t('actionsLabel')}>
-      <ul className="grid grid-cols-2 gap-2">
-        {(
-          [
-            ['receive', 'receive'],
-            ['waste', 'writeOff'],
-            ['count', 'startCount'],
-            ['reorder', 'reorder'],
-            ['products', 'viewProducts'],
-            ['suppliers', 'suppliers'],
-            ['orders', 'orders'],
-            ['reports', 'reports'],
-            ['settings/vat', 'settings'],
-            ['settings/team', 'team'],
-          ] as const
-        ).map(([path, key]) => (
-          <li key={path}>
-            <Link
-              href={`/${locale}/${path}`}
-              className={buttonVariants({ variant: 'outline', className: 'h-12 w-full' })}
-            >
-              {t(key)}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  );
-
   // The empty state still carries the actions: "nothing expiring" is exactly
   // when someone is here to write something off or check the catalogue.
   if (rows.length === 0) {
@@ -70,7 +34,6 @@ export async function ExpiryDashboard({
       <section className="flex flex-col gap-4">
         <h2 className="text-lg font-medium">{t('title')}</h2>
         <p className="text-muted-foreground text-sm">{t('nothingExpiring')}</p>
-        {actions}
       </section>
     );
   }
@@ -116,8 +79,6 @@ export async function ExpiryDashboard({
           );
         })}
       </ul>
-
-      {actions}
     </section>
   );
 }

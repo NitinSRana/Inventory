@@ -183,7 +183,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<'/[l
             </fieldset>
           ))}
 
-          <Button type="submit" className="fixed inset-x-4 bottom-6 h-12 sm:static sm:w-fit">
+          <Button type="submit" className="fixed inset-x-4 bottom-20 sm:bottom-6 h-12 sm:static sm:w-fit">
             {t('recordDelivery')}
           </Button>
         </form>

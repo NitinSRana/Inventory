@@ -49,7 +49,7 @@ export default async function SuppliersPage({ params }: PageProps<'/[locale]/sup
       {/* Primary action in the bottom third, thumb-reachable. */}
       <Link
         href={`/${locale}/suppliers/new`}
-        className={buttonVariants({ className: 'fixed inset-x-4 bottom-6 h-12 sm:static sm:w-fit' })}
+        className={buttonVariants({ className: 'fixed inset-x-4 bottom-20 sm:bottom-6 h-12 sm:static sm:w-fit' })}
       >
         {t('add')}
       </Link>

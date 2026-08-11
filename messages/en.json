@@ -47,18 +47,7 @@
     "nothingExpiring": "Nothing expiring in the next 14 days.",
     "daysLeft": "{days, plural, =0 {Expires today} one {# day left} other {# days left}}",
     "expiredDaysAgo": "{days, plural, one {Expired # day ago} other {Expired # days ago}}",
-    "units": "on hand",
-    "viewProducts": "All products",
-    "writeOff": "Write off",
-    "startCount": "Count stock",
-    "reorder": "What to order",
-    "receive": "Receive",
-    "actionsLabel": "Stock actions",
-    "reports": "Reports",
-    "orders": "Orders",
-    "suppliers": "Suppliers",
-    "settings": "VAT rates",
-    "team": "Team"
+    "units": "on hand"
   },
   "products": {
     "title": "Products",
@@ -316,5 +305,40 @@
       "lastOwner": "An organization must keep at least one owner.",
       "unknown": "That did not work. Try again."
     }
+  },
+  "nav": {
+    "primary": "Main",
+    "home": "Today",
+    "receive": "Receive",
+    "count": "Count",
+    "waste": "Write off",
+    "more": "More",
+    "signOut": "Sign out"
+  },
+  "more": {
+    "title": "More",
+    "sections": {
+      "catalogue": "Catalogue",
+      "buying": "Buying",
+      "insight": "Insight",
+      "settings": "Settings"
+    },
+    "items": {
+      "products": "Products",
+      "suppliers": "Suppliers",
+      "reorder": "What to order",
+      "orders": "Purchase orders",
+      "reports": "Reports",
+      "team": "Team",
+      "vat": "VAT rates"
+    }
+  },
+  "errors": {
+    "title": "Something went wrong",
+    "body": "That screen failed to load. It is usually temporary.",
+    "retry": "Try again",
+    "home": "Back to today",
+    "notFoundTitle": "Not found",
+    "notFoundBody": "That page does not exist, or it belongs to another shop."
   }
 }

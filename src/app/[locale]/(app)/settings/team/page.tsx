@@ -176,7 +176,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<'/[lo
           </select>
           <p className="text-muted-foreground text-xs">{t('roleHint')}</p>
         </div>
-        <Button type="submit" className="fixed inset-x-4 bottom-6 h-12 sm:static sm:w-fit">
+        <Button type="submit" className="fixed inset-x-4 bottom-20 sm:bottom-6 h-12 sm:static sm:w-fit">
           {t('invite')}
         </Button>
       </form>

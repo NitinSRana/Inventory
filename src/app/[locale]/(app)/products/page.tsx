@@ -113,7 +113,7 @@ export default async function ProductsPage({ params, searchParams }: PageProps<'
       )}
       <Link
         href={`/${locale}/products/new`}
-        className={buttonVariants({ className: 'fixed inset-x-4 bottom-6 h-12 sm:static sm:w-fit' })}
+        className={buttonVariants({ className: 'fixed inset-x-4 bottom-20 sm:bottom-6 h-12 sm:static sm:w-fit' })}
       >
         {t('add')}
       </Link>

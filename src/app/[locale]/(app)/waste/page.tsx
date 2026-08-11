@@ -131,7 +131,7 @@ export default async function WastePage({ params, searchParams }: PageProps<'/[l
           )}
 
           {/* One primary action, bottom third, thumb-reachable. */}
-          <Button type="submit" className="fixed inset-x-4 bottom-6 h-12 sm:static sm:w-fit">
+          <Button type="submit" className="fixed inset-x-4 bottom-20 sm:bottom-6 h-12 sm:static sm:w-fit">
             {t('submit')}
           </Button>
         </form>
