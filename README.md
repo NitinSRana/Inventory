@@ -57,6 +57,22 @@ credentials, no local server to set up. That is deliberate: a gate that needs
 credentials is a gate nobody runs, and these are the ones that prove tenant
 isolation holds.
 
+### End to end
+
+```bash
+pnpm test:e2e --project=public   # signed-out routing, no credentials needed
+pnpm test:e2e                    # the five daily-loop flows
+```
+
+These drive a real browser against `pnpm dev` and assert on **behaviour and
+data**: role and label selectors going in, the `stock_movements` ledger coming
+back out. A screen that says "Delivery recorded" while writing nothing fails
+here. Nothing asserts on markup, so the visual rebuild cannot break them.
+
+The full run needs a seeded `Demo Grocer` (`pnpm seed <email>`) and
+`ADMIN_DATABASE_URL`, which is how the suite mints a one-time sign-in token
+instead of waiting on an inbox. The `public` project needs neither.
+
 ## How it is put together
 
 | | |
