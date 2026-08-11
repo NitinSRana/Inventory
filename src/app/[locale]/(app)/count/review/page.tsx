@@ -2,6 +2,7 @@ import { getFormatter, getTranslations, setRequestLocale } from 'next-intl/serve
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import { BackLink } from '@/components/back-link';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
@@ -18,6 +19,7 @@ export default async function CountReviewPage({ params }: PageProps<'/[locale]/c
   setRequestLocale(locale);
 
   const t = await getTranslations('count');
+  const tBack = await getTranslations('back');
   const format = await getFormatter();
   const { orgId } = await requireOrg(locale);
 
@@ -43,6 +45,7 @@ export default async function CountReviewPage({ params }: PageProps<'/[locale]/c
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
+      <BackLink href={`/${locale}/count`} label={tBack('count')} />
       <h1 className="text-2xl font-semibold">{t('reviewTitle')}</h1>
 
       {variances.length === 0 ? (

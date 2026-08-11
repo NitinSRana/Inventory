@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound, redirect } from 'next/navigation';
 
 import { ProductForm, productInputFrom } from '@/components/product-form';
+import { BackLink } from '@/components/back-link';
 import { Button } from '@/components/ui/button';
 import { requireRole } from '@/server/auth/session';
 import { InvalidBarcodeError, deactivateProduct, getProduct, updateProduct } from '@/server/catalog/products';
@@ -20,6 +21,7 @@ export default async function EditProductPage({
 
   const { error } = await searchParams;
   const t = await getTranslations('products');
+  const tBack = await getTranslations('back');
   const { orgId } = await requireRole(locale, 'manager');
 
   // RLS scopes this, so another tenant's id is indistinguishable from a missing one.
@@ -50,6 +52,7 @@ export default async function EditProductPage({
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-24">
+      <BackLink href={`/${locale}/products`} label={tBack('products')} />
       <h1 className="text-2xl font-semibold">{product.name}</h1>
 
       <ProductForm

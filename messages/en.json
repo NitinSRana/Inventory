@@ -340,5 +340,35 @@
     "home": "Back to today",
     "notFoundTitle": "Not found",
     "notFoundBody": "That page does not exist, or it belongs to another shop."
+  },
+  "back": {
+    "products": "Products",
+    "suppliers": "Suppliers",
+    "orders": "Orders",
+    "reports": "Reports",
+    "count": "Count",
+    "more": "More"
+  },
+  "firstRun": {
+    "title": "Get set up",
+    "intro": "Three steps and this screen starts telling you what is about to expire.",
+    "done": "Done",
+    "steps": {
+      "catalogue": {
+        "title": "Load your products",
+        "body": "Upload a CSV from your wholesaler, or add a few by hand.",
+        "action": "Import products"
+      },
+      "receive": {
+        "title": "Receive a delivery",
+        "body": "Scan or type a barcode, then the quantity and expiry date.",
+        "action": "Receive stock"
+      },
+      "count": {
+        "title": "Count a shelf",
+        "body": "Count the same products twice and the app works out how fast they sell.",
+        "action": "Start a count"
+      }
+    }
   }
 }

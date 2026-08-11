@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 
+import { BackLink } from '@/components/back-link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +24,7 @@ export default async function VatSettingsPage({
 
   const { seeded, error } = await searchParams;
   const t = await getTranslations('vat');
+  const tBack = await getTranslations('back');
   // Rates affect every valuation in the product. Owner only.
   const { orgId } = await requireRole(locale, 'owner');
 
@@ -58,6 +60,7 @@ export default async function VatSettingsPage({
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
+      <BackLink href={`/${locale}/more`} label={tBack('more')} />
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold">{t('title')}</h1>
         {/* Says what these are for, and what they are not for. */}

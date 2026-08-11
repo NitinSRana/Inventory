@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 
+import { BackLink } from '@/components/back-link';
 import { SupplierForm, supplierInputFrom } from '@/components/supplier-form';
 import { requireRole } from '@/server/auth/session';
 import { createSupplier } from '@/server/catalog/suppliers';
@@ -18,6 +19,7 @@ export default async function NewSupplierPage({
 
   const { error, next } = await searchParams;
   const t = await getTranslations('suppliers');
+  const tBack = await getTranslations('back');
   await requireRole(locale, 'manager');
 
   async function create(formData: FormData) {
@@ -35,6 +37,7 @@ export default async function NewSupplierPage({
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4">
+      <BackLink href={`/${locale}/suppliers`} label={tBack('suppliers')} />
       <h1 className="text-2xl font-semibold">{t('addTitle')}</h1>
       <SupplierForm action={create} error={typeof error === 'string' ? error : undefined} />
     </main>

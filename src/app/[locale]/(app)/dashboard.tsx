@@ -1,7 +1,9 @@
 import { getFormatter, getTranslations } from 'next-intl/server';
 
 import { UrgencyBadge, urgencyClass, urgencyOf } from '@/components/expiry-urgency';
-import { getExpiringStock, getExpiryExposure } from '@/server/stock/levels';
+import { FirstRun } from '@/components/first-run';
+import { countProducts } from '@/server/catalog/import';
+import { getExpiringStock, getExpiryExposure, getProductStock } from '@/server/stock/levels';
 
 /**
  * The expiry dashboard. Per the spec this is the homepage — what is about to go
@@ -9,9 +11,11 @@ import { getExpiringStock, getExpiryExposure } from '@/server/stock/levels';
  */
 export async function ExpiryDashboard({
   orgId,
+  locale,
   currency,
 }: {
   orgId: string;
+  locale: string;
   currency: string;
 }) {
   const t = await getTranslations('dashboard');
@@ -27,9 +31,18 @@ export async function ExpiryDashboard({
   const money = (v: string | null) =>
     format.number(Number(v ?? 0), { style: 'currency', currency });
 
-  // The empty state still carries the actions: "nothing expiring" is exactly
-  // when someone is here to write something off or check the catalogue.
   if (rows.length === 0) {
+    // Nothing expiring means one of two very different things: a shop with no
+    // data yet, or a shop that is on top of things. Telling them apart is the
+    // difference between guidance and a dead end.
+    const [productCount, stock] = await Promise.all([
+      countProducts(orgId),
+      getProductStock(orgId),
+    ]);
+    if (productCount === 0 || stock.length === 0) {
+      return <FirstRun locale={locale} hasProducts={productCount > 0} hasStock={stock.length > 0} />;
+    }
+
     return (
       <section className="flex flex-col gap-4">
         <h2 className="text-lg font-medium">{t('title')}</h2>

@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 
+import { BackLink } from '@/components/back-link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,6 +29,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<'/[lo
 
   const { error, invited } = await searchParams;
   const t = await getTranslations('team');
+  const tBack = await getTranslations('back');
   // Changing who can do what is an owner decision.
   const { orgId, userId } = await requireRole(locale, 'owner');
 
@@ -84,6 +86,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<'/[lo
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
+      <BackLink href={`/${locale}/more`} label={tBack('more')} />
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold">{t('title')}</h1>
         <p className="text-muted-foreground text-sm">{t('intro')}</p>

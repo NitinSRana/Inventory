@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound, redirect } from 'next/navigation';
 
 import { SupplierForm, supplierInputFrom } from '@/components/supplier-form';
+import { BackLink } from '@/components/back-link';
 import { Button } from '@/components/ui/button';
 import { requireRole } from '@/server/auth/session';
 import { deactivateSupplier, getSupplier, updateSupplier } from '@/server/catalog/suppliers';
@@ -19,6 +20,7 @@ export default async function EditSupplierPage({
 
   const { error } = await searchParams;
   const t = await getTranslations('suppliers');
+  const tBack = await getTranslations('back');
   const { orgId } = await requireRole(locale, 'manager');
 
   // RLS scopes this, so another tenant's id is indistinguishable from a missing one.
@@ -45,6 +47,7 @@ export default async function EditSupplierPage({
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4">
+      <BackLink href={`/${locale}/suppliers`} label={tBack('suppliers')} />
       <h1 className="text-2xl font-semibold">{supplier.name}</h1>
 
       <SupplierForm

@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import { BackLink } from '@/components/back-link';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { requireRole } from '@/server/auth/session';
@@ -29,6 +30,7 @@ export default async function ImportPage({ params, searchParams }: PageProps<'/[
 
   const { created, updated } = await searchParams;
   const t = await getTranslations('import');
+  const tBack = await getTranslations('back');
   await requireRole(locale, 'manager');
 
   async function upload(formData: FormData) {
@@ -61,6 +63,7 @@ export default async function ImportPage({ params, searchParams }: PageProps<'/[
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
+      <BackLink href={`/${locale}/products`} label={tBack('products')} />
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold">{t('title')}</h1>
         <p className="text-muted-foreground text-sm">{t('intro')}</p>

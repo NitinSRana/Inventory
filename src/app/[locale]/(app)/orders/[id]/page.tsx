@@ -2,6 +2,7 @@ import Decimal from 'decimal.js';
 import { getFormatter, getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound, redirect } from 'next/navigation';
 
+import { BackLink } from '@/components/back-link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,6 +27,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<'/[l
 
   const { over } = await searchParams;
   const t = await getTranslations('orders');
+  const tBack = await getTranslations('back');
   const format = await getFormatter();
   const { orgId } = await requireOrg(locale);
 
@@ -77,6 +79,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<'/[l
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
+      <BackLink href={`/${locale}/orders`} label={tBack('orders')} />
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">{po.supplierName}</h1>
         <p className="text-muted-foreground text-sm">

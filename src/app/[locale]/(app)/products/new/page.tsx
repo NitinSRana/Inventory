@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 
+import { BackLink } from '@/components/back-link';
 import { ProductForm, productInputFrom } from '@/components/product-form';
 import { requireRole } from '@/server/auth/session';
 import { InvalidBarcodeError, createProduct } from '@/server/catalog/products';
@@ -19,6 +20,7 @@ export default async function NewProductPage({
 
   const { error } = await searchParams;
   const t = await getTranslations('products');
+  const tBack = await getTranslations('back');
   const { orgId } = await requireRole(locale, 'manager');
   const suppliers = await listSuppliers(orgId);
 
@@ -37,6 +39,7 @@ export default async function NewProductPage({
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-24">
+      <BackLink href={`/${locale}/products`} label={tBack('products')} />
       <h1 className="text-2xl font-semibold">{t('addTitle')}</h1>
       <ProductForm
         action={create}

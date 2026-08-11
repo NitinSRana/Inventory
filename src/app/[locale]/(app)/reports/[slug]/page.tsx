@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import { BackLink } from '@/components/back-link';
 import { buttonVariants } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { requireOrg } from '@/server/auth/session';
@@ -26,6 +27,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<'/[
   const period = PERIODS.includes(Number(days) as (typeof PERIODS)[number]) ? Number(days) : 30;
 
   const t = await getTranslations('reports');
+  const tBack = await getTranslations('back');
   const { orgId } = await requireOrg(locale);
   const report = await buildReport(orgId, reportSlug, period);
 
@@ -35,6 +37,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<'/[
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4">
+      <BackLink href={`/${locale}/reports`} label={tBack('reports')} />
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold">{t(`names.${reportSlug}`)}</h1>
         <p className="text-muted-foreground text-sm tabular-nums">
