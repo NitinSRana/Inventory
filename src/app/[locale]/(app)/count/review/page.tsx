@@ -24,7 +24,21 @@ export default async function CountReviewPage({ params }: PageProps<'/[locale]/c
   const { orgId } = await requireOrg(locale);
 
   const session = await getOpenSession(orgId);
-  if (!session) redirect(`/${locale}/count`);
+  // Rendered, not redirected. This URL is bookmarkable and survives a refresh,
+  // and a redirect issued after the shell has streamed leaves a blank screen
+  // until the client follows it.
+  if (!session) {
+    return (
+      <main className="flex flex-1 flex-col items-start gap-4 p-4">
+        <BackLink href={`/${locale}/count`} label={tBack('count')} />
+        <h1 className="text-xl font-semibold">{t('reviewTitle')}</h1>
+        <p className="text-muted-foreground text-sm">{t('noSession')}</p>
+        <Link href={`/${locale}/count`} className={buttonVariants({ className: 'h-12' })}>
+          {t('start')}
+        </Link>
+      </main>
+    );
+  }
 
   const [org] = await withTenant(orgId, (tx) => tx.select().from(organizations));
   const { summary, variances } = await getVarianceReport(orgId, session.id);
