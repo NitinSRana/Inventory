@@ -8,13 +8,15 @@ Tells a store owner **what's about to expire** and **what to order**, without th
 
 If a proposed feature doesn't serve that sentence, push back before building it.
 
-**There is no POS integration and no sales entry.** Stock changes only from receiving, waste, and cycle counts. Sales are *derived*, never recorded:
+**Stock changes from four events: receiving, waste, cycle counts, and POS sales.** A real till records sales automatically as a side effect of ringing something up — nobody types in 300-800 transactions a day, the checkout screen does it for them. That was always the constraint; manual entry was never the plan.
+
+POS-recorded sales are the **primary** signal for consumption and reorder math — they're exact, not inferred. Cycle counting no longer derives consumption; it's a **shrinkage audit**: the gap between what the ledger says should be on the shelf (given real sales) and what's physically counted, which is theft, spoilage, or a miscount. For a product with no POS sale history yet (new, or never rung up through the till), consumption still falls back to the count-to-count formula:
 
 ```
 consumption = opening count + receipts − waste − closing count
 ```
 
-Do not add a "record a sale" feature. A grocery store does 300-800 transactions a day; nobody will enter them, and stale numbers are worse than no system.
+Do not add manual per-sale data entry outside the checkout flow — someone typing in a till receipt after the fact is exactly the stale-numbers trap this was built to avoid.
 
 Full scope and rationale: `docs/mvp-spec.md`. Read it before proposing feature work.
 
@@ -83,7 +85,7 @@ pnpm db:test         # applies 0001_init.sql + 0001_init.test.sql to a scratch D
 
 ## Out of scope — ask before building
 
-POS integration, CSV sales import, per-sale entry, Stripe billing, self-serve signup, multi-location transfer UI, demand forecasting, label printing, native mobile apps, offline mode, supplier portal, accounting integrations.
+Real card/payment processing (Stripe Terminal or similar — checkout v1 records tender type only, cash/card, no actual processing), accounting integrations (Xero, DATEV, Exact), partial/line-level refunds (only whole-sale void ships), self-serve signup, multi-location transfer UI, demand forecasting, label printing, native mobile apps, offline mode, supplier portal.
 
 Several are planned for later. The schema already accommodates them — that's why they're safe to leave out now.
 
