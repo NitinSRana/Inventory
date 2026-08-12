@@ -64,6 +64,16 @@ values ('a0000000-0000-0000-0000-000000000005', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaa
 insert into public.purchase_order_lines (organization_id, purchase_order_id, product_id, quantity_ordered, quantity_received, unit_cost)
 values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a0000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000003', 60, 10, 0.78);
 
+-- One completed sale per org, standing alone (no stock_movements row) so it
+-- cannot disturb the +100/-10 = 90 arithmetic the checks above depend on.
+insert into public.sales (id, organization_id, location_id, sale_number, subtotal, vat_total, total, tender_type) values
+  ('a0000000-0000-0000-0000-000000000006', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a0000000-0000-0000-0000-000000000001', 'TXN-0001', 1.29, 0.09, 1.38, 'card'),
+  ('b0000000-0000-0000-0000-000000000004', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'b0000000-0000-0000-0000-000000000001', 'TXN-0001', 2.10, 0.15, 2.25, 'cash');
+
+insert into public.sale_lines (organization_id, sale_id, product_id, quantity, unit_price, vat_band, vat_amount, line_total) values
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a0000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000003', 1, 1.29, 'reduced', 0.09, 1.38),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'b0000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000003', 1, 2.10, 'reduced', 0.15, 2.25);
+
 -- =============================================================================
 -- Checks
 -- =============================================================================
@@ -146,6 +156,19 @@ begin
     raise exception 'FAIL: positive-quantity waste was accepted';
   end if;
   raise notice 'PASS  waste must be negative';
+
+  failed := false;
+  begin
+    insert into public.stock_movements
+      (organization_id, product_id, location_id, quantity_delta, movement_type, reference_type)
+    values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a0000000-0000-0000-0000-000000000003',
+            'a0000000-0000-0000-0000-000000000001', 5, 'consumption', 'sale');
+  exception when others then failed := true;
+  end;
+  if not failed then
+    raise exception 'FAIL: positive-quantity consumption was accepted';
+  end if;
+  raise notice 'PASS  consumption must be negative';
 
   failed := false;
   begin
@@ -306,6 +329,43 @@ begin
     raise exception 'FAIL: org A referenced org B''s product from the ledger';
   end if;
   raise notice 'PASS  cross-tenant foreign key reference blocked';
+
+  -- sales/sale_lines carry money and stock, so they get the same three checks:
+  -- row-count isolation, blocked cross-tenant insert, blocked cross-tenant FK
+  -- reference under the owning tenant's own context.
+  select count(*) into n from public.sales;
+  if n <> 1 then raise exception 'FAIL: org A sees % sales, expected 1', n; end if;
+  select count(*) into n from public.sale_lines;
+  if n <> 1 then raise exception 'FAIL: org A sees % sale_lines, expected 1', n; end if;
+  raise notice 'PASS  org A sees only its own sale';
+
+  failed := false;
+  begin
+    insert into public.sales (organization_id, location_id, sale_number, subtotal, vat_total, total, tender_type)
+    values ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'a0000000-0000-0000-0000-000000000001',
+            'SMUGGLED', 1, 0, 1, 'cash');
+  exception when others then failed := true;
+  end;
+  if not failed then
+    raise exception 'FAIL: org A planted a sale into org B';
+  end if;
+  raise notice 'PASS  cross-tenant sale INSERT blocked by WITH CHECK';
+
+  failed := false;
+  begin
+    insert into public.sale_lines
+      (organization_id, sale_id, product_id, quantity, unit_price, vat_band, vat_amount, line_total)
+    values (
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      'a0000000-0000-0000-0000-000000000006',  -- org A's own sale
+      'b0000000-0000-0000-0000-000000000003',  -- org B's product
+      1, 1, 'standard', 0, 1);
+  exception when others then failed := true;
+  end;
+  if not failed then
+    raise exception 'FAIL: org A referenced org B''s product from a sale line';
+  end if;
+  raise notice 'PASS  cross-tenant sale_lines foreign key reference blocked';
 
   -- Invitations are tenant data like anything else: org A must not see who org
   -- B is hiring, and must not be able to plant an invitation into org B.

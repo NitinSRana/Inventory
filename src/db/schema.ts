@@ -215,7 +215,7 @@ export const stockMovements = pgTable('stock_movements', {
   quantityDelta: numeric('quantity_delta', { precision: 14, scale: 3 }).notNull(),
   movementType: text('movement_type', { enum: MOVEMENT_TYPES }).notNull(),
   reasonCode: text('reason_code', { enum: REASON_CODES }),
-  referenceType: text('reference_type', { enum: ['purchase_order', 'count_session', 'manual'] }),
+  referenceType: text('reference_type', { enum: ['purchase_order', 'count_session', 'manual', 'sale'] }),
   referenceId: uuid('reference_id'),
   actorId: uuid('actor_id'),
   note: text('note'),
@@ -271,6 +271,49 @@ export const purchaseOrderLines = pgTable('purchase_order_lines', {
 }, (t) => ({
   poProduct: uniqueIndex('purchase_order_lines_purchase_order_id_product_id_key')
     .on(t.purchaseOrderId, t.productId),
+}));
+
+/* -------------------------------------------------------------------------- */
+/* Sales — POS checkout                                                        */
+/* -------------------------------------------------------------------------- */
+
+export const SALE_STATUSES = ['completed', 'voided'] as const;
+export const TENDER_TYPES = ['cash', 'card'] as const;
+
+export const sales = pgTable('sales', {
+  id: id(),
+  organizationId: orgId(),
+  locationId: uuid('location_id').notNull().references(() => locations.id, { onDelete: 'restrict' }),
+  saleNumber: text('sale_number').notNull(),
+  status: text('status', { enum: SALE_STATUSES }).notNull().default('completed'),
+  subtotal: numeric('subtotal', { precision: 12, scale: 4 }).notNull(),
+  vatTotal: numeric('vat_total', { precision: 12, scale: 4 }).notNull(),
+  total: numeric('total', { precision: 12, scale: 4 }).notNull(),
+  tenderType: text('tender_type', { enum: TENDER_TYPES }).notNull(),
+  soldBy: uuid('sold_by'),
+  voidedAt: timestamp('voided_at', { withTimezone: true }),
+  voidedBy: uuid('voided_by'),
+  ...timestamps,
+}, (t) => ({
+  orgNumber: uniqueIndex('sales_organization_id_sale_number_key').on(t.organizationId, t.saleNumber),
+  byStatus: index('sales_organization_id_status_idx').on(t.organizationId, t.status),
+  byTime: index('sales_organization_id_created_at_idx').on(t.organizationId, t.createdAt),
+}));
+
+export const saleLines = pgTable('sale_lines', {
+  id: id(),
+  organizationId: orgId(),
+  saleId: uuid('sale_id').notNull().references(() => sales.id, { onDelete: 'cascade' }),
+  productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'restrict' }),
+  quantity: numeric('quantity', { precision: 14, scale: 3 }).notNull(),
+  unitPrice: numeric('unit_price', { precision: 12, scale: 4 }).notNull(),
+  vatBand: text('vat_band', { enum: VAT_BANDS }).notNull(),
+  vatAmount: numeric('vat_amount', { precision: 12, scale: 4 }).notNull(),
+  lineTotal: numeric('line_total', { precision: 12, scale: 4 }).notNull(),
+  ...timestamps,
+}, (t) => ({
+  saleProduct: uniqueIndex('sale_lines_sale_id_product_id_key').on(t.saleId, t.productId),
+  byProduct: index('sale_lines_organization_id_product_id_idx').on(t.organizationId, t.productId),
 }));
 
 /* -------------------------------------------------------------------------- */
