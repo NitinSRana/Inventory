@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ne, sql } from 'drizzle-orm';
 
 import { countLines, countSessions, locations, products, stockMovements } from '@/db/schema';
 import { withTenant, type Tx } from '@/db/tenant';
@@ -23,6 +23,22 @@ async function defaultLocationId(tx: Tx): Promise<string> {
   return location.id;
 }
 
+/**
+ * Raised when a product is already on someone else's open count.
+ *
+ * Two sessions counting the same product each post a delta measured against the
+ * ledger as it stood when they scanned it, so both post the same correction and
+ * the second one moves the stock twice. Refusing the second scan is the only fix
+ * that keeps deltas — and deltas are what stop a count from erasing a delivery
+ * that landed mid-count.
+ */
+export class ProductAlreadyCountedError extends Error {
+  constructor(readonly sessionName: string | null) {
+    super(`Product is already on the open count ${sessionName ?? ''}`.trim());
+    this.name = 'ProductAlreadyCountedError';
+  }
+}
+
 export async function startCountSession(
   orgId: string,
   input: {
@@ -34,6 +50,24 @@ export async function startCountSession(
   } = {},
 ) {
   return withTenant(orgId, async (tx) => {
+    // Starting a second count as the same person used to strand the first: the
+    // page only ever resolved the newest one, so the earlier session and every
+    // line in it became unreachable. Hand back the open one instead.
+    if (input.startedBy) {
+      const [existing] = await tx
+        .select()
+        .from(countSessions)
+        .where(
+          and(
+            eq(countSessions.status, 'in_progress'),
+            eq(countSessions.startedBy, input.startedBy),
+          ),
+        )
+        .orderBy(desc(countSessions.startedAt))
+        .limit(1);
+      if (existing) return existing;
+    }
+
     const locationId = input.locationId ?? (await defaultLocationId(tx));
     const [session] = await tx
       .insert(countSessions)
@@ -50,12 +84,55 @@ export async function startCountSession(
   });
 }
 
-export async function getOpenSession(orgId: string) {
+/**
+ * Every count currently open, so one is never invisible.
+ *
+ * Without this a session belonging to someone who has gone home is unreachable
+ * and — because its products are locked to it — silently un-countable by anyone
+ * else. Whoever is on shift needs to be able to see it and close it.
+ */
+export async function listOpenSessions(orgId: string) {
+  return withTenant(orgId, (tx) =>
+    tx
+      .select({
+        id: countSessions.id,
+        name: countSessions.name,
+        startedAt: countSessions.startedAt,
+        startedBy: countSessions.startedBy,
+        lineCount: sql<number>`(
+          select count(*)::int from ${countLines} where ${countLines.countSessionId} = ${countSessions.id}
+        )`,
+      })
+      .from(countSessions)
+      .where(eq(countSessions.status, 'in_progress'))
+      .orderBy(desc(countSessions.startedAt)),
+  );
+}
+
+/**
+ * The count this person is in the middle of.
+ *
+ * Scoped to who started it, and that is load-bearing. It used to return the
+ * newest open session in the whole organization, so when a second person began
+ * counting a different aisle the first person's next scan silently landed in
+ * their colleague's session — and the first session, with everything already
+ * counted in it, became unreachable by any screen. Two staff counting at once is
+ * the normal case in a shop, so that was a guaranteed loss, not an edge case.
+ *
+ * `sessionId` overrides, for finishing a count somebody else left open.
+ */
+export async function getOpenSession(orgId: string, userId?: string | null, sessionId?: string) {
   const [session] = await withTenant(orgId, (tx) =>
     tx
       .select()
       .from(countSessions)
-      .where(eq(countSessions.status, 'in_progress'))
+      .where(
+        and(
+          eq(countSessions.status, 'in_progress'),
+          sessionId ? eq(countSessions.id, sessionId) : undefined,
+          !sessionId && userId ? eq(countSessions.startedBy, userId) : undefined,
+        ),
+      )
       .orderBy(desc(countSessions.startedAt))
       .limit(1),
   );
@@ -88,6 +165,24 @@ export async function recordCount(
       .limit(1);
     if (!session) throw new Error('Count session not found');
     if (session.status !== 'in_progress') throw new Error('Count session is not open');
+
+    // One product, one open count. Both sessions would measure their delta
+    // against the same starting number and both would post it, moving the stock
+    // twice for a shelf that was counted once — and the ledger would end up at a
+    // figure neither person wrote down.
+    const [clash] = await tx
+      .select({ name: countSessions.name })
+      .from(countLines)
+      .innerJoin(countSessions, eq(countSessions.id, countLines.countSessionId))
+      .where(
+        and(
+          eq(countLines.productId, input.productId),
+          eq(countSessions.status, 'in_progress'),
+          ne(countLines.countSessionId, input.countSessionId),
+        ),
+      )
+      .limit(1);
+    if (clash) throw new ProductAlreadyCountedError(clash.name);
 
     // Read the ledger directly rather than the view: this must see the same
     // snapshot as the transaction posting adjustments later.

@@ -4,10 +4,12 @@ import { before, describe, test } from 'node:test';
 import { createProduct } from '@/server/catalog/products';
 import { getDueForCount } from '@/server/counting/due';
 import {
+  ProductAlreadyCountedError,
   completeCountSession,
   getOpenSession,
   getSessionLines,
   getVarianceReport,
+  listOpenSessions,
   recordCount,
   startCountSession,
 } from '@/server/counting/sessions';
@@ -115,5 +117,92 @@ describe('cycle counting', () => {
     const other = await createTestOrg('Counting Rival');
     assert.equal(await getOpenSession(other.orgId), null);
     assert.deepEqual(await getDueForCount(other.orgId), []);
+  });
+
+  describe('two people counting at once', () => {
+    const anna = crypto.randomUUID();
+    const pawel = crypto.randomUUID();
+    let shop: TestOrg;
+    let milk: string;
+    let bread: string;
+
+    before(async () => {
+      shop = await createTestOrg('Two Counters');
+      milk = (await createProduct(shop.orgId, { name: 'Milch', gtin: '4012345678994', costPrice: '1.0000' })).id;
+      bread = (await createProduct(shop.orgId, { name: 'Brot', gtin: '4012345679007', costPrice: '2.0000' })).id;
+      for (const id of [milk, bread]) {
+        await receiveStock(shop.orgId, { productId: id, quantity: '40' });
+      }
+    });
+
+    test('a second person starting a count does not steal the first', async () => {
+      const annas = await startCountSession(shop.orgId, { name: 'Chiller', startedBy: anna });
+      const pawels = await startCountSession(shop.orgId, { name: 'Dry goods', startedBy: pawel });
+      assert.notEqual(annas.id, pawels.id, 'two people counting is the normal case, not a conflict');
+
+      // Each must come back to their own aisle. Resolving the newest session for
+      // everyone is what silently stranded the first person's work.
+      assert.equal((await getOpenSession(shop.orgId, anna))?.id, annas.id);
+      assert.equal((await getOpenSession(shop.orgId, pawel))?.id, pawels.id);
+    });
+
+    test('starting again returns the count already in progress', async () => {
+      const first = await getOpenSession(shop.orgId, anna);
+      const again = await startCountSession(shop.orgId, { name: 'Chiller', startedBy: anna });
+      assert.equal(again.id, first!.id, 'a second start must resume, not strand what is counted');
+    });
+
+    test('neither count is invisible', async () => {
+      const open = await listOpenSessions(shop.orgId);
+      assert.equal(open.length, 2);
+      assert.deepEqual(open.map((s) => s.name).sort(), ['Chiller', 'Dry goods']);
+    });
+
+    test('the same product cannot be on two open counts', async () => {
+      const annas = (await getOpenSession(shop.orgId, anna))!;
+      const pawels = (await getOpenSession(shop.orgId, pawel))!;
+
+      await recordCount(shop.orgId, {
+        countSessionId: annas.id,
+        productId: milk,
+        countedQuantity: '38',
+        countedBy: anna,
+      });
+
+      // Both sessions measure their delta against the ledger as it stands now,
+      // so letting this through posts -2 twice for a shelf counted once.
+      await assert.rejects(
+        () =>
+          recordCount(shop.orgId, {
+            countSessionId: pawels.id,
+            productId: milk,
+            countedQuantity: '38',
+            countedBy: pawel,
+          }),
+        ProductAlreadyCountedError,
+      );
+    });
+
+    test('both counts post, and the stock lands where it was counted', async () => {
+      const annas = (await getOpenSession(shop.orgId, anna))!;
+      const pawels = (await getOpenSession(shop.orgId, pawel))!;
+
+      await recordCount(shop.orgId, {
+        countSessionId: pawels.id,
+        productId: bread,
+        countedQuantity: '35',
+        countedBy: pawel,
+      });
+
+      await completeCountSession(shop.orgId, annas.id, anna);
+      await completeCountSession(shop.orgId, pawels.id, pawel);
+
+      const [milkStock] = await getProductStock(shop.orgId, milk);
+      const [breadStock] = await getProductStock(shop.orgId, bread);
+      assert.equal(Number(milkStock.quantity), 38, 'Anna counted 38 milk, so the ledger says 38');
+      assert.equal(Number(breadStock.quantity), 35, 'Pawel counted 35 bread, so the ledger says 35');
+
+      assert.deepEqual(await listOpenSessions(shop.orgId), [], 'both counts are closed');
+    });
   });
 });

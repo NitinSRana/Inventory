@@ -134,7 +134,14 @@
     "dueTitle": "{count, plural, one {# product due a count} other {# products due a count}}",
     "daysOver": "{days, plural, =0 {due today} one {# day over} other {# days over}}",
     "neverCounted": "never counted",
-    "andMore": "+{count} more"
+    "andMore": "+{count} more",
+    "taken": "Someone is already counting that product on {section}. Finish that count first, or carry on with something else.",
+    "takenUnnamed": "another count",
+    "otherCounts": "{count, plural, one {# other count open} other {# other counts open}}",
+    "otherCountsHint": "Started by someone else. Anything on their list cannot be counted twice.",
+    "openIt": "Open",
+    "linesCounted": "{count, plural, =0 {nothing counted} one {# counted} other {# counted}}",
+    "viewingOther": "You are finishing a count someone else started."
   },
   "reorder": {
     "title": "What to order",

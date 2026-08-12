@@ -11,7 +11,14 @@ import { trimQuantity } from '@/lib/quantity';
 import { requireOrg } from '@/server/auth/session';
 import { findProductByBarcode } from '@/server/catalog/products';
 import { getDueForCount } from '@/server/counting/due';
-import { getOpenSession, getSessionLines, recordCount, startCountSession } from '@/server/counting/sessions';
+import {
+  ProductAlreadyCountedError,
+  getOpenSession,
+  getSessionLines,
+  listOpenSessions,
+  recordCount,
+  startCountSession,
+} from '@/server/counting/sessions';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
 // behind auth is a cross-tenant leak waiting to happen.
@@ -21,11 +28,13 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const { gtin, notFound } = await searchParams;
+  const { gtin, notFound, session: sessionId, taken } = await searchParams;
   const t = await getTranslations('count');
-  const { orgId } = await requireOrg(locale);
+  const { orgId, userId } = await requireOrg(locale);
 
-  const session = await getOpenSession(orgId);
+  // Your own count, unless you have explicitly opened someone else's to finish it.
+  const session = await getOpenSession(orgId, userId, typeof sessionId === 'string' ? sessionId : undefined);
+  const otherCounts = (await listOpenSessions(orgId)).filter((s) => s.id !== session?.id);
 
   async function start(formData: FormData) {
     'use server';
@@ -51,6 +60,25 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
             {t('start')}
           </Button>
         </form>
+
+      {otherCounts.length > 0 && (
+        <section className="flex flex-col gap-2 border-t pt-4">
+          <h2 className="text-sm font-medium">{t('otherCounts', { count: otherCounts.length })}</h2>
+          <p className="text-muted-foreground text-sm">{t('otherCountsHint')}</p>
+          {/* Reachable, or a count left open by someone who went home would lock
+              its products out of every future count with no way to clear it. */}
+          <DataList>
+            {otherCounts.map((s) => (
+              <DataRow
+                key={s.id}
+                href={`/${locale}/count?session=${s.id}`}
+                title={s.name ?? t('title')}
+                subtitle={t('linesCounted', { count: s.lineCount })}
+              />
+            ))}
+          </DataList>
+        </section>
+      )}
 
         {due.length > 0 && (
           <section className="flex flex-col gap-2 border-t pt-4">
@@ -86,12 +114,22 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
   async function save(formData: FormData) {
     'use server';
     const { orgId, userId } = await requireOrg(locale);
-    await recordCount(orgId, {
-      countSessionId: String(formData.get('countSessionId')),
-      productId: String(formData.get('productId')),
-      countedQuantity: String(formData.get('countedQuantity') ?? '').trim(),
-      countedBy: userId,
-    });
+    const countSessionId = String(formData.get('countSessionId'));
+    try {
+      await recordCount(orgId, {
+        countSessionId,
+        productId: String(formData.get('productId')),
+        countedQuantity: String(formData.get('countedQuantity') ?? '').trim(),
+        countedBy: userId,
+      });
+    } catch (e) {
+      // Somebody else has this product on their count. Say whose, so the answer
+      // is "go and ask Pawel", not "the app is broken".
+      if (e instanceof ProductAlreadyCountedError) {
+        redirect(`/${locale}/count?taken=${encodeURIComponent(e.sessionName ?? '')}`);
+      }
+      throw e;
+    }
     // Straight back to an empty scanner: the next item is already in hand.
     redirect(`/${locale}/count`);
   }
@@ -112,6 +150,16 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
           {t('countedSoFar', { count: lines.length })}
         </span>
       </div>
+
+      {taken !== undefined && (
+        <p role="alert" className="text-warning text-sm">
+          {t('taken', { section: String(taken) || t('takenUnnamed') })}
+        </p>
+      )}
+
+      {sessionId && (
+        <p className="text-muted-foreground text-sm">{t('viewingOther')}</p>
+      )}
 
       {product ? (
         // Step two: quantity. Autofocused, numeric keypad, one action.
@@ -173,8 +221,27 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
         </section>
       )}
 
+      {otherCounts.length > 0 && (
+        <section className="flex flex-col gap-2 border-t pt-4">
+          <h2 className="text-sm font-medium">{t('otherCounts', { count: otherCounts.length })}</h2>
+          <p className="text-muted-foreground text-sm">{t('otherCountsHint')}</p>
+          {/* Reachable, or a count left open by someone who went home would lock
+              its products out of every future count with no way to clear it. */}
+          <DataList>
+            {otherCounts.map((s) => (
+              <DataRow
+                key={s.id}
+                href={`/${locale}/count?session=${s.id}`}
+                title={s.name ?? t('title')}
+                subtitle={t('linesCounted', { count: s.lineCount })}
+              />
+            ))}
+          </DataList>
+        </section>
+      )}
+
       <Link
-        href={`/${locale}/count/review`}
+        href={`/${locale}/count/review?session=${session.id}`}
         className={buttonVariants({ variant: 'outline', className: 'h-11 w-fit' })}
       >
         {t('review')}

@@ -20,16 +20,23 @@ import { completeCountSession, getOpenSession, getVarianceReport } from '@/serve
 // behind auth is a cross-tenant leak waiting to happen.
 export const dynamic = 'force-dynamic';
 
-export default async function CountReviewPage({ params }: PageProps<'/[locale]/count/review'>) {
+export default async function CountReviewPage({
+  params,
+  searchParams,
+}: PageProps<'/[locale]/count/review'>) {
   const { locale } = await params;
   setRequestLocale(locale);
 
   const t = await getTranslations('count');
   const tBack = await getTranslations('back');
   const format = await getFormatter();
-  const { orgId } = await requireOrg(locale);
+  const { session: sessionParam } = await searchParams;
+  const { orgId, userId } = await requireOrg(locale);
 
-  const session = await getOpenSession(orgId);
+  // The count being finished is named in the URL, so this page is bookmarkable
+  // and so finishing someone else's count reviews theirs, not yours.
+  const sessionId = typeof sessionParam === 'string' ? sessionParam : undefined;
+  const session = await getOpenSession(orgId, userId, sessionId);
   // Rendered, not redirected. This URL is bookmarkable and survives a refresh,
   // and a redirect issued after the shell has streamed leaves a blank screen
   // until the client follows it.
@@ -53,7 +60,9 @@ export default async function CountReviewPage({ params }: PageProps<'/[locale]/c
   async function complete() {
     'use server';
     const { orgId, userId } = await requireOrg(locale);
-    const open = await getOpenSession(orgId);
+    // Re-resolved by id inside the action: posting adjustments must close the
+    // count that was on screen, never whichever one happens to be newest.
+    const open = await getOpenSession(orgId, userId, sessionId);
     if (open) {
       await completeCountSession(orgId, open.id, userId);
       // A completed count is exactly what makes a new rate computable, so
