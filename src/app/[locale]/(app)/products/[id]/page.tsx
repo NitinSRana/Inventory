@@ -5,6 +5,7 @@ import { ProductForm, productInputFrom } from '@/components/product-form';
 import { BackLink } from '@/components/back-link';
 import { Button } from '@/components/ui/button';
 import { requireRole } from '@/server/auth/session';
+import { listCategories } from '@/server/catalog/categories';
 import { InvalidBarcodeError, deactivateProduct, getProduct, updateProduct } from '@/server/catalog/products';
 import { listSuppliers } from '@/server/catalog/suppliers';
 import { PageTitle } from '@/components/data-list';
@@ -29,7 +30,7 @@ export default async function EditProductPage({
   const product = await getProduct(orgId, id);
   if (!product) notFound();
 
-  const suppliers = await listSuppliers(orgId);
+  const [suppliers, categories] = await Promise.all([listSuppliers(orgId), listCategories(orgId)]);
 
   async function save(formData: FormData) {
     'use server';
@@ -59,6 +60,7 @@ export default async function EditProductPage({
       <ProductForm
         action={save}
         suppliers={suppliers}
+        categories={categories}
         defaults={product}
         error={typeof error === 'string' ? error : undefined}
       />

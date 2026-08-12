@@ -13,16 +13,19 @@ type Defaults = {
   sellPrice?: string | null;
   shelfLifeDays?: number | null;
   supplierId?: string | null;
+  categoryId?: string | null;
 };
 
 export async function ProductForm({
   action,
   suppliers,
+  categories,
   defaults = {},
   error,
 }: {
   action: (formData: FormData) => Promise<void>;
   suppliers: { id: string; name: string }[];
+  categories: { id: string; name: string }[];
   defaults?: Defaults;
   error?: string;
 }) {
@@ -103,6 +106,17 @@ export async function ProductForm({
         </NativeSelect>
       </Field>
 
+      <Field name="categoryId" label={t('category')}>
+        <NativeSelect id="categoryId" name="categoryId" defaultValue={defaults.categoryId ?? ''}>
+          <option value="">{t('noCategory')}</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </NativeSelect>
+      </Field>
+
       {error === 'unknown' && (
         <p role="alert" className="text-destructive text-sm">
           {t('saveFailed')}
@@ -133,6 +147,7 @@ export function productInputFrom(formData: FormData) {
     costPrice: value('costPrice'),
     sellPrice: value('sellPrice'),
     supplierId: value('supplierId'),
+    categoryId: value('categoryId'),
     shelfLifeDays: value('shelfLifeDays') ? Number(value('shelfLifeDays')) : null,
   };
 }

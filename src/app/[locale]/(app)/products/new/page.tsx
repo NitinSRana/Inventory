@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { BackLink } from '@/components/back-link';
 import { ProductForm, productInputFrom } from '@/components/product-form';
 import { requireRole } from '@/server/auth/session';
+import { listCategories } from '@/server/catalog/categories';
 import { InvalidBarcodeError, createProduct } from '@/server/catalog/products';
 import { listSuppliers } from '@/server/catalog/suppliers';
 import { PageTitle } from '@/components/data-list';
@@ -23,7 +24,7 @@ export default async function NewProductPage({
   const t = await getTranslations('products');
   const tBack = await getTranslations('back');
   const { orgId } = await requireRole(locale, 'manager');
-  const suppliers = await listSuppliers(orgId);
+  const [suppliers, categories] = await Promise.all([listSuppliers(orgId), listCategories(orgId)]);
 
   async function create(formData: FormData) {
     'use server';
@@ -45,6 +46,7 @@ export default async function NewProductPage({
       <ProductForm
         action={create}
         suppliers={suppliers}
+        categories={categories}
         error={typeof error === 'string' ? error : undefined}
       />
     </main>

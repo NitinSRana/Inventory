@@ -89,7 +89,9 @@
     "saveFailed": "Couldn't save that. Check the fields and try again.",
     "loadFailed": "Couldn't load products.",
     "retry": "Try again",
-    "import": "Import from CSV"
+    "import": "Import from CSV",
+    "category": "Category",
+    "noCategory": "No category"
   },
   "home": {
     "signedOut": "Not signed in",
@@ -106,7 +108,7 @@
     "pitch": {
       "expiry": "See what is about to expire, worst value first.",
       "reorder": "Get told what to order, from your own consumption.",
-      "noPos": "No till integration. Nothing to type in at the checkout."
+      "autoStock": "Every sale updates stock automatically. Nothing to count by hand."
     }
   },
   "count": {
@@ -366,7 +368,8 @@
       "orders": "Purchase orders",
       "reports": "Reports",
       "team": "Team",
-      "vat": "VAT rates"
+      "vat": "VAT rates",
+      "categories": "Categories"
     }
   },
   "errors": {
@@ -383,7 +386,8 @@
     "orders": "Orders",
     "reports": "Reports",
     "count": "Count",
-    "more": "More"
+    "more": "More",
+    "categories": "Categories"
   },
   "firstRun": {
     "title": "Get set up",
@@ -405,6 +409,26 @@
         "body": "Count the same products twice and the app works out how fast they sell.",
         "action": "Start a count"
       }
+    }
+  },
+  "categories": {
+    "title": "Categories",
+    "addTitle": "Add category",
+    "empty": "No categories yet",
+    "emptyBody": "Group products so counts can be scoped to a section and reports can break down by it.",
+    "add": "Add category",
+    "name": "Name",
+    "countFrequency": "Default count frequency",
+    "countFrequencyHint": "New products in this category start with this frequency. Each product can still be changed individually.",
+    "save": "Save",
+    "delete": "Delete category",
+    "deleteWarning": "{count, plural, one {# product will lose this category.} other {# products will lose this category.}}",
+    "saveFailed": "Couldn't save that. A category with this name may already exist.",
+    "frequencies": {
+      "weekly": "Weekly",
+      "biweekly": "Every two weeks",
+      "monthly": "Monthly",
+      "quarterly": "Quarterly"
     }
   }
 }

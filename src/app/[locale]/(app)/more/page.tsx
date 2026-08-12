@@ -6,6 +6,7 @@ import {
   Package,
   Percent,
   ShoppingCart,
+  Tag,
   Truck,
   Users,
 } from 'lucide-react';
@@ -25,6 +26,7 @@ const SECTIONS = [
     items: [
       { path: 'products', key: 'products', Icon: Package, needs: 'staff' },
       { path: 'suppliers', key: 'suppliers', Icon: Truck, needs: 'staff' },
+      { path: 'categories', key: 'categories', Icon: Tag, needs: 'manager' },
     ],
   },
   {

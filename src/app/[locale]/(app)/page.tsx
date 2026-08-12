@@ -25,7 +25,7 @@ export default async function HomePage({ params, searchParams }: PageProps<'/[lo
   // navigate — so this screen has to stand on its own rather than be two words
   // on white.
   if (session.status === 'signedOut') {
-    const points = ['expiry', 'reorder', 'noPos'] as const;
+    const points = ['expiry', 'reorder', 'autoStock'] as const;
     return (
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-8 p-6">
         <div className="flex flex-col gap-3">
