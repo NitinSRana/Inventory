@@ -2,6 +2,12 @@ import { defineConfig, devices } from '@playwright/test';
 
 import { STORAGE_STATE } from './e2e/session';
 
+// An empty string is not an address. `??` would accept one and every navigation
+// would fail with "cannot navigate to invalid URL", which reads like a browser
+// fault rather than a missing variable.
+const EXTERNAL = process.env.E2E_BASE_URL || undefined;
+const LOCAL = 'http://localhost:3000';
+
 /**
  * End-to-end regression tests.
  *
@@ -23,7 +29,7 @@ export default defineConfig({
   expect: { timeout: 15_000 },
 
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3000',
+    baseURL: EXTERNAL ?? LOCAL,
     // Every page here is used one-handed on a phone; test it at that size.
     ...devices['Pixel 7'],
     trace: 'retain-on-failure',
@@ -47,12 +53,14 @@ export default defineConfig({
     },
   ],
 
-  webServer: process.env.E2E_BASE_URL
+  webServer: EXTERNAL
     ? undefined
     : {
         command: 'pnpm dev',
-        url: 'http://localhost:3000/en/sign-in',
-        reuseExistingServer: true,
+        url: `${LOCAL}/en/sign-in`,
+        // CI starts from nothing and must not inherit a stray server; locally,
+        // reusing the one already running saves a minute per run.
+        reuseExistingServer: !process.env.CI,
         timeout: 120_000,
       },
 });

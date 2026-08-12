@@ -12,7 +12,8 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Two Postgres instances, a production build and a browser run.
+    timeout-minutes: 25
 
     steps:
       - uses: actions/checkout@v4
@@ -52,3 +53,34 @@ jobs:
           DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build
           NEXT_PUBLIC_SUPABASE_URL: https://build.invalid
           NEXT_PUBLIC_SUPABASE_ANON_KEY: build-placeholder
+
+      # Only the browser this project uses, and without the OS packages Chromium
+      # normally drags in: ubuntu-latest already has them.
+      - name: Install Chromium
+        run: pnpm exec playwright install chromium
+
+      # Signed-out routing, driven through a real browser. Runs against a
+      # placeholder Supabase because nothing here reaches it: an unauthenticated
+      # visitor is redirected before any query, which is exactly the claim under
+      # test. So this needs no secrets either, and stays runnable by anyone who
+      # clones the repo.
+      #
+      # The five daily-loop flows are the `flows` project and are deliberately
+      # not here — they need a real signed-in session, and the only honest way to
+      # get one is a magic link. See the README.
+      - name: End-to-end (signed out)
+        run: pnpm test:e2e --project=public
+        env:
+          DATABASE_URL: postgresql://e2e:e2e@127.0.0.1:5432/e2e
+          NEXT_PUBLIC_SUPABASE_URL: https://e2e.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: e2e-placeholder
+
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
