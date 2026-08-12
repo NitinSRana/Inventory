@@ -176,6 +176,49 @@ end
 $t$;
 
 -- -----------------------------------------------------------------------------
+-- ON DELETE SET NULL on a composite foreign key must clear only the intended
+-- column, never organization_id. Unqualified SET NULL on a multi-column key
+-- nulls every column in it, which would violate products/categories' NOT NULL
+-- organization_id the first time anything actually deleted a category or a
+-- supplier — a codepath 0003 introduced but nothing exercised until now.
+-- -----------------------------------------------------------------------------
+do $t$
+declare
+  cat_id uuid;
+  prod_id uuid;
+  remaining_org uuid;
+  remaining_category uuid;
+begin
+  insert into public.categories (organization_id, name)
+  values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Delete Me')
+  returning id into cat_id;
+
+  insert into public.products
+    (organization_id, gtin, name, unit, category_id, supplier_id)
+  values
+    ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '4001234567999', 'FK Test Product', 'each',
+     cat_id, 'a0000000-0000-0000-0000-000000000002')
+  returning id into prod_id;
+
+  delete from public.categories where id = cat_id;
+
+  select organization_id, category_id into remaining_org, remaining_category
+    from public.products where id = prod_id;
+
+  if remaining_org is null then
+    raise exception 'FAIL: deleting a category nulled products.organization_id';
+  end if;
+  if remaining_category is not null then
+    raise exception 'FAIL: deleting a category did not clear products.category_id';
+  end if;
+  raise notice 'PASS  deleting a category clears only category_id, not organization_id';
+
+  -- Scratch product, not the fixture data later checks count against.
+  delete from public.products where id = prod_id;
+end
+$t$;
+
+-- -----------------------------------------------------------------------------
 -- RLS isolation — must run as a NON-superuser
 -- -----------------------------------------------------------------------------
 
