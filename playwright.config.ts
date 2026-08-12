@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+import { STORAGE_STATE } from './e2e/session';
+
 /**
  * End-to-end regression tests.
  *
@@ -41,7 +43,7 @@ export default defineConfig({
       name: 'flows',
       testMatch: /daily-loop\.spec\.ts/,
       dependencies: ['setup'],
-      use: { storageState: 'e2e/.auth/owner.json' },
+      use: { storageState: STORAGE_STATE },
     },
   ],
 

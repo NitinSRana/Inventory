@@ -69,9 +69,20 @@ data**: role and label selectors going in, the `stock_movements` ledger coming
 back out. A screen that says "Delivery recorded" while writing nothing fails
 here. Nothing asserts on markup, so the visual rebuild cannot break them.
 
-The full run needs a seeded `Demo Grocer` (`pnpm seed <email>`) and
-`ADMIN_DATABASE_URL`, which is how the suite mints a one-time sign-in token
-instead of waiting on an inbox. The `public` project needs neither.
+Assertions run as `app_runtime`, the same NOBYPASSRLS role the app uses, so a
+test cannot see a row the product could not.
+
+Sign-in is a magic link, so the suite cannot type its way in. Either:
+
+```bash
+pnpm e2e:session   # opens a browser, you sign in once, session is saved
+```
+
+or set `ADMIN_DATABASE_URL`, in which case the suite mints its own one-time
+token and redeems it through `/auth/confirm`. Both give a genuine session —
+there is no test-only authentication bypass in the app, deliberately, because
+that is the one hole this suite could never catch. The `public` project needs
+neither.
 
 ## How it is put together
 

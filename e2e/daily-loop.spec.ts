@@ -1,12 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import {
-  closeDb,
-  demoOrgId,
-  latestMovement,
-  productByName,
-  stockOnHand,
-} from './helpers';
+import { closeDb, currentOrgId, latestMovement, productByName, stockOnHand } from './helpers';
 
 /**
  * The five things a shop does every day.
@@ -26,7 +20,7 @@ let orgId: string;
 let product: { id: string; gtin: string; name: string };
 
 test.beforeAll(async () => {
-  orgId = await demoOrgId();
+  orgId = await currentOrgId();
   product = await productByName(orgId, PRODUCT);
 });
 
