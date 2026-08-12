@@ -194,4 +194,40 @@ describe('reorder suggestions', () => {
     const { withoutRate } = await getReorderSuggestions(org.orgId);
     assert.ok(withoutRate >= 1, 'silence would read as "nothing to order"');
   });
+
+  // Last in the block on purpose: it puts a second product into `groups`,
+  // which the two tests above assert exact group state against. Anything
+  // after this one would inherit that and needs to account for it.
+  test('real sales override the count-window inference, never both', async () => {
+    const posProductId = (
+      await createProduct(org.orgId, { name: 'POS Override Test', gtin: '4006381333948', supplierId })
+    ).id;
+
+    // Same count-window recipe as the shared fixture at the top of this
+    // block: establishes a real 3/day count-derived rate this test then has
+    // to actually override.
+    await receiveStock(org.orgId, { productId: posProductId, quantity: '20', expiryDate: '2026-12-01', occurredAt: daysAgo(11) });
+    const first = await startCountSession(org.orgId, { name: 'POS W1' });
+    await recordCount(org.orgId, { countSessionId: first.id, productId: posProductId, countedQuantity: '20' });
+    await completeCountSession(org.orgId, first.id);
+    await adminSql`update count_lines set counted_at = ${daysAgo(10)}
+                   where count_session_id = ${first.id}`;
+    const second = await startCountSession(org.orgId, { name: 'POS W2' });
+    await recordCount(org.orgId, { countSessionId: second.id, productId: posProductId, countedQuantity: '10' });
+    await completeCountSession(org.orgId, second.id);
+    await recalculateConsumptionRates(org.orgId);
+
+    // 7 units consumed across three separate days inside the trailing 14-day
+    // window => 7/14 = 0.5/day, unmistakably different from the 3/day above.
+    await adminSql`insert into stock_movements
+      (organization_id, product_id, location_id, quantity_delta, movement_type, reference_type, occurred_at)
+      values
+        (${org.orgId}, ${posProductId}, ${org.locationId}, '-3', 'consumption', 'sale', ${daysAgo(6)}),
+        (${org.orgId}, ${posProductId}, ${org.locationId}, '-2', 'consumption', 'sale', ${daysAgo(4)}),
+        (${org.orgId}, ${posProductId}, ${org.locationId}, '-2', 'consumption', 'sale', ${daysAgo(1)})`;
+
+    const { groups } = await getReorderSuggestions(org.orgId);
+    const line = groups.flatMap((g) => g.lines).find((l) => l.productId === posProductId)!;
+    assert.equal(line.dailyRate, '0.5000', 'the count-window rate must not still be in effect');
+  });
 });

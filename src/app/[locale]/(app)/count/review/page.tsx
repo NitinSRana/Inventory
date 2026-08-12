@@ -81,16 +81,28 @@ export default async function CountReviewPage({
         <EmptyState icon={CheckCircle2} title={t('noVariance')} />
       ) : (
         <>
-          {/* Net value first — it is the number the owner acts on. */}
+          {/* Shrinkage first when there is any: the gap between what real sales
+              say should be on the shelf and what's actually there is the reason
+              counting still exists once POS supplies consumption. Found stock
+              leads only when nothing is missing. */}
           <HeadlineFigure
-            label={t('netImpact')}
-            value={money(summary.netValue)}
+            label={summary.linesShort > 0 ? t('shrinkValue') : t('gainValue')}
+            value={money(summary.linesShort > 0 ? summary.shrinkValue : summary.gainValue)}
+            className={summary.linesShort > 0 ? 'text-destructive' : undefined}
             caption={
-              <span className="tabular-nums">
-                {t('varianceCount', { count: summary.linesWithVariance })}
+              <span className="flex flex-col gap-1">
+                <span className="tabular-nums">
+                  {t('varianceCount', { count: summary.linesWithVariance })}
+                </span>
+                <span>{summary.linesShort > 0 ? t('shrinkHint') : t('gainHint')}</span>
               </span>
             }
           />
+          {summary.linesShort > 0 && summary.linesOver > 0 && (
+            <p className="text-muted-foreground text-sm tabular-nums">
+              {t('netImpact')}: {money(summary.netValue)}
+            </p>
+          )}
 
           <DataList>
             {variances.map((v) => {
