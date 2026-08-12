@@ -4,9 +4,9 @@ import { redirect } from 'next/navigation';
 
 import { DataList, DataRow, PageTitle } from '@/components/data-list';
 import { BarcodeField } from '@/components/barcode-field';
+import { Field, StickyAction } from '@/components/form';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { trimQuantity } from '@/lib/quantity';
 import { requireOrg } from '@/server/auth/session';
 import { findProductByBarcode } from '@/server/catalog/products';
@@ -44,10 +44,9 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
         <PageTitle caption={t('noSession')}>{t('title')}</PageTitle>
 
         <form action={start} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="name">{t('sectionLabel')}</Label>
+          <Field name="name" label={t('sectionLabel')}>
             <Input id="name" name="name" placeholder={t('sectionPlaceholder')} className="h-12" />
-          </div>
+          </Field>
           <Button type="submit" className="h-12 w-fit">
             {t('start')}
           </Button>
@@ -123,8 +122,7 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
             <span className="text-lg font-medium">{product.name}</span>
             <span className="text-muted-foreground font-mono text-xs">{product.gtin}</span>
           </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="countedQuantity">{t('countedLabel', { unit: product.unit })}</Label>
+          <Field name="countedQuantity" label={t('countedLabel', { unit: product.unit })}>
             <Input
               id="countedQuantity"
               name="countedQuantity"
@@ -133,10 +131,12 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
               autoFocus
               className="h-14 text-right text-lg tabular-nums"
             />
-          </div>
-          <Button type="submit" className="fixed inset-x-4 bottom-20 sm:bottom-6 h-12 sm:static sm:w-fit">
-            {t('saveAndNext')}
-          </Button>
+          </Field>
+          <StickyAction>
+            <Button type="submit" className="h-12 w-full sm:w-fit">
+              {t('saveAndNext')}
+            </Button>
+          </StickyAction>
         </form>
       ) : (
         // Step one: identify. Field is live on load so a scanner gun or a thumb

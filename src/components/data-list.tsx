@@ -51,6 +51,7 @@ export function DataRow({
   valueClassName = '',
   tall = false,
   tinted = false,
+  wrap = false,
 }: {
   href?: string;
   title: React.ReactNode;
@@ -61,12 +62,19 @@ export function DataRow({
   tall?: boolean;
   /** For over-delivery and below-minimum rows — money at risk, stated in place. */
   tinted?: boolean;
+  /**
+   * Let the left column wrap instead of truncating. For rows whose subtitle is
+   * a sentence that has to be read — a report's blurb — rather than an
+   * identifier that only has to be recognised, like a barcode.
+   */
+  wrap?: boolean;
 }) {
+  const clip = wrap ? '' : 'truncate';
   const body = (
     <>
       <div className="flex min-w-0 flex-col gap-0.5">
-        <span className="truncate text-base font-medium">{title}</span>
-        {subtitle && <span className="text-muted-foreground truncate text-sm">{subtitle}</span>}
+        <span className={`text-base font-medium ${clip}`}>{title}</span>
+        {subtitle && <span className={`text-muted-foreground text-sm ${clip}`}>{subtitle}</span>}
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <div className="flex flex-col items-end gap-0.5">

@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { BarcodeField } from '@/components/barcode-field';
+import { Field, FieldRow, StickyAction } from '@/components/form';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { trimQuantity } from '@/lib/quantity';
 import { requireOrg } from '@/server/auth/session';
 import { findProductByBarcode } from '@/server/catalog/products';
@@ -112,20 +112,27 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
             </span>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="quantity">{t('quantity', { unit: product.unit })}</Label>
+          {/* The one number typed while holding the box: taller than the rest. */}
+          <Field name="quantity" label={t('quantity', { unit: product.unit })}>
             <Input
               id="quantity"
               name="quantity"
               inputMode="decimal"
               required
               autoFocus
-              className="h-12 text-right tabular-nums"
+              className="h-14 text-right text-lg tabular-nums"
             />
-          </div>
+          </Field>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="expiryDate">{t('expiry')}</Label>
+          <Field
+            name="expiryDate"
+            label={t('expiry')}
+            hint={
+              product.shelfLifeDays != null
+                ? t('expiryHint', { days: product.shelfLifeDays })
+                : undefined
+            }
+          >
             {/* Native date input: the OS picker beats any calendar widget on a
                 phone, and it is one less thing to ship. */}
             <Input
@@ -135,20 +142,13 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
               defaultValue={suggestedExpiry}
               className="h-12"
             />
-            {product.shelfLifeDays != null && (
-              <p className="text-muted-foreground text-xs">
-                {t('expiryHint', { days: product.shelfLifeDays })}
-              </p>
-            )}
-          </div>
+          </Field>
 
-          <div className="flex gap-3">
-            <div className="flex flex-1 flex-col gap-2">
-              <Label htmlFor="lotNumber">{t('lot')}</Label>
+          <FieldRow>
+            <Field name="lotNumber" label={t('lot')}>
               <Input id="lotNumber" name="lotNumber" autoComplete="off" className="h-12 font-mono" />
-            </div>
-            <div className="flex flex-1 flex-col gap-2">
-              <Label htmlFor="unitCost">{t('unitCost')}</Label>
+            </Field>
+            <Field name="unitCost" label={t('unitCost')}>
               <Input
                 id="unitCost"
                 name="unitCost"
@@ -156,8 +156,8 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
                 defaultValue={product.costPrice ?? ''}
                 className="h-12 text-right tabular-nums"
               />
-            </div>
-          </div>
+            </Field>
+          </FieldRow>
 
           {error && (
             <p role="alert" className="text-destructive text-sm">
@@ -165,9 +165,11 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
             </p>
           )}
 
-          <Button type="submit" className="fixed inset-x-4 bottom-20 sm:bottom-6 h-12 sm:static sm:w-fit">
-            {t('submit')}
-          </Button>
+          <StickyAction>
+            <Button type="submit" className="h-12 w-full sm:w-fit">
+              {t('submit')}
+            </Button>
+          </StickyAction>
         </form>
       )}
     </main>

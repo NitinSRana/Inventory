@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { BackLink } from '@/components/back-link';
+import { Field, StickyAction } from '@/components/form';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { requireRole } from '@/server/auth/session';
 import { importProductsCsv, type RowError } from '@/server/catalog/import';
 import { PageTitle } from '@/components/data-list';
@@ -132,8 +132,7 @@ export default async function ImportPage({ params, searchParams }: PageProps<'/[
       )}
 
       <form action={upload} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="file">{t('fileLabel')}</Label>
+        <Field name="file" label={t('fileLabel')}>
           {/* Native file input: the OS picker already handles cloud drives and
               recent files better than anything worth building. */}
           <input
@@ -144,7 +143,7 @@ export default async function ImportPage({ params, searchParams }: PageProps<'/[
             required
             className="border-input file:bg-muted file:text-foreground h-12 w-full rounded-lg border bg-transparent px-3 py-2 text-sm file:mr-3 file:h-8 file:rounded-md file:border-0 file:px-3"
           />
-        </div>
+        </Field>
 
         <details className="text-sm">
           <summary className="cursor-pointer py-2">{t('formatTitle')}</summary>
@@ -161,9 +160,11 @@ export default async function ImportPage({ params, searchParams }: PageProps<'/[
           </div>
         </details>
 
-        <Button type="submit" className="fixed inset-x-4 bottom-20 sm:bottom-6 h-12 sm:static sm:w-fit">
-          {t('submit')}
-        </Button>
+        <StickyAction>
+          <Button type="submit" className="h-12 w-full sm:w-fit">
+            {t('submit')}
+          </Button>
+        </StickyAction>
       </form>
     </main>
   );

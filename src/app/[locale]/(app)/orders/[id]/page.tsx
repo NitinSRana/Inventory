@@ -3,11 +3,11 @@ import { getFormatter, getTranslations, setRequestLocale } from 'next-intl/serve
 import { notFound, redirect } from 'next/navigation';
 
 import { BackLink } from '@/components/back-link';
-import { PageTitle } from '@/components/data-list';
+import { DataList, DataRow, PageTitle } from '@/components/data-list';
+import { Field, FieldRow, StickyAction } from '@/components/form';
 import { trimQuantity } from '@/lib/quantity';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 import { requireOrg, requireRole } from '@/server/auth/session';
@@ -99,29 +99,28 @@ export default async function OrderPage({ params, searchParams }: PageProps<'/[l
         </p>
       )}
 
-      <ul className="flex flex-col gap-2">
+      <DataList>
         {po.lines.map((l) => {
           const short = new Decimal(l.quantityOrdered).greaterThan(l.quantityReceived);
           return (
-            <li key={l.id} className="flex items-start justify-between gap-3 rounded-lg border p-3">
-              <div className="flex min-w-0 flex-col gap-0.5">
-                <span className="truncate font-medium">{l.productName}</span>
-                <span className="text-muted-foreground text-xs tabular-nums">
+            <DataRow
+              key={l.id}
+              title={l.productName}
+              subtitle={
+                <span className="tabular-nums">
                   {t('receivedOfOrdered', {
                     received: trimQuantity(l.quantityReceived),
                     ordered: trimQuantity(l.quantityOrdered),
                     unit: l.unit,
                   })}
                 </span>
-              </div>
-              {/* Outstanding stated in words, not implied by a colour. */}
-              <span className="text-muted-foreground shrink-0 text-xs">
-                {short ? t('outstanding') : t('complete')}
-              </span>
-            </li>
+              }
+              // Outstanding stated in words, not implied by a colour.
+              meta={short ? t('outstanding') : t('complete')}
+            />
           );
         })}
-      </ul>
+      </DataList>
 
       {po.status === 'draft' && (
         <form action={send} className="flex flex-col gap-2">
@@ -151,11 +150,8 @@ export default async function OrderPage({ params, searchParams }: PageProps<'/[l
             <fieldset key={l.id} className="flex flex-col gap-2 rounded-lg border p-3">
               <legend className="px-1 text-sm font-medium">{l.productName}</legend>
 
-              <div className="flex gap-3">
-                <div className="flex flex-1 flex-col gap-1">
-                  <Label htmlFor={`qty:${l.id}`} className="text-xs">
-                    {t('quantity')}
-                  </Label>
+              <FieldRow>
+                <Field name={`qty:${l.id}`} label={t('quantity')}>
                   <Input
                     id={`qty:${l.id}`}
                     name={`qty:${l.id}`}
@@ -168,32 +164,28 @@ export default async function OrderPage({ params, searchParams }: PageProps<'/[l
                       .toString()}
                     className="h-12 text-right tabular-nums"
                   />
-                </div>
-                <div className="flex flex-1 flex-col gap-1">
-                  <Label htmlFor={`exp:${l.id}`} className="text-xs">
-                    {t('expiry')}
-                  </Label>
+                </Field>
+                <Field name={`exp:${l.id}`} label={t('expiry')}>
                   <Input id={`exp:${l.id}`} name={`exp:${l.id}`} type="date" className="h-12" />
-                </div>
-              </div>
+                </Field>
+              </FieldRow>
 
-              <div className="flex flex-col gap-1">
-                <Label htmlFor={`lot:${l.id}`} className="text-xs">
-                  {t('lot')}
-                </Label>
+              <Field name={`lot:${l.id}`} label={t('lot')}>
                 <Input
                   id={`lot:${l.id}`}
                   name={`lot:${l.id}`}
                   autoComplete="off"
                   className="h-12 font-mono"
                 />
-              </div>
+              </Field>
             </fieldset>
           ))}
 
-          <Button type="submit" className="fixed inset-x-4 bottom-20 sm:bottom-6 h-12 sm:static sm:w-fit">
-            {t('recordDelivery')}
-          </Button>
+          <StickyAction>
+            <Button type="submit" className="h-12 w-full sm:w-fit">
+              {t('recordDelivery')}
+            </Button>
+          </StickyAction>
         </form>
       )}
     </main>

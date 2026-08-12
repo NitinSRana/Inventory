@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { BarcodeField } from '@/components/barcode-field';
+import { Field, NativeSelect, StickyAction } from '@/components/form';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { REASON_CODES } from '@/db/schema';
 import { trimQuantity } from '@/lib/quantity';
 import { requireOrg } from '@/server/auth/session';
@@ -94,38 +94,30 @@ export default async function WastePage({ params, searchParams }: PageProps<'/[l
             </span>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="quantity">{t('quantity')}</Label>
+          <Field
+            name="quantity"
+            label={t('quantity')}
+            error={error === 'stock' ? t('notEnoughStock') : undefined}
+          >
             <Input
               id="quantity"
               name="quantity"
               inputMode="decimal"
               required
-              className="h-12 text-right tabular-nums"
+              className="h-14 text-right text-lg tabular-nums"
             />
-          </div>
+          </Field>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="reasonCode">{t('reason')}</Label>
-            <select
-              id="reasonCode"
-              name="reasonCode"
-              defaultValue="expired"
-              className="border-input h-12 rounded-lg border bg-transparent px-3 text-sm"
-            >
+          <Field name="reasonCode" label={t('reason')}>
+            <NativeSelect id="reasonCode" name="reasonCode" defaultValue="expired">
               {REASON_CODES.map((r) => (
                 <option key={r} value={r}>
                   {t(`reasons.${r}`)}
                 </option>
               ))}
-            </select>
-          </div>
+            </NativeSelect>
+          </Field>
 
-          {error === 'stock' && (
-            <p role="alert" className="text-destructive text-sm">
-              {t('notEnoughStock')}
-            </p>
-          )}
           {error === 'unknown' && (
             <p role="alert" className="text-destructive text-sm">
               {t('failed')}
@@ -133,9 +125,11 @@ export default async function WastePage({ params, searchParams }: PageProps<'/[l
           )}
 
           {/* One primary action, bottom third, thumb-reachable. */}
-          <Button type="submit" className="fixed inset-x-4 bottom-20 sm:bottom-6 h-12 sm:static sm:w-fit">
-            {t('submit')}
-          </Button>
+          <StickyAction>
+            <Button type="submit" className="h-12 w-full sm:w-fit">
+              {t('submit')}
+            </Button>
+          </StickyAction>
         </form>
       )}
     </main>

@@ -2,7 +2,12 @@ import { getFormatter, getTranslations, setRequestLocale } from 'next-intl/serve
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+import { CheckCircle2 } from 'lucide-react';
+
 import { BackLink } from '@/components/back-link';
+import { DataList, DataRow, HeadlineFigure, PageTitle } from '@/components/data-list';
+import { EmptyState } from '@/components/empty-state';
+import { StickyAction } from '@/components/form';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
@@ -10,7 +15,6 @@ import { trimQuantity } from '@/lib/quantity';
 import { requireOrg } from '@/server/auth/session';
 import { recalculateConsumptionRates } from '@/server/consumption/calculate';
 import { completeCountSession, getOpenSession, getVarianceReport } from '@/server/counting/sessions';
-import { PageTitle } from '@/components/data-list';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
 // behind auth is a cross-tenant leak waiting to happen.
@@ -65,45 +69,39 @@ export default async function CountReviewPage({ params }: PageProps<'/[locale]/c
       <PageTitle>{t('reviewTitle')}</PageTitle>
 
       {variances.length === 0 ? (
-        <p className="text-sm">{t('noVariance')}</p>
+        <EmptyState icon={CheckCircle2} title={t('noVariance')} />
       ) : (
         <>
-          <div className="flex flex-col gap-1">
-            {/* Net value first — it is the number the owner acts on. */}
-            <p className="text-3xl font-semibold tabular-nums">
-              {money(summary.netValue)}{' '}
-              <span className="text-muted-foreground text-base font-normal">{t('netImpact')}</span>
-            </p>
-            <p className="text-muted-foreground text-sm tabular-nums">
-              {t('varianceCount', { count: summary.linesWithVariance })}
-            </p>
-          </div>
+          {/* Net value first — it is the number the owner acts on. */}
+          <HeadlineFigure
+            label={t('netImpact')}
+            value={money(summary.netValue)}
+            caption={
+              <span className="tabular-nums">
+                {t('varianceCount', { count: summary.linesWithVariance })}
+              </span>
+            }
+          />
 
-          <ul className="flex flex-col gap-2">
+          <DataList>
             {variances.map((v) => {
               const short = v.delta.startsWith('-');
               return (
-                <li key={`${v.productId}-${v.batchId ?? 'none'}`} className="flex items-start justify-between gap-3 rounded-lg border p-3">
-                  <div className="flex min-w-0 flex-col">
-                    <span className="truncate font-medium">{v.productName}</span>
-                    {/* Sign is stated in words as well as by the number, so the
-                        direction survives a glance and a colourblind reader. */}
-                    <span className="text-muted-foreground text-xs">
-                      {short ? t('short') : t('over')} ·{' '}
-                      {t('expectedVsCounted', {
-                        expected: trimQuantity(v.expected),
-                        counted: trimQuantity(v.counted),
-                      })}
-                    </span>
-                  </div>
-                  <span className={`shrink-0 text-sm font-medium tabular-nums ${short ? 'text-destructive' : 'text-foreground'}`}>
-                    {short ? '' : '+'}
-                    {trimQuantity(v.delta)}
-                  </span>
-                </li>
+                <DataRow
+                  key={`${v.productId}-${v.batchId ?? 'none'}`}
+                  title={v.productName}
+                  // Sign is stated in words as well as by the number, so the
+                  // direction survives a glance and a colourblind reader.
+                  subtitle={`${short ? t('short') : t('over')} · ${t('expectedVsCounted', {
+                    expected: trimQuantity(v.expected),
+                    counted: trimQuantity(v.counted),
+                  })}`}
+                  value={`${short ? '' : '+'}${trimQuantity(v.delta)}`}
+                  valueClassName={`tabular-nums ${short ? 'text-destructive' : ''}`}
+                />
               );
             })}
-          </ul>
+          </DataList>
         </>
       )}
 
@@ -116,9 +114,11 @@ export default async function CountReviewPage({ params }: PageProps<'/[locale]/c
         </Link>
         <form action={complete}>
           {/* This is the write. Everything before it was reversible. */}
-          <Button type="submit" className="fixed inset-x-4 bottom-20 sm:bottom-6 h-12 sm:static sm:w-fit">
-            {t('postAdjustments', { count: summary.linesWithVariance })}
-          </Button>
+          <StickyAction>
+            <Button type="submit" className="h-12 w-full sm:w-fit">
+              {t('postAdjustments', { count: summary.linesWithVariance })}
+            </Button>
+          </StickyAction>
         </form>
       </div>
     </main>

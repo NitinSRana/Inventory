@@ -1,9 +1,8 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import Link from 'next/link';
 
+import { DataList, DataRow, PageTitle } from '@/components/data-list';
 import { requireOrg } from '@/server/auth/session';
 import { REPORT_SLUGS } from '@/server/reports';
-import { PageTitle } from '@/components/data-list';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
 // behind auth is a cross-tenant leak waiting to happen.
@@ -19,21 +18,19 @@ export default async function ReportsPage({ params }: PageProps<'/[locale]/repor
   return (
     <main className="flex flex-1 flex-col gap-4 p-4">
       <PageTitle>{t('title')}</PageTitle>
-      <ul className="flex flex-col gap-2">
+      {/* Each row states what the report answers, not just its name — a list of
+          four nouns makes you open all four to find out. */}
+      <DataList>
         {REPORT_SLUGS.map((slug) => (
-          <li key={slug}>
-            {/* Each row states what the report answers, not just its name — a
-                list of four nouns makes you open all four to find out. */}
-            <Link
-              href={`/${locale}/reports/${slug}`}
-              className="flex min-h-12 flex-col justify-center gap-0.5 rounded-lg border p-3"
-            >
-              <span className="font-medium">{t(`names.${slug}`)}</span>
-              <span className="text-muted-foreground text-sm">{t(`blurbs.${slug}`)}</span>
-            </Link>
-          </li>
+          <DataRow
+            key={slug}
+            href={`/${locale}/reports/${slug}`}
+            title={t(`names.${slug}`)}
+            subtitle={t(`blurbs.${slug}`)}
+            wrap
+          />
         ))}
-      </ul>
+      </DataList>
     </main>
   );
 }

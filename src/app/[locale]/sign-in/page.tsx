@@ -2,9 +2,10 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+import { PageTitle } from '@/components/data-list';
+import { Field } from '@/components/form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { createClient } from '@/lib/supabase/server';
 import {
   SIGN_IN_PER_CLIENT,
@@ -61,45 +62,41 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
     // 1900px is unreadable and looks broken.
     <main className="flex flex-1 flex-col justify-end p-6 sm:items-center sm:justify-center">
       <div className="flex w-full max-w-sm flex-col gap-8 sm:rounded-xl sm:border sm:p-8">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">{t('title')}</h1>
-        <p className="text-muted-foreground text-sm">{t('subtitle')}</p>
-      </div>
+        <PageTitle caption={t('subtitle')}>{t('title')}</PageTitle>
 
-      {sent ? (
-        <p role="status" className="text-sm">
-          {t('sent')}
-        </p>
-      ) : (
-        <form action={sendLink} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="email">{t('emailLabel')}</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              className="h-11"
-            />
-          </div>
+        {sent ? (
+          <p role="status" className="text-sm">
+            {t('sent')}
+          </p>
+        ) : (
+          <form action={sendLink} className="flex flex-col gap-4">
+            <Field name="email" label={t('emailLabel')}>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                className="h-12"
+              />
+            </Field>
 
-          {error && (
-            <p role="alert" className="text-destructive text-sm">
-              {error === 'throttled' ? t('throttled') : t('error')}
-              {/* Supabase's own message, shown only for genuine failures — a
-                  throttle must not leak whether the address exists. */}
-              {error !== '1' && error !== 'throttled' && (
-                <span className="block font-mono text-xs">{error}</span>
-              )}
-            </p>
-          )}
+            {error && (
+              <p role="alert" className="text-destructive text-sm">
+                {error === 'throttled' ? t('throttled') : t('error')}
+                {/* Supabase's own message, shown only for genuine failures — a
+                    throttle must not leak whether the address exists. */}
+                {error !== '1' && error !== 'throttled' && (
+                  <span className="block font-mono text-xs">{error}</span>
+                )}
+              </p>
+            )}
 
-          <Button type="submit" className="h-12 w-full">
-            {t('submit')}
-          </Button>
-        </form>
-      )}
+            <Button type="submit" className="h-12 w-full">
+              {t('submit')}
+            </Button>
+          </form>
+        )}
       </div>
     </main>
   );

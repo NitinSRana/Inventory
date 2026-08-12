@@ -3,9 +3,9 @@ import { redirect } from 'next/navigation';
 
 import { BackLink } from '@/components/back-link';
 import { PageTitle } from '@/components/data-list';
+import { Field, NativeSelect, StickyAction } from '@/components/form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { requireRole } from '@/server/auth/session';
 import { ROLE_RANK, type Role } from '@/server/auth/roles';
 import {
@@ -83,7 +83,6 @@ export default async function TeamPage({ params, searchParams }: PageProps<'/[lo
     redirect(`/${locale}/settings/team`);
   }
 
-  const selectClass = 'border-input h-11 rounded-lg border bg-transparent px-3 text-sm';
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
@@ -115,13 +114,13 @@ export default async function TeamPage({ params, searchParams }: PageProps<'/[lo
                   <label htmlFor={`role-${m.id}`} className="sr-only">
                     {t('roleLabel')}
                   </label>
-                  <select id={`role-${m.id}`} name="role" defaultValue={m.role} className={selectClass}>
+                  <NativeSelect id={`role-${m.id}`} name="role" defaultValue={m.role}>
                     {ROLES.map((r) => (
                       <option key={r} value={r}>
                         {t(`roles.${r}`)}
                       </option>
                     ))}
-                  </select>
+                  </NativeSelect>
                   <Button type="submit" variant="outline" className="h-11">
                     {t('save')}
                   </Button>
@@ -162,24 +161,23 @@ export default async function TeamPage({ params, searchParams }: PageProps<'/[lo
 
       <form action={invite} className="flex flex-col gap-4 border-t pt-6">
         <h2 className="text-lg font-medium">{t('inviteTitle')}</h2>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="email">{t('emailLabel')}</Label>
+        <Field name="email" label={t('emailLabel')}>
           <Input id="email" name="email" type="email" autoComplete="off" required className="h-12" />
-        </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="role">{t('roleLabel')}</Label>
-          <select id="role" name="role" defaultValue="staff" className={selectClass}>
+        </Field>
+        <Field name="role" label={t('roleLabel')} hint={t('roleHint')}>
+          <NativeSelect id="role" name="role" defaultValue="staff">
             {ROLES.map((r) => (
               <option key={r} value={r}>
                 {t(`roles.${r}`)}
               </option>
             ))}
-          </select>
-          <p className="text-muted-foreground text-xs">{t('roleHint')}</p>
-        </div>
-        <Button type="submit" className="fixed inset-x-4 bottom-20 sm:bottom-6 h-12 sm:static sm:w-fit">
-          {t('invite')}
-        </Button>
+          </NativeSelect>
+        </Field>
+        <StickyAction>
+          <Button type="submit" className="h-12 w-full sm:w-fit">
+            {t('invite')}
+          </Button>
+        </StickyAction>
       </form>
     </main>
   );

@@ -2,15 +2,15 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 
 import { BackLink } from '@/components/back-link';
+import { PageTitle } from '@/components/data-list';
+import { Field, NativeSelect, StickyAction } from '@/components/form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { VAT_BANDS, organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 import { requireRole } from '@/server/auth/session';
 import { SEEDED_COUNTRIES, type VatBand } from '@/server/settings/vat-seeds';
 import { getRatesByBand, seedVatRatesForCountry, setVatRate } from '@/server/settings/vat';
-import { PageTitle } from '@/components/data-list';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
 // behind auth is a cross-tenant leak waiting to happen.
@@ -78,22 +78,15 @@ export default async function VatSettingsPage({
 
       {!configured ? (
         <form action={seed} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="country">{t('countryLabel')}</Label>
-            <select
-              id="country"
-              name="country"
-              defaultValue={org.countryCode}
-              className="border-input h-12 rounded-lg border bg-transparent px-3 text-sm"
-            >
+          <Field name="country" label={t('countryLabel')} hint={t('countryHint')}>
+            <NativeSelect id="country" name="country" defaultValue={org.countryCode}>
               {SEEDED_COUNTRIES.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
               ))}
-            </select>
-            <p className="text-muted-foreground text-xs">{t('countryHint')}</p>
-          </div>
+            </NativeSelect>
+          </Field>
           <Button type="submit" className="h-12 w-fit">
             {t('seed')}
           </Button>
@@ -101,8 +94,7 @@ export default async function VatSettingsPage({
       ) : (
         <form action={save} className="flex flex-col gap-4">
           {VAT_BANDS.map((band) => (
-            <div key={band} className="flex flex-col gap-2">
-              <Label htmlFor={band}>{t(`bands.${band}`)}</Label>
+            <Field key={band} name={band} label={t(`bands.${band}`)}>
               <div className="flex items-center gap-2">
                 <Input
                   id={band}
@@ -115,12 +107,14 @@ export default async function VatSettingsPage({
                 />
                 <span className="text-muted-foreground text-sm">%</span>
               </div>
-            </div>
+            </Field>
           ))}
           <p className="text-muted-foreground text-xs">{t('historyNote')}</p>
-          <Button type="submit" className="fixed inset-x-4 bottom-20 sm:bottom-6 h-12 sm:static sm:w-fit">
-            {t('save')}
-          </Button>
+          <StickyAction>
+            <Button type="submit" className="h-12 w-full sm:w-fit">
+              {t('save')}
+            </Button>
+          </StickyAction>
         </form>
       )}
     </main>
