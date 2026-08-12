@@ -8,7 +8,8 @@
     "subtitle": "We'll email you a link. No password to remember.",
     "emailLabel": "Email",
     "submit": "Email me a link",
-    "sent": "Check your email for the sign-in link.",
+    "sent": "If that address can sign in here, a link is on its way. Check your email.",
+    "sentHint": "Accounts are created by invitation, so nothing arrives for an address that hasn't been added yet.",
     "error": "That didn't work. Check the address and try again.",
     "throttled": "Too many attempts. Wait a few minutes and try again."
   },

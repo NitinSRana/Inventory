@@ -13,6 +13,7 @@ import {
   checkRateLimit,
   hashedBucket,
 } from '@/server/auth/rate-limit';
+import { signInOutcome } from '@/server/auth/sign-in';
 
 export default async function SignInPage({ params, searchParams }: PageProps<'/[locale]/sign-in'>) {
   const { locale } = await params;
@@ -53,7 +54,12 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
       options: { emailRedirectTo: `${origin}/auth/confirm?next=/${locale}` },
     });
 
-    redirect(`/${locale}/sign-in?${error ? 'error=1' : 'sent=1'}`);
+    // Sign-up is closed, so Supabase answers otp_disabled for any address that
+    // is not already a member. Reporting that would turn this form into a
+    // membership oracle: type an address, learn whether that person works here.
+    // The throttle above already goes out of its way not to leak that, and it
+    // would be pointless if this line gave it away.
+    redirect(`/${locale}/sign-in?${signInOutcome(error)}`);
   }
 
   return (
@@ -65,9 +71,15 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
         <PageTitle caption={t('subtitle')}>{t('title')}</PageTitle>
 
         {sent ? (
-          <p role="status" className="text-sm">
-            {t('sent')}
-          </p>
+          // Deliberately non-committal about whether that address is a member.
+          // The hint underneath explains the silence, so someone who mistyped is
+          // not left waiting on mail that will never come.
+          <div className="flex flex-col gap-2">
+            <p role="status" className="text-sm">
+              {t('sent')}
+            </p>
+            <p className="text-muted-foreground text-sm">{t('sentHint')}</p>
+          </div>
         ) : (
           <form action={sendLink} className="flex flex-col gap-4">
             <Field name="email" label={t('emailLabel')}>
