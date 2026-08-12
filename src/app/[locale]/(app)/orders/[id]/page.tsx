@@ -82,13 +82,16 @@ export default async function OrderPage({ params, searchParams }: PageProps<'/[l
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
       <BackLink href={`/${locale}/orders`} label={tBack('orders')} />
-      <div className="flex flex-col gap-1">
-        <PageTitle>{po.supplierName}</PageTitle>
-        <p className="text-muted-foreground text-sm">
-          <span className="font-mono">{po.poNumber}</span> · {t(`status.${po.status}`)} ·{' '}
-          <span className="tabular-nums">{money(po.total)}</span>
-        </p>
-      </div>
+      <PageTitle
+        caption={
+          <>
+            <span className="font-mono">{po.poNumber}</span> · {t(`status.${po.status}`)} ·{' '}
+            <span className="tabular-nums">{money(po.total)}</span>
+          </>
+        }
+      >
+        {po.supplierName}
+      </PageTitle>
 
       {over && (
         <p role="alert" className="text-warning text-sm">

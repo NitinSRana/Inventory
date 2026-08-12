@@ -1,7 +1,9 @@
 'use client';
 
+import { TriangleAlert } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
+import { EmptyState } from '@/components/empty-state';
 import { Button } from '@/components/ui/button';
 
 /**
@@ -13,14 +15,17 @@ export default function AppError({ reset }: { error: Error; reset: () => void })
   const t = useTranslations('errors');
 
   return (
-    <main className="flex flex-1 flex-col items-start justify-center gap-4 p-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold">{t('title')}</h1>
-        <p className="text-muted-foreground text-sm">{t('body')}</p>
-      </div>
-      <Button onClick={reset} className="h-12">
-        {t('retry')}
-      </Button>
+    <main className="flex flex-1 flex-col justify-center p-4">
+      <EmptyState
+        icon={TriangleAlert}
+        title={t('title')}
+        body={t('body')}
+        action={
+          <Button onClick={reset} className="h-12">
+            {t('retry')}
+          </Button>
+        }
+      />
     </main>
   );
 }

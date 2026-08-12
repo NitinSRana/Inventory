@@ -88,10 +88,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<'/[lo
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
       <BackLink href={`/${locale}/more`} label={tBack('more')} />
-      <div className="flex flex-col gap-2">
-        <PageTitle>{t('title')}</PageTitle>
-        <p className="text-muted-foreground text-sm">{t('intro')}</p>
-      </div>
+      <PageTitle caption={t('intro')}>{t('title')}</PageTitle>
 
       {invited && (
         <p role="status" className="text-sm">

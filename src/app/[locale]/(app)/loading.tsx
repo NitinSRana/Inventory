@@ -1,19 +1,19 @@
+import { DataListSkeleton } from '@/components/data-list';
 import { Skeleton } from '@/components/ui/skeleton';
 
 /**
- * Shared fallback for every signed-in screen. Skeletons rather than a spinner:
- * a centred spinner shifts the layout when content lands, and most screens here
- * are a heading followed by a list.
+ * Shared fallback for every signed-in screen.
+ *
+ * The skeleton is the real list's own geometry — one bordered container, hairline
+ * dividers, 56px two-column rows — not a stack of grey blocks. A placeholder
+ * that does not match what replaces it causes the layout to jump on arrival,
+ * and that jump is what makes a fast app feel slow.
  */
 export default function AppLoading() {
   return (
     <main className="flex flex-1 flex-col gap-4 p-4">
       <Skeleton className="h-8 w-40" />
-      <div className="flex flex-col gap-2">
-        {Array.from({ length: 5 }, (_, i) => (
-          <Skeleton key={i} className="h-16 w-full" />
-        ))}
-      </div>
+      <DataListSkeleton />
     </main>
   );
 }

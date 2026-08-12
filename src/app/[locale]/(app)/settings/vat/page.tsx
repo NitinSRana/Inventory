@@ -62,11 +62,8 @@ export default async function VatSettingsPage({
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
       <BackLink href={`/${locale}/more`} label={tBack('more')} />
-      <div className="flex flex-col gap-2">
-        <PageTitle>{t('title')}</PageTitle>
-        {/* Says what these are for, and what they are not for. */}
-        <p className="text-muted-foreground text-sm">{t('intro')}</p>
-      </div>
+      {/* The caption says what these are for, and what they are not for. */}
+      <PageTitle caption={t('intro')}>{t('title')}</PageTitle>
 
       {seeded !== undefined && (
         <p role="status" className="text-sm">

@@ -41,8 +41,7 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
 
     return (
       <main className="flex flex-1 flex-col gap-6 p-4">
-        <PageTitle>{t('title')}</PageTitle>
-        <p className="text-muted-foreground text-sm">{t('noSession')}</p>
+        <PageTitle caption={t('noSession')}>{t('title')}</PageTitle>
 
         <form action={start} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">

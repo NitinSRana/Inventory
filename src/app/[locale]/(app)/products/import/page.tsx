@@ -65,10 +65,7 @@ export default async function ImportPage({ params, searchParams }: PageProps<'/[
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
       <BackLink href={`/${locale}/products`} label={tBack('products')} />
-      <div className="flex flex-col gap-2">
-        <PageTitle>{t('title')}</PageTitle>
-        <p className="text-muted-foreground text-sm">{t('intro')}</p>
-      </div>
+      <PageTitle caption={t('intro')}>{t('title')}</PageTitle>
 
       {/* Success. States what changed rather than just "done". */}
       {created !== undefined && (
