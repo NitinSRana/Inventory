@@ -58,4 +58,31 @@ describe('rate limiting', () => {
       await hashedBucket('signin-email', 'someone@example.com'),
     );
   });
+
+  test('a database that never got migration 0006 still lets people sign in', async (t) => {
+    // Frankfurt was in exactly this state and every sign-in returned "too many
+    // attempts" on the first try — false, and undiagnosable from the outside.
+    // Refusing everyone forever is not the safe side of that trade.
+    await adminSql`alter function app.check_rate_limit(text, integer, interval) rename to check_rate_limit_hidden`;
+    t.after(async () => {
+      await adminSql`alter function app.check_rate_limit_hidden(text, integer, interval) rename to check_rate_limit`;
+    });
+
+    assert.equal(await checkRateLimit(`test:${crypto.randomUUID()}`, short), true);
+  });
+
+  test('any other failure still refuses', async (t) => {
+    // A throttle that stops working under load is not a throttle, so anything
+    // other than "not installed" fails closed. The real function is moved aside
+    // rather than replaced, so the original definition comes back untouched.
+    await adminSql`alter function app.check_rate_limit(text, integer, interval) rename to check_rate_limit_hidden`;
+    await adminSql`create function app.check_rate_limit(p_bucket text, p_limit integer, p_window interval)
+                   returns boolean language plpgsql as $$ begin raise exception 'boom'; end $$`;
+    t.after(async () => {
+      await adminSql`drop function app.check_rate_limit(text, integer, interval)`;
+      await adminSql`alter function app.check_rate_limit_hidden(text, integer, interval) rename to check_rate_limit`;
+    });
+
+    assert.equal(await checkRateLimit(`test:${crypto.randomUUID()}`, short), false);
+  });
 });

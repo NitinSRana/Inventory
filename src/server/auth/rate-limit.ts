@@ -24,11 +24,22 @@ export type Limit = { limit: number; windowSeconds: number };
 export const SIGN_IN_PER_EMAIL: Limit = { limit: 3, windowSeconds: 15 * 60 };
 export const SIGN_IN_PER_CLIENT: Limit = { limit: 10, windowSeconds: 15 * 60 };
 
+/** Postgres: relation or function does not exist. */
+const UNDEFINED_OBJECT = ['42P01', '42883'];
+
 /**
  * Records an attempt and reports whether it is allowed.
  *
- * Fails closed: if the check itself errors the attempt is refused. A throttle
- * that stops working under load is not a throttle.
+ * Fails closed: if the check errors the attempt is refused. A throttle that
+ * stops working under load is not a throttle.
+ *
+ * The one exception is the table not being there at all, which means migration
+ * 0006 has not been applied to this database. That is a deployment gap, not an
+ * attack, and refusing every attempt forever locks every user out of the product
+ * while telling them "too many attempts" — which is both false and impossible to
+ * diagnose from the outside. Allowing it restores exactly the behaviour before
+ * the throttle existed, with Supabase's own per-project limit still underneath,
+ * and says so on the way past.
  */
 export async function checkRateLimit(bucket: string, { limit, windowSeconds }: Limit) {
   try {
@@ -36,9 +47,21 @@ export async function checkRateLimit(bucket: string, { limit, windowSeconds }: L
       sql`select app.check_rate_limit(${bucket}, ${limit}, make_interval(secs => ${windowSeconds})) as allowed`,
     );
     return rows[0]?.allowed === true;
-  } catch {
+  } catch (e) {
+    if (UNDEFINED_OBJECT.includes(pgCode(e))) {
+      console.error(
+        'Rate limiting is NOT ACTIVE: app.check_rate_limit is missing. Apply migration 0006.',
+      );
+      return true;
+    }
     return false;
   }
+}
+
+/** Drizzle wraps the driver error, so the SQLSTATE can be one level down. */
+function pgCode(e: unknown): string {
+  const err = e as { code?: string; cause?: { code?: string } };
+  return err?.code ?? err?.cause?.code ?? '';
 }
 
 /**
