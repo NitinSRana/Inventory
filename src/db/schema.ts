@@ -9,7 +9,7 @@
  */
 
 import {
-  pgTable, pgSchema, uuid, text, boolean, integer, smallint, date,
+  pgTable, uuid, text, boolean, integer, smallint, date,
   timestamp, numeric, char, index, uniqueIndex, pgView,
 } from 'drizzle-orm/pg-core';
 import { sql, relations } from 'drizzle-orm';
