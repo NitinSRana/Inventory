@@ -7,6 +7,7 @@ import {
   Percent,
   ShoppingCart,
   Tag,
+  Trash2,
   Truck,
   Users,
 } from 'lucide-react';
@@ -21,6 +22,13 @@ export const dynamic = 'force-dynamic';
 
 /** Everything outside the daily loop, grouped by what it is for. */
 const SECTIONS = [
+  {
+    // Write-off held checkout's slot in the primary nav until real sales
+    // existed to ring up; still staff-accessible, just no longer competing
+    // with something used two orders of magnitude more often.
+    key: 'stock',
+    items: [{ path: 'waste', key: 'waste', Icon: Trash2, needs: 'staff' }],
+  },
   {
     key: 'catalogue',
     items: [

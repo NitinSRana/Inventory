@@ -1,4 +1,4 @@
-import { and, asc, eq, ilike, or, type SQL } from 'drizzle-orm';
+import { and, asc, eq, ilike, inArray, or, type SQL } from 'drizzle-orm';
 
 import { products, UNITS, type VAT_BANDS, type COUNT_FREQUENCIES } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
@@ -92,6 +92,16 @@ export async function findProductByBarcode(orgId: string, barcode: string) {
     tx.select().from(products).where(eq(products.gtin, gtin)).limit(1),
   );
   return product ?? null;
+}
+
+/**
+ * A cart line only ever carries a product id; the checkout screen re-reads
+ * name/unit/price fresh every render rather than trusting anything from the
+ * URL, the same rule every other price in this app follows.
+ */
+export async function getProductsByIds(orgId: string, ids: string[]) {
+  if (ids.length === 0) return [];
+  return withTenant(orgId, (tx) => tx.select().from(products).where(inArray(products.id, ids)));
 }
 
 export async function createProduct(orgId: string, input: ProductInput) {

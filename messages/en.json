@@ -355,7 +355,8 @@
     "count": "Count",
     "waste": "Write off",
     "more": "More",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "checkout": "Checkout"
   },
   "more": {
     "title": "More",
@@ -363,7 +364,8 @@
       "catalogue": "Catalogue",
       "buying": "Buying",
       "insight": "Insight",
-      "settings": "Settings"
+      "settings": "Settings",
+      "stock": "Stock"
     },
     "items": {
       "products": "Products",
@@ -373,7 +375,8 @@
       "reports": "Reports",
       "team": "Team",
       "vat": "VAT rates",
-      "categories": "Categories"
+      "categories": "Categories",
+      "waste": "Write off"
     }
   },
   "errors": {
@@ -434,5 +437,27 @@
       "monthly": "Monthly",
       "quarterly": "Quarterly"
     }
+  },
+  "checkout": {
+    "title": "Checkout",
+    "lookUp": "Look up",
+    "notFound": "No product with barcode {barcode}.",
+    "addProduct": "Add it",
+    "onHand": "on hand",
+    "quantity": "Quantity",
+    "addToCart": "Add to cart",
+    "cartEmpty": "Nothing in the cart yet",
+    "cartEmptyBody": "Scan or type a barcode to add the first item.",
+    "remove": "Remove {name}",
+    "itemCount": "{count, plural, one {# item} other {# items}}",
+    "total": "Total",
+    "cash": "Cash",
+    "card": "Card",
+    "insufficientStock": "That's more than the stock on hand.",
+    "unpriced": "This product has no sell price set. Add one before selling it.",
+    "failed": "Couldn't complete that sale. Try again.",
+    "saleComplete": "Sale complete",
+    "newSale": "New sale",
+    "voided": "Sale voided. Stock has been restored."
   }
 }

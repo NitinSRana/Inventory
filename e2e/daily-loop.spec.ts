@@ -99,6 +99,30 @@ test.describe('daily loop', () => {
     expect(Number(movement.delta)).toBe(-2);
   });
 
+  test('a checkout sale depletes stock and posts as consumption, not waste', async ({ page }) => {
+    const before = await stockOnHand(orgId, product.id);
+
+    await page.goto('/en/checkout');
+    await page.getByLabel('Barcode').fill(product.gtin);
+    await page.getByRole('button', { name: 'Look up' }).click();
+
+    await expect(page.getByText(product.name)).toBeVisible();
+    await page.getByLabel('Quantity').fill('2');
+    await page.getByRole('button', { name: 'Add to cart' }).click();
+
+    // Tender is the completing action — no separate confirm step behind it.
+    await expect(page.getByRole('button', { name: 'Card' })).toBeVisible();
+    await page.getByRole('button', { name: 'Card' }).click();
+
+    await expect(page.getByText('Sale complete')).toBeVisible();
+
+    expect(await stockOnHand(orgId, product.id)).toBe(before - 2);
+    const movement = await latestMovement(orgId, product.id);
+    expect(movement.movement_type).toBe('consumption');
+    expect(movement.reference_type).toBe('sale');
+    expect(Number(movement.delta)).toBe(-2);
+  });
+
   test('a reorder suggestion becomes a draft purchase order', async ({ page }) => {
     await page.goto('/en/reorder');
 

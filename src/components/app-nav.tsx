@@ -3,25 +3,30 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { Boxes, ClipboardList, Home, PackagePlus, Trash2 } from 'lucide-react';
+import { Boxes, ClipboardList, Home, PackagePlus, ShoppingCart } from 'lucide-react';
 
 /**
  * The daily loop, always one tap away.
  *
- * Four destinations, not nine: receiving, counting and writing off are what a
+ * Four destinations, not nine: checkout, receiving and counting are what a
  * shop does every day, and the dashboard is where it starts. Everything else —
- * catalogue, suppliers, orders, reports, settings — lives behind More, because
- * a launcher with nine equal buttons makes the frequent things as hard to reach
- * as the rare ones.
+ * catalogue, suppliers, orders, reports, settings, and write-off — lives
+ * behind More, because a launcher with nine equal buttons makes the frequent
+ * things as hard to reach as the rare ones.
+ *
+ * Write-off used to hold this slot; checkout took it once real sales existed
+ * to ring up, because a till gets used hundreds of times a day and a write-off
+ * a handful. Write-off is still one tap away, just not competing with
+ * something used two orders of magnitude more often.
  *
  * Client component only because it needs the current path to mark what is
  * active; it renders no data.
  */
 const TABS = [
   { path: '', key: 'home', Icon: Home },
+  { path: '/checkout', key: 'checkout', Icon: ShoppingCart },
   { path: '/receive', key: 'receive', Icon: PackagePlus },
   { path: '/count', key: 'count', Icon: ClipboardList },
-  { path: '/waste', key: 'waste', Icon: Trash2 },
   { path: '/more', key: 'more', Icon: Boxes },
 ] as const;
 

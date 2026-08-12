@@ -9,7 +9,16 @@ import { expect, test } from '@playwright/test';
  */
 test.use({ storageState: { cookies: [], origins: [] } });
 
-const PROTECTED = ['/en/receive', '/en/count', '/en/waste', '/en/reorder', '/en/products', '/en/orders'];
+const PROTECTED = [
+  '/en/receive',
+  '/en/count',
+  '/en/waste',
+  '/en/checkout',
+  '/en/reorder',
+  '/en/products',
+  '/en/orders',
+  '/en/categories',
+];
 
 for (const path of PROTECTED) {
   test(`${path} sends a signed-out visitor to sign-in`, async ({ page }) => {
