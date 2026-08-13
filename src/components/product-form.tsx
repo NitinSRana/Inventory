@@ -8,6 +8,8 @@ import { UNITS } from '@/db/schema';
 type Defaults = {
   name?: string;
   gtin?: string | null;
+  caseGtin?: string | null;
+  unitsPerCase?: string | null;
   unit?: string;
   costPrice?: string | null;
   sellPrice?: string | null;
@@ -53,6 +55,32 @@ export async function ProductForm({
           className="h-12 font-mono"
         />
       </Field>
+
+      <FieldRow>
+        <Field
+          name="caseGtin"
+          label={t('caseBarcode')}
+          error={error === 'caseBarcode' ? t('invalidBarcode') : undefined}
+        >
+          <Input
+            id="caseGtin"
+            name="caseGtin"
+            inputMode="numeric"
+            autoComplete="off"
+            defaultValue={defaults.caseGtin ?? ''}
+            className="h-12 font-mono"
+          />
+        </Field>
+        <Field name="unitsPerCase" label={t('unitsPerCase')}>
+          <Input
+            id="unitsPerCase"
+            name="unitsPerCase"
+            inputMode="numeric"
+            defaultValue={defaults.unitsPerCase ?? ''}
+            className="h-12 text-right tabular-nums"
+          />
+        </Field>
+      </FieldRow>
 
       <Field name="unit" label={t('unit')}>
         <NativeSelect id="unit" name="unit" defaultValue={defaults.unit ?? 'each'}>
@@ -142,6 +170,8 @@ export function productInputFrom(formData: FormData) {
   return {
     name: String(formData.get('name') ?? ''),
     gtin: value('gtin'),
+    caseGtin: value('caseGtin'),
+    unitsPerCase: value('unitsPerCase'),
     unit: (value('unit') ?? 'each') as (typeof UNITS)[number],
     // Money stays a string all the way to the database.
     costPrice: value('costPrice'),

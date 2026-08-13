@@ -75,6 +75,7 @@ export async function importProductsCsv(
 
     const unknownSuppliers = new Set<string>();
     const seenGtins = new Set<string>();
+    const seenCaseGtins = new Set<string>();
     const parsed: { values: typeof products.$inferInsert; isUpdate: boolean }[] = [];
 
     for (let r = 1; r < rows.length; r++) {
@@ -104,6 +105,21 @@ export async function importProductsCsv(
         seenGtins.add(gtin);
       }
 
+      let caseGtin: string | null = null;
+      const rawCaseGtin = cell('caseGtin');
+      if (rawCaseGtin) {
+        caseGtin = normalizeGtin(rawCaseGtin);
+        if (!caseGtin) {
+          errors.push({ line, column: 'caseGtin', message: 'invalidCaseBarcode' });
+          continue;
+        }
+        if (seenCaseGtins.has(caseGtin)) {
+          errors.push({ line, column: 'caseGtin', message: 'duplicateCaseBarcodeInFile' });
+          continue;
+        }
+        seenCaseGtins.add(caseGtin);
+      }
+
       const unit = cell('unit').toLowerCase();
       if (unit && !UNITS.includes(unit as (typeof UNITS)[number])) {
         errors.push({ line, column: 'unit', message: 'invalidUnit' });
@@ -125,6 +141,7 @@ export async function importProductsCsv(
       const costPrice = numeric('costPrice');
       const sellPrice = numeric('sellPrice');
       const minStock = numeric('minStock');
+      const unitsPerCase = numeric('unitsPerCase');
       const shelfLifeRaw = cell('shelfLifeDays');
       let shelfLifeDays: number | null = null;
       if (shelfLifeRaw) {
@@ -151,6 +168,8 @@ export async function importProductsCsv(
           organizationId: orgId,
           name,
           gtin,
+          caseGtin,
+          unitsPerCase,
           sku: cell('sku') || null,
           unit: (unit || 'each') as (typeof UNITS)[number],
           costPrice,
@@ -178,6 +197,10 @@ export async function importProductsCsv(
 
     // One statement, inside the tenant transaction: the whole file lands or none
     // of it does. Conflict target is the partial unique index on (org, gtin).
+    // ponytail: re-import matching is by unit barcode (gtin) only, same as
+    // before this file supported case barcodes. A row with a case barcode but
+    // no unit barcode still inserts fresh each time rather than updating in
+    // place — upgrade to also match on case_gtin if that's needed.
     await tx
       .insert(products)
       .values(parsed.map((p) => p.values))
@@ -187,6 +210,8 @@ export async function importProductsCsv(
         set: {
           name: sql`excluded.name`,
           sku: sql`excluded.sku`,
+          caseGtin: sql`excluded.case_gtin`,
+          unitsPerCase: sql`excluded.units_per_case`,
           unit: sql`excluded.unit`,
           costPrice: sql`excluded.cost_price`,
           sellPrice: sql`excluded.sell_price`,
@@ -209,9 +234,9 @@ export async function importProductsCsv(
  * second row shows a quoted comma, which is the format's one real trap.
  */
 export const TEMPLATE_CSV = [
-  'name,barcode,sku,unit,cost,price,min_stock,shelf_life_days,supplier',
-  'Vollmilch 1L,4001234567891,VM1L,l,0.79,1.29,20,10,Molkerei Nord',
-  '"Milch, fettarm 1L",4006381333931,MF1L,l,0.75,1.19,20,10,Molkerei Nord',
+  'name,barcode,case_barcode,units_per_case,sku,unit,cost,price,min_stock,shelf_life_days,supplier',
+  'Vollmilch 1L,4001234567891,14001234567898,12,VM1L,l,0.79,1.29,20,10,Molkerei Nord',
+  '"Milch, fettarm 1L",4006381333931,14006381333938,12,MF1L,l,0.75,1.19,20,10,Molkerei Nord',
 ].join('\n');
 
 /** Used by the products page to tell an empty catalogue apart from a filtered one. */

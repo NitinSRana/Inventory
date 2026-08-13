@@ -145,6 +145,11 @@ export const products = pgTable('products', {
   organizationId: orgId(),
   /** EAN-13 / EAN-8. Null for weighed goods, which have no fixed barcode. */
   gtin: text('gtin'),
+  /** Barcode on the shipping case, scanned when a delivery arrives by the
+   * case rather than the unit. GTIN-12/13/14, separate from `gtin`. */
+  caseGtin: text('case_gtin'),
+  /** Units per case, when `caseGtin` is set. */
+  unitsPerCase: numeric('units_per_case', { precision: 10, scale: 3 }),
   sku: text('sku'),
   name: text('name').notNull(),
   categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'set null' }),

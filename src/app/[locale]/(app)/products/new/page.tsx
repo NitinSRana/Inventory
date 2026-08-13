@@ -32,9 +32,13 @@ export default async function NewProductPage({
     try {
       await createProduct(orgId, productInputFrom(formData));
     } catch (e) {
-      redirect(
-        `/${locale}/products/new?error=${e instanceof InvalidBarcodeError ? 'barcode' : 'unknown'}`,
-      );
+      const error =
+        e instanceof InvalidBarcodeError
+          ? e.field === 'caseGtin'
+            ? 'caseBarcode'
+            : 'barcode'
+          : 'unknown';
+      redirect(`/${locale}/products/new?error=${error}`);
     }
     redirect(`/${locale}/products`);
   }

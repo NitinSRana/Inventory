@@ -63,6 +63,14 @@ test('first matching column wins when a header repeats', () => {
   assert.equal(index.gtin, 0);
 });
 
+test('maps case/outer barcode and pack size, distinct from the unit barcode', () => {
+  const index = mapHeaders(['Code', 'Description', 'Outer Barcode', 'Unit Barcode']);
+  assert.equal(index.sku, 0);
+  assert.equal(index.name, 1);
+  assert.equal(index.caseGtin, 2);
+  assert.equal(index.gtin, 3);
+});
+
 test('accepts semicolon separators, as German Excel writes', () => {
   assert.deepEqual(parseCsv('name;ean\nMilch;123'), [
     ['name', 'ean'],

@@ -8,6 +8,8 @@ import { normalizeGtin } from './ean';
 export type ProductInput = {
   name: string;
   gtin?: string | null;
+  caseGtin?: string | null;
+  unitsPerCase?: string | null;
   sku?: string | null;
   categoryId?: string | null;
   supplierId?: string | null;
@@ -25,11 +27,13 @@ export type ProductInput = {
 
 export class InvalidBarcodeError extends Error {
   readonly raw: string;
+  readonly field: 'gtin' | 'caseGtin';
 
-  constructor(raw: string) {
-    super(`Not a valid EAN-13 or EAN-8: ${raw}`);
+  constructor(raw: string, field: 'gtin' | 'caseGtin' = 'gtin') {
+    super(`Not a valid GTIN-8/12/13/14 barcode: ${raw}`);
     this.name = 'InvalidBarcodeError';
     this.raw = raw;
+    this.field = field;
   }
 }
 
@@ -50,7 +54,13 @@ function clean(input: ProductInput) {
     if (!gtin) throw new InvalidBarcodeError(input.gtin);
   }
 
-  return { ...input, name, gtin, sku: input.sku?.trim() || null };
+  let caseGtin: string | null = null;
+  if (input.caseGtin) {
+    caseGtin = normalizeGtin(input.caseGtin);
+    if (!caseGtin) throw new InvalidBarcodeError(input.caseGtin, 'caseGtin');
+  }
+
+  return { ...input, name, gtin, caseGtin, sku: input.sku?.trim() || null };
 }
 
 export async function listProducts(
@@ -63,7 +73,9 @@ export async function listProducts(
   if (!includeInactive) filters.push(eq(products.isActive, true));
   if (search?.trim()) {
     const term = `%${search.trim()}%`;
-    filters.push(or(ilike(products.name, term), ilike(products.gtin, term))!);
+    filters.push(
+      or(ilike(products.name, term), ilike(products.gtin, term), ilike(products.caseGtin, term))!,
+    );
   }
 
   return withTenant(orgId, (tx) =>
@@ -83,13 +95,21 @@ export async function getProduct(orgId: string, productId: string) {
   return product ?? null;
 }
 
-/** Barcode lookup for the scanning flows. Returns null on an unknown or malformed code. */
+/**
+ * Barcode lookup for the scanning flows. Returns null on an unknown or
+ * malformed code. Matches either the unit barcode or the case barcode — a
+ * delivery is often scanned by the case, everything else by the unit.
+ */
 export async function findProductByBarcode(orgId: string, barcode: string) {
   const gtin = normalizeGtin(barcode);
   if (!gtin) return null;
 
   const [product] = await withTenant(orgId, (tx) =>
-    tx.select().from(products).where(eq(products.gtin, gtin)).limit(1),
+    tx
+      .select()
+      .from(products)
+      .where(or(eq(products.gtin, gtin), eq(products.caseGtin, gtin)))
+      .limit(1),
   );
   return product ?? null;
 }

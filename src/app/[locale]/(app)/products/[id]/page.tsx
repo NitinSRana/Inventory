@@ -38,9 +38,13 @@ export default async function EditProductPage({
     try {
       await updateProduct(orgId, id, productInputFrom(formData));
     } catch (e) {
-      redirect(
-        `/${locale}/products/${id}?error=${e instanceof InvalidBarcodeError ? 'barcode' : 'unknown'}`,
-      );
+      const error =
+        e instanceof InvalidBarcodeError
+          ? e.field === 'caseGtin'
+            ? 'caseBarcode'
+            : 'barcode'
+          : 'unknown';
+      redirect(`/${locale}/products/${id}?error=${error}`);
     }
     redirect(`/${locale}/products`);
   }

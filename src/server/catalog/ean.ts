@@ -1,5 +1,7 @@
 /**
- * Barcode validation for EAN-13 and EAN-8.
+ * Barcode validation for the GTIN family: EAN-13 and EAN-8 (retail/unit
+ * barcodes), plus GTIN-12 and GTIN-14/ITF-14 (case/carton barcodes, used for
+ * `products.caseGtin`). Same GS1 mod-10 checksum at every length.
  *
  * Worth checking in application code rather than leaning on the database: a
  * mistyped barcode is a valid string but points at nothing, and the person
@@ -7,12 +9,13 @@
  */
 
 /**
- * Returns the normalised barcode, or null if it is not a well-formed EAN-13 or
- * EAN-8. Strips spaces and hyphens, which scanners and humans both introduce.
+ * Returns the normalised barcode, or null if it is not a well-formed GTIN-8,
+ * -12, -13 or -14. Strips spaces and hyphens, which scanners and humans both
+ * introduce.
  */
 export function normalizeGtin(raw: string): string | null {
   const digits = raw.trim().replace(/[\s-]/g, '');
-  if (!/^(\d{8}|\d{13})$/.test(digits)) return null;
+  if (!/^(\d{8}|\d{12}|\d{13}|\d{14})$/.test(digits)) return null;
 
   const body = digits.slice(0, -1);
   const checkDigit = Number(digits[digits.length - 1]);
