@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
+import { SectionHeading } from '@/components/data-list';
 import { PRIMARY, SECTIONS } from '@/components/nav-items';
 import { roleAtLeast } from '@/server/auth/roles';
 
@@ -59,9 +60,7 @@ export function AppSidebar({ locale, role }: { locale: string; role: string }) {
 
           return (
             <div key={section.key} className="flex flex-col gap-1">
-              <h2 className="text-muted-foreground px-3 text-xs font-medium tracking-wide uppercase">
-                {tMore(`sections.${section.key}`)}
-              </h2>
+              <SectionHeading className="px-3">{tMore(`sections.${section.key}`)}</SectionHeading>
               <ul className="flex flex-col gap-1">
                 {visible.map(({ path, key, Icon }) => {
                   const href = `${base}/${path}`;

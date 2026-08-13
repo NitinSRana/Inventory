@@ -4,7 +4,7 @@ import { ChevronRight } from 'lucide-react';
 
 import { requireOrg } from '@/server/auth/session';
 import { roleAtLeast, type Role } from '@/server/auth/roles';
-import { PageTitle } from '@/components/data-list';
+import { PageTitle, SectionHeading } from '@/components/data-list';
 import { SECTIONS } from '@/components/nav-items';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
@@ -31,9 +31,7 @@ export default async function MorePage({ params }: PageProps<'/[locale]/more'>) 
 
         return (
           <section key={section.key} className="flex flex-col gap-2">
-            <h2 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-              {t(`sections.${section.key}`)}
-            </h2>
+            <SectionHeading>{t(`sections.${section.key}`)}</SectionHeading>
             <ul className="divide-y rounded-lg border">
               {visible.map(({ path, key, Icon }) => (
                 <li key={path}>
