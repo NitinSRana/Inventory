@@ -71,29 +71,39 @@ export async function ExpiryDashboard({
 
   return (
     <section className="flex flex-col">
-      <HeadlineFigure
-        label={t('atRiskLabel')}
-        value={money(exposure.valueAtRisk)}
-        caption={t('batchSummary', {
-          batches: exposure.batchCount,
-          expired: buckets[0].rows.length,
-        })}
-      />
+      {/* Stacked on a phone, side by side once there is width for it. Stacking
+          on desktop pushed the first row of the actual list below the fold,
+          which is the one thing this screen must not do. */}
+      <div className="md:flex md:items-center md:gap-6 md:border-b md:pr-4">
+        <div className="md:flex-1">
+          <HeadlineFigure
+            label={t('atRiskLabel')}
+            value={money(exposure.valueAtRisk)}
+            caption={t('batchSummary', {
+              batches: exposure.batchCount,
+              expired: buckets[0].rows.length,
+            })}
+          />
+        </div>
 
-      {/* Three cells that filter by scroll rather than by state — anchors, no
-          client JS, and the counts stay visible while you read the list. */}
-      <nav aria-label={t('bucketsLabel')} className="bg-muted/50 grid grid-cols-3 border-y">
-        {buckets.map((b) => (
-          <a
-            key={b.key}
-            href={`#${b.key}`}
-            className="flex h-15 flex-col justify-center gap-0.5 px-3 py-2"
-          >
-            <span className={`text-xl font-semibold ${b.tone}`}>{b.rows.length}</span>
-            <span className="text-muted-foreground text-[13px]">{t(`buckets.${b.key}`)}</span>
-          </a>
-        ))}
-      </nav>
+        {/* Three cells that filter by scroll rather than by state — anchors, no
+            client JS, and the counts stay visible while you read the list. */}
+        <nav
+          aria-label={t('bucketsLabel')}
+          className="bg-muted/50 grid grid-cols-3 border-y md:w-auto md:shrink-0 md:rounded-lg md:border md:bg-transparent"
+        >
+          {buckets.map((b) => (
+            <a
+              key={b.key}
+              href={`#${b.key}`}
+              className="flex h-15 flex-col justify-center gap-0.5 px-3 py-2 md:min-w-24 md:px-4"
+            >
+              <span className={`text-xl font-semibold ${b.tone} md:text-2xl`}>{b.rows.length}</span>
+              <span className="text-muted-foreground text-[13px]">{t(`buckets.${b.key}`)}</span>
+            </a>
+          ))}
+        </nav>
+      </div>
 
       <div className="p-4">
         <DataList>
