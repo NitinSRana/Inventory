@@ -6,6 +6,7 @@ import {
   Package,
   Percent,
   ShoppingCart,
+  Store,
   Tag,
   Trash2,
   Truck,
@@ -51,6 +52,7 @@ const SECTIONS = [
   {
     key: 'settings',
     items: [
+      { path: 'settings/store', key: 'store', Icon: Store, needs: 'owner' },
       { path: 'settings/team', key: 'team', Icon: Users, needs: 'owner' },
       { path: 'settings/vat', key: 'vat', Icon: Percent, needs: 'owner' },
     ],

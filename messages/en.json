@@ -380,7 +380,8 @@
       "team": "Team",
       "vat": "VAT rates",
       "categories": "Categories",
-      "waste": "Write off"
+      "waste": "Write off",
+      "store": "Store"
     }
   },
   "errors": {
@@ -463,5 +464,18 @@
     "saleComplete": "Sale complete",
     "newSale": "New sale",
     "voided": "Sale voided. Stock has been restored."
+  },
+  "store": {
+    "title": "Store",
+    "intro": "Name, country and currency — used on VAT rates and every money format in the app.",
+    "name": "Store name",
+    "country": "Country",
+    "countryHint": "Changing this does not re-seed VAT rates. Adjust them separately if you move countries.",
+    "currency": "Currency",
+    "timezone": "Timezone",
+    "timezoneHint": "An IANA time zone name, e.g. Europe/Berlin.",
+    "save": "Save",
+    "saved": "Saved.",
+    "saveFailed": "Couldn't save that. Check the fields and try again."
   }
 }

@@ -18,6 +18,7 @@ const PROTECTED = [
   '/en/products',
   '/en/orders',
   '/en/categories',
+  '/en/settings/store',
 ];
 
 for (const path of PROTECTED) {
