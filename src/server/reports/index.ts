@@ -1,6 +1,14 @@
 import { and, asc, desc, eq, gte, isNotNull, lt, sql } from 'drizzle-orm';
 
-import { expiringStock, productStock, products, stockMovements, suppliers } from '@/db/schema';
+import {
+  expiringStock,
+  productStock,
+  products,
+  saleLines,
+  sales,
+  stockMovements,
+  suppliers,
+} from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 
 import { getRatesByBand } from '@/server/settings/vat';
@@ -9,14 +17,12 @@ import { grossValue } from '@/server/settings/valuation';
 import type { Report } from './csv';
 
 /**
- * The four reports the spec allows, and no more.
- *
- * Each returns its own columns alongside its rows, so one table component and
- * one CSV exporter serve all four. The alternative — four pages and four
- * exporters — is the same information written five times.
+ * Each report returns its own columns alongside its rows, so one table
+ * component and one CSV exporter serve all five. The alternative — five pages
+ * and five exporters — is the same information written six times.
  */
 
-export const REPORT_SLUGS = ['stock', 'waste', 'expiry', 'low-stock'] as const;
+export const REPORT_SLUGS = ['stock', 'waste', 'expiry', 'low-stock', 'sales'] as const;
 export type ReportSlug = (typeof REPORT_SLUGS)[number];
 
 /** Stock on hand and what it is worth. */
@@ -172,6 +178,48 @@ async function lowStock(orgId: string): Promise<Report> {
   };
 }
 
+/** What sold, by product, and what it brought in — completed sales only. */
+async function salesByProduct(orgId: string, days: number): Promise<Report> {
+  const since = new Date(Date.now() - days * 864e5);
+  const rows = await withTenant(orgId, (tx) =>
+    tx
+      .select({
+        name: products.name,
+        gtin: products.gtin,
+        unit: products.unit,
+        quantity: sql<string>`sum(${saleLines.quantity})::text`,
+        vat: sql<string>`round(sum(${saleLines.vatAmount}), 2)::text`,
+        // Gross, the number a shopkeeper actually recognises as "what came in".
+        grossRevenue: sql<string>`round(sum(${saleLines.lineTotal}), 2)::text`,
+      })
+      .from(saleLines)
+      .innerJoin(sales, eq(sales.id, saleLines.saleId))
+      .innerJoin(products, eq(products.id, saleLines.productId))
+      .where(and(eq(sales.status, 'completed'), gte(sales.createdAt, since)))
+      .groupBy(products.id, products.name, products.gtin, products.unit)
+      .orderBy(desc(sql`sum(${saleLines.lineTotal})`)),
+  );
+
+  return {
+    columns: [
+      { key: 'name', label: 'product' },
+      { key: 'gtin', label: 'barcode' },
+      { key: 'quantity', label: 'quantity', numeric: true },
+      { key: 'unit', label: 'unit' },
+      { key: 'vat', label: 'vat', numeric: true },
+      { key: 'grossRevenue', label: 'grossRevenue', numeric: true },
+    ],
+    rows: rows.map((r) => ({
+      name: r.name,
+      gtin: r.gtin ?? '',
+      quantity: r.quantity,
+      unit: r.unit,
+      vat: r.vat,
+      grossRevenue: r.grossRevenue,
+    })),
+  };
+}
+
 export function buildReport(orgId: string, slug: ReportSlug, days: number): Promise<Report> {
   switch (slug) {
     case 'stock':
@@ -182,6 +230,8 @@ export function buildReport(orgId: string, slug: ReportSlug, days: number): Prom
       return expiryExposure(orgId, days);
     case 'low-stock':
       return lowStock(orgId);
+    case 'sales':
+      return salesByProduct(orgId, days);
   }
 }
 

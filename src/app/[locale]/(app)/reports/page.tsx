@@ -19,7 +19,7 @@ export default async function ReportsPage({ params }: PageProps<'/[locale]/repor
     <main className="flex flex-1 flex-col gap-4 p-4">
       <PageTitle>{t('title')}</PageTitle>
       {/* Each row states what the report answers, not just its name — a list of
-          four nouns makes you open all four to find out. */}
+          bare nouns makes you open every one to find out. */}
       <DataList>
         {REPORT_SLUGS.map((slug) => (
           <DataRow

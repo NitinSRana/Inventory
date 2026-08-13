@@ -17,7 +17,9 @@ import {
   markPurchaseOrderSent,
   receiveAgainstPurchaseOrder,
 } from '@/server/purchasing/orders';
+import { getLivePosRates } from '@/server/consumption/posRate';
 import { getReorderSuggestions } from '@/server/purchasing/reorder';
+import { checkout } from '@/server/pos/checkout';
 import { buildReport } from '@/server/reports';
 import { seedVatRatesForCountry } from '@/server/settings/vat';
 import { getExpiringStock, getExpiryExposure, getProductStock } from '@/server/stock/levels';
@@ -243,7 +245,37 @@ describe('a store first three weeks', () => {
     assert.equal(Number(updated!.lines[0].quantityReceived), Number(short));
   });
 
-  test('day 23 — the shop can still answer the four questions it bought this for', async () => {
+  test('day 24 — a sale is rung up, sold through the till, not typed in', async () => {
+    const [before] = await getProductStock(org.orgId, product['Vollmilch 1L']);
+
+    const sale = await checkout(org.orgId, {
+      lines: [{ productId: product['Vollmilch 1L'], quantity: '3' }],
+      tenderType: 'card',
+      actorId: org.userId,
+    });
+
+    assert.equal(sale.status, 'completed');
+    assert.match(sale.saleNumber, /^TXN-\d{4}-\d{4}$/);
+    const [after] = await getProductStock(org.orgId, product['Vollmilch 1L']);
+    assert.equal(Number(after.quantity), Number(before.quantity) - 3);
+
+    // Real sales are the primary consumption signal now — day 21 established a
+    // count-window rate for this exact product. One sale is not yet enough
+    // history to override it (posRate.ts's own floor is three distinct
+    // sale-days), so it must not show up as a POS rate yet. Asserted directly
+    // against getLivePosRates rather than round-tripping through
+    // getReorderSuggestions, whose group membership also depends on whether
+    // the sale's own 3-unit drop pushed stock below the reorder threshold —
+    // a real but separate effect this test isn't about.
+    const posRates = await getLivePosRates(org.orgId);
+    assert.equal(
+      posRates.has(product['Vollmilch 1L']),
+      false,
+      'one sale is insufficient history to become the reorder rate',
+    );
+  });
+
+  test('day 24 — the shop can still answer the five questions it bought this for', async () => {
     const expiring = await getExpiringStock(org.orgId, 14);
     assert.ok(expiring.length > 0, 'the delivery just received has an expiry date');
     assert.ok(
@@ -251,13 +283,18 @@ describe('a store first three weeks', () => {
       'every row must name a product and a value, or the dashboard cannot be acted on',
     );
 
-    for (const slug of ['stock', 'waste', 'expiry', 'low-stock'] as const) {
+    for (const slug of ['stock', 'waste', 'expiry', 'low-stock', 'sales'] as const) {
       const report = await buildReport(org.orgId, slug, 30);
       assert.ok(report.columns.length > 0, `${slug} must define its columns`);
     }
 
     const waste = await buildReport(org.orgId, 'waste', 30);
     assert.equal(waste.rows.length, 1, 'the one write-off must appear in the waste report');
+
+    const salesReport = await buildReport(org.orgId, 'sales', 30);
+    assert.equal(salesReport.rows.length, 1, 'the one sale must appear in the sales report');
+    assert.equal(salesReport.rows[0].name, 'Vollmilch 1L');
+    assert.equal(salesReport.rows[0].quantity, '3.000');
   });
 
   /**

@@ -219,13 +219,15 @@
       "stock": "Stock on hand",
       "waste": "Waste",
       "expiry": "Expiry exposure",
-      "low-stock": "Low stock"
+      "low-stock": "Low stock",
+      "sales": "Sales"
     },
     "blurbs": {
       "stock": "Everything you hold and what it is worth.",
       "waste": "What was binned, why, and what it cost you.",
       "expiry": "Money sitting in stock that is about to stop being sellable.",
-      "low-stock": "Products under their minimum, with the supplier to call."
+      "low-stock": "Products under their minimum, with the supplier to call.",
+      "sales": "What sold, by product, and what it brought in."
     },
     "columns": {
       "product": "Product",
@@ -243,7 +245,9 @@
       "valueAtRisk": "At risk",
       "minimum": "Minimum",
       "supplier": "Supplier",
-      "grossValue": "Incl. VAT"
+      "grossValue": "Incl. VAT",
+      "vat": "VAT",
+      "grossRevenue": "Revenue"
     }
   },
   "orders": {
