@@ -109,7 +109,7 @@
       "manager": "That needs a manager account. Ask an owner to change your role.",
       "owner": "That needs the owner account."
     },
-    "signInHint": "We email you a link. There is no password.",
+    "signInHint": "Use your password, or we'll email you a link.",
     "noOrganizationTitle": "Almost there",
     "pitch": {
       "expiry": "See what is about to expire, worst value first.",
