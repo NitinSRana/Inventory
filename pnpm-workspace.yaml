@@ -1,4 +1,11 @@
 allowBuilds:
+  # One entry per platform, not just the one the first contributor happened to
+  # be on: the postinstall rehydrates the symlinks Postgres' own binaries rely
+  # on, so a missing platform here means db:test cannot start a server there.
+  # Linux covers both CI and the Vercel build.
+  '@embedded-postgres/darwin-arm64': true
+  '@embedded-postgres/darwin-x64': true
+  '@embedded-postgres/linux-x64': true
   '@embedded-postgres/windows-x64': true
   '@parcel/watcher': true
   '@swc/core': true
