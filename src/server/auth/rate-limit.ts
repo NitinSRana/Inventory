@@ -24,6 +24,17 @@ export type Limit = { limit: number; windowSeconds: number };
 export const SIGN_IN_PER_EMAIL: Limit = { limit: 3, windowSeconds: 15 * 60 };
 export const SIGN_IN_PER_CLIENT: Limit = { limit: 10, windowSeconds: 15 * 60 };
 
+/**
+ * Password attempts get their own buckets, not shared with magic-link's.
+ * Guessing a password is the classic attack this throttle exists for — a
+ * magic-link click can only ever be "right" or "expired", there is nothing to
+ * brute force — so it earns its own limit rather than borrowing one sized for
+ * a different threat. Slightly more headroom than magic-link's, because a
+ * mistyped password is a normal, cheap mistake; a mail send is not.
+ */
+export const SIGN_IN_PASSWORD_PER_EMAIL: Limit = { limit: 5, windowSeconds: 15 * 60 };
+export const SIGN_IN_PASSWORD_PER_CLIENT: Limit = { limit: 20, windowSeconds: 15 * 60 };
+
 /** Postgres: relation or function does not exist. */
 const UNDEFINED_OBJECT = ['42P01', '42883'];
 

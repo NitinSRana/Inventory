@@ -29,9 +29,20 @@ for (const path of PROTECTED) {
   });
 }
 
-test('the sign-in form asks for a link rather than a password', async ({ page }) => {
+test('the sign-in form offers a password and a mail link, not just one', async ({ page }) => {
   await page.goto('/en/sign-in');
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
-  await expect(page.locator('input[type="password"]')).toHaveCount(0);
+  await expect(page.getByLabel('Password')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Email me a link' })).toBeVisible();
+});
+
+test('a wrong password is refused without saying whether the account exists', async ({ page }) => {
+  await page.goto('/en/sign-in');
+  await page.getByLabel('Email').fill('not-a-real-member@example.com');
+  await page.getByLabel('Password').fill('definitely-wrong');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+
+  await expect(page).toHaveURL(/\/en\/sign-in\?error=password$/);
+  await expect(page.getByText('Wrong email or password.')).toBeVisible();
 });

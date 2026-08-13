@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { createClient } from '@/lib/supabase/server';
 import {
+  SIGN_IN_PASSWORD_PER_CLIENT,
+  SIGN_IN_PASSWORD_PER_EMAIL,
   SIGN_IN_PER_CLIENT,
   SIGN_IN_PER_EMAIL,
   checkRateLimit,
@@ -22,31 +24,26 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
   const { sent, error } = await searchParams;
   const t = await getTranslations('signIn');
 
+  /** The magic-link path. Still the only way a newly-invited member gets in
+   * the first time — claiming an invitation happens on first sign-in, and a
+   * password can't be set on an account until it exists. */
   async function sendLink(formData: FormData) {
     'use server';
     const email = String(formData.get('email') ?? '').trim();
     if (!email) redirect(`/${locale}/sign-in?error=1`);
 
-    // `origin` is absent on some proxied requests; the env var is the fallback.
     const h = await headers();
     const origin =
       h.get('origin') ??
       process.env.NEXT_PUBLIC_SITE_URL ??
       `http://${h.get('host') ?? 'localhost:3000'}`;
 
-    // Throttled before a single mail is sent. Two buckets: the address, so
-    // nobody can flood a stranger's inbox, and the client, so nobody can walk a
-    // list of addresses a few attempts each.
     const client = h.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const [emailOk, clientOk] = await Promise.all([
       checkRateLimit(await hashedBucket('signin-email', email), SIGN_IN_PER_EMAIL),
       checkRateLimit(await hashedBucket('signin-client', client), SIGN_IN_PER_CLIENT),
     ]);
-    if (!emailOk || !clientOk) {
-      // Same response whether the address exists or not — a throttle that says
-      // "too many attempts for this account" confirms the account.
-      redirect(`/${locale}/sign-in?error=throttled`);
-    }
+    if (!emailOk || !clientOk) redirect(`/${locale}/sign-in?error=throttled`);
 
     const supabase = await createClient();
     const { error } = await supabase.auth.signInWithOtp({
@@ -54,12 +51,35 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
       options: { emailRedirectTo: `${origin}/auth/confirm?next=/${locale}` },
     });
 
-    // Sign-up is closed, so Supabase answers otp_disabled for any address that
-    // is not already a member. Reporting that would turn this form into a
-    // membership oracle: type an address, learn whether that person works here.
-    // The throttle above already goes out of its way not to leak that, and it
-    // would be pointless if this line gave it away.
     redirect(`/${locale}/sign-in?${signInOutcome(error)}`);
+  }
+
+  /**
+   * Password sign-in. No mail server in the loop at all — set once (in the
+   * Supabase dashboard, since there is no self-serve password-set flow yet),
+   * works instantly and offline of any inbox from then on.
+   */
+  async function signInWithPassword(formData: FormData) {
+    'use server';
+    const email = String(formData.get('email') ?? '').trim();
+    const password = String(formData.get('password') ?? '');
+    if (!email || !password) redirect(`/${locale}/sign-in?error=1`);
+
+    const h = await headers();
+    const client = h.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const [emailOk, clientOk] = await Promise.all([
+      checkRateLimit(await hashedBucket('signin-password-email', email), SIGN_IN_PASSWORD_PER_EMAIL),
+      checkRateLimit(await hashedBucket('signin-password-client', client), SIGN_IN_PASSWORD_PER_CLIENT),
+    ]);
+    if (!emailOk || !clientOk) redirect(`/${locale}/sign-in?error=throttled`);
+
+    const supabase = await createClient();
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    // One message for "no such account" and "wrong password", same as any
+    // password form — distinguishing them is exactly the enumeration leak
+    // isUnknownAddress exists to close on the magic-link side.
+    if (error) redirect(`/${locale}/sign-in?error=password`);
+    redirect(`/${locale}`);
   }
 
   return (
@@ -81,7 +101,7 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
             <p className="text-muted-foreground text-sm">{t('sentHint')}</p>
           </div>
         ) : (
-          <form action={sendLink} className="flex flex-col gap-4">
+          <form className="flex flex-col gap-4">
             <Field name="email" label={t('emailLabel')}>
               <Input
                 id="email"
@@ -93,20 +113,39 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
               />
             </Field>
 
+            <Field name="password" label={t('passwordLabel')} hint={t('passwordHint')}>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                className="h-12"
+              />
+            </Field>
+
             {error && (
               <p role="alert" className="text-destructive text-sm">
-                {error === 'throttled' ? t('throttled') : t('error')}
-                {/* Supabase's own message, shown only for genuine failures — a
-                    throttle must not leak whether the address exists. */}
-                {error !== '1' && error !== 'throttled' && (
-                  <span className="block font-mono text-xs">{error}</span>
-                )}
+                {error === 'throttled'
+                  ? t('throttled')
+                  : error === 'password'
+                    ? t('passwordError')
+                    : t('error')}
               </p>
             )}
 
-            <Button type="submit" className="h-12 w-full">
-              {t('submit')}
-            </Button>
+            <div className="flex flex-col gap-3">
+              <Button type="submit" formAction={signInWithPassword} className="h-12 w-full">
+                {t('submit')}
+              </Button>
+              <Button
+                type="submit"
+                formAction={sendLink}
+                variant="outline"
+                className="h-12 w-full"
+              >
+                {t('sendLink')}
+              </Button>
+            </div>
           </form>
         )}
       </div>

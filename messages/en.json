@@ -5,12 +5,16 @@
   },
   "signIn": {
     "title": "Sign in",
-    "subtitle": "We'll email you a link. No password to remember.",
+    "subtitle": "Password, or we'll email you a link.",
     "emailLabel": "Email",
-    "submit": "Email me a link",
+    "passwordLabel": "Password",
+    "passwordHint": "Leave blank to get a sign-in link by email instead.",
+    "submit": "Sign in",
+    "sendLink": "Email me a link",
     "sent": "If that address can sign in here, a link is on its way. Check your email.",
     "sentHint": "Accounts are created by invitation, so nothing arrives for an address that hasn't been added yet.",
     "error": "That didn't work. Check the address and try again.",
+    "passwordError": "Wrong email or password.",
     "throttled": "Too many attempts. Wait a few minutes and try again."
   },
   "scan": {
