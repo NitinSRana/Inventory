@@ -126,6 +126,8 @@
     "lookUp": "Look up",
     "notFound": "No product with barcode {barcode}.",
     "countedLabel": "Counted ({unit})",
+    "savedLine": "{name} · {quantity} {unit}",
+    "savedHint": "Saved. Scan it again to change it.",
     "saveAndNext": "Save and next",
     "counted": "Counted so far",
     "countedSoFar": "{count, plural, =0 {nothing counted} one {# counted} other {# counted}}",

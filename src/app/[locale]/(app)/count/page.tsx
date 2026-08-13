@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { Check } from 'lucide-react';
 
 import { DataList, DataRow, PageTitle } from '@/components/data-list';
 import { BarcodeField } from '@/components/barcode-field';
@@ -28,7 +29,7 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const { gtin, notFound, session: sessionId, taken } = await searchParams;
+  const { gtin, notFound, session: sessionId, taken, saved } = await searchParams;
   const t = await getTranslations('count');
   const { orgId, userId } = await requireOrg(locale);
 
@@ -111,14 +112,20 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
   const product = barcode ? await findProductByBarcode(orgId, barcode) : null;
   const lines = await getSessionLines(orgId, session.id);
 
+  // Lines come back sorted by product name, because the review screen shares
+  // this query and wants them that way — so "the last one" cannot be inferred
+  // from position. The id from the redirect names it instead.
+  const justSaved = typeof saved === 'string' ? lines.find((l) => l.productId === saved) : undefined;
+
   async function save(formData: FormData) {
     'use server';
     const { orgId, userId } = await requireOrg(locale);
     const countSessionId = String(formData.get('countSessionId'));
+    const productId = String(formData.get('productId'));
     try {
       await recordCount(orgId, {
         countSessionId,
-        productId: String(formData.get('productId')),
+        productId,
         countedQuantity: String(formData.get('countedQuantity') ?? '').trim(),
         countedBy: userId,
       });
@@ -130,8 +137,11 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
       }
       throw e;
     }
-    // Straight back to an empty scanner: the next item is already in hand.
-    redirect(`/${locale}/count`);
+    // Straight back to an empty scanner: the next item is already in hand. The
+    // id rides along so the scanner can say what just landed — without it the
+    // screen a counter sees after every single item is indistinguishable from
+    // one where nothing saved.
+    redirect(`/${locale}/count?saved=${productId}`);
   }
 
   async function lookUp(formData: FormData) {
@@ -190,6 +200,28 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
         // Step one: identify. Field is live on load so a scanner gun or a thumb
         // can go straight in without a tap.
         <form action={lookUp} className="flex flex-col gap-3">
+          {/* What just landed. Deliberately not green: colour in this product
+              means expiry urgency and nothing else, so the tick and the word
+              carry it. Re-scanning overwrites the line, so the hint is true. */}
+          {justSaved && (
+            <div
+              role="status"
+              className="bg-muted flex items-start gap-2 rounded-lg px-3 py-2 text-sm"
+            >
+              <Check aria-hidden className="mt-0.5 size-4 shrink-0" strokeWidth={2.4} />
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate font-medium">
+                  {t('savedLine', {
+                    name: justSaved.productName,
+                    quantity: trimQuantity(justSaved.countedQuantity),
+                    unit: justSaved.unit,
+                  })}
+                </span>
+                <span className="text-muted-foreground">{t('savedHint')}</span>
+              </span>
+            </div>
+          )}
+
           <BarcodeField autoFocus />
           {notFound && (
             <p role="alert" className="text-destructive text-sm">
