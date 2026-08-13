@@ -9,15 +9,22 @@ paths:
 
 ## Who is using this, and where
 
-A shop worker, one-handed, on their own phone, standing in a chilled aisle, possibly wearing gloves, in a hurry. Not a designer at a desk.
+Two contexts. Every screen belongs to one of them, and which one decides the layout.
 
-Every design decision follows from that. When a choice is unclear, pick the one that survives a cold aisle.
+**Back office — the majority of use, on a desktop browser.** Checkout, reordering, products, suppliers, reports, settings. A real screen, a mouse, a keyboard, and time to read. Design for that width: a form field stretched across 1900px is as broken as one crushed into 320. Tables, multiple columns and denser information are correct here.
 
-- **Touch targets: 44px minimum.** No exceptions on any control used during scanning, counting, or receiving.
-- **Primary action sits in the bottom third** of the screen, thumb-reachable. Never top-right.
+**The aisle — where the data comes from, on a phone.** Receiving, counting, writing off, scanning. One-handed, possibly gloved, under bad fluorescent light, holding a product in the other hand. If a task takes more than a few taps, staff stop doing it — and the ledger depends on them not stopping.
+
+Non-negotiable on the aisle screens:
+
+- **Touch targets: 44px minimum** on any control used while scanning, counting, or receiving.
+- **Primary action in the bottom third** at phone widths, thumb-reachable. Never top-right.
 - **One primary action per screen.** If a screen appears to need two, it's two screens.
 - **Never block on a modal** during a scan or count flow. Modals need two hands.
-- **No hover-dependent affordances.** There is no hover on a phone.
+
+And everywhere, both contexts:
+
+- **No hover-only affordances.** Hover may enhance on desktop; it must never be the only way to discover or reach something. Phones have no hover, and touch laptops have it unreliably.
 
 ## Density
 

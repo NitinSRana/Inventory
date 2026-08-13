@@ -1,63 +1,16 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
-import {
-  BarChart3,
-  ChevronRight,
-  Package,
-  Percent,
-  ShoppingCart,
-  Store,
-  Tag,
-  Trash2,
-  Truck,
-  Users,
-} from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
 import { requireOrg } from '@/server/auth/session';
 import { roleAtLeast, type Role } from '@/server/auth/roles';
 import { PageTitle } from '@/components/data-list';
+import { SECTIONS } from '@/components/nav-items';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
 // behind auth is a cross-tenant leak waiting to happen.
 export const dynamic = 'force-dynamic';
 
-/** Everything outside the daily loop, grouped by what it is for. */
-const SECTIONS = [
-  {
-    // Write-off held checkout's slot in the primary nav until real sales
-    // existed to ring up; still staff-accessible, just no longer competing
-    // with something used two orders of magnitude more often.
-    key: 'stock',
-    items: [{ path: 'waste', key: 'waste', Icon: Trash2, needs: 'staff' }],
-  },
-  {
-    key: 'catalogue',
-    items: [
-      { path: 'products', key: 'products', Icon: Package, needs: 'staff' },
-      { path: 'suppliers', key: 'suppliers', Icon: Truck, needs: 'staff' },
-      { path: 'categories', key: 'categories', Icon: Tag, needs: 'manager' },
-    ],
-  },
-  {
-    key: 'buying',
-    items: [
-      { path: 'reorder', key: 'reorder', Icon: ShoppingCart, needs: 'manager' },
-      { path: 'orders', key: 'orders', Icon: ShoppingCart, needs: 'staff' },
-    ],
-  },
-  {
-    key: 'insight',
-    items: [{ path: 'reports', key: 'reports', Icon: BarChart3, needs: 'staff' }],
-  },
-  {
-    key: 'settings',
-    items: [
-      { path: 'settings/store', key: 'store', Icon: Store, needs: 'owner' },
-      { path: 'settings/team', key: 'team', Icon: Users, needs: 'owner' },
-      { path: 'settings/vat', key: 'vat', Icon: Percent, needs: 'owner' },
-    ],
-  },
-] as const;
 
 export default async function MorePage({ params }: PageProps<'/[locale]/more'>) {
   const { locale } = await params;

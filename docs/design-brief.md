@@ -20,10 +20,15 @@ It answers exactly two questions:
 
 > **What is about to expire?** and **what should I order?**
 
-It answers them **without anyone typing in sales**. There is no till
-integration. Stock changes only from three things a shop already does:
-receiving a delivery, binning something, and counting a shelf. Consumption is
-derived, never recorded:
+It answers them **without anyone typing in sales by hand**. Stock changes from
+four events: receiving a delivery, binning something, counting a shelf, and
+**ringing an item through the checkout**. The till records sales as a side
+effect of a sale — nobody types in 300–800 transactions a day.
+
+POS sales are the **primary** consumption signal: exact, not inferred. Counting
+is now a **shrinkage audit** — the gap between what the ledger says should be on
+the shelf and what physically is, which is theft, spoilage, or a miscount. Only
+a product with no sale history yet falls back to the old inference:
 
 ```
 consumption = opening count + receipts − waste − closing count
@@ -41,14 +46,22 @@ On their **own phone**, **one-handed**, standing in a **chilled aisle**,
 sometimes wearing **gloves**, under bad fluorescent light, in a hurry, often
 holding a product in the other hand. They did not choose this software and are
 not paid to like it. If a task takes more than a few taps they will stop doing
-it — and the entire product depends on them counting.
+it — and the ledger depends on them not stopping.
 
-**The owner** — checking what is at risk, deciding what to order, reviewing
-waste. Phone in the shop, sometimes a laptop in a back office. Cares about money
-and time, not features.
+**The owner** — ringing up sales, checking what is at risk, deciding what to
+order, reviewing waste and takings. Mostly at a **desktop browser**, on the
+counter or in a back office. Cares about money and time, not features.
 
-Realistically: **mobile is the product.** Desktop must be correct and pleasant,
-but it is the secondary case.
+**The browser is the primary device.** Most hours in this product are spent at
+a real screen — checkout runs there all day, and so does everything in §5 under
+Buying, Catalogue, and Insight. The phone remains the device for the four aisle
+tasks (receive, count, write off, scan) and those screens keep every touch and
+reach constraint in §4.
+
+The practical consequence: **stop designing every screen as a phone screen that
+happens to be wide.** Desktop layouts should use the width they are given —
+tables, side-by-side panels, a persistent sidebar — while the aisle screens stay
+exactly as thumb-friendly as they are today.
 
 ## 3. The current state, honestly
 
@@ -111,7 +124,7 @@ Loading (skeletons matching the final layout, never a centred spinner), empty
 
 ## 5. The screens
 
-19 screens. Ordered by how much they matter.
+24 screens. Ordered by how much they matter.
 
 ### The daily loop — used every day, mostly on a phone
 
@@ -121,7 +134,13 @@ Loading (skeletons matching the final layout, never a centred spinner), empty
 | **Receive** | `/receive` | A delivery arrives. Barcode → quantity, expiry, lot, unit cost. | Expiry is pre-filled from shelf life and is the field most likely to be skipped and most expensive to get wrong. |
 | **Count** | `/count` | Scan-and-enter cycle counting. Barcode → quantity → **straight back to an empty scanner**. | The spec calls this *“the highest-leverage UX work in the whole build”*. Counting one shelf section must take two minutes, not twenty. Shows a “due for count” queue when idle. |
 | **Count review** | `/count/review` | Variance before committing. Net value impact, per-line expected vs counted. | The only screen where “Post 3 adjustments” writes to the ledger. Everything before it is reversible. |
-| **Write off** | `/waste` | Bin something. Barcode → quantity → reason code. | Eight reason codes: expired, damaged, theft, staff use, sampling, returned to supplier, correction, other. |
+| **Write off** | `/waste` | Bin something. Barcode → quantity → reason code. | Eight reason codes: expired, damaged, theft, staff use, sampling, returned to supplier, correction, other. Reached from More, not the tab bar. |
+
+### Checkout — the till, used all day on a desktop browser
+
+| Screen | Route | What it is for | Notes |
+|---|---|---|---|
+| **Checkout** | `/checkout` | Scan items into a basket, take cash or card, complete the sale. Every sale depletes stock FEFO and feeds the reorder maths. | Cart state lives in the URL so a reload cannot lose a basket. Tender is recorded, not processed — no card handling in v1. Needs the most design attention after the dashboard: it is the screen someone stands at for hours. |
 
 ### Buying
 
@@ -144,11 +163,13 @@ Loading (skeletons matching the final layout, never a centred spinner), empty
 
 | Screen | Route | Notes |
 |---|---|---|
-| **Reports** | `/reports`, `/reports/[slug]` | Exactly four: stock on hand, waste by reason, expiry exposure, low stock. Each with CSV export and, where relevant, 7/30/90-day switches. Still uses its own markup — **needs the most design attention**. |
-| **More** | `/more` | Everything outside the daily loop, grouped. |
-| **Team** | `/settings/team` | Invite by email, roles, pending invitations. Owner only. |
+| **Reports** | `/reports`, `/reports/[slug]` | Five: stock on hand, waste by reason, expiry exposure, low stock, and sales by product. Each with CSV export and, where relevant, 7/30/90-day switches. Still uses its own markup — **needs a lot of design attention**. |
+| **More** | `/more` | Everything outside the daily loop, grouped. On desktop this is largely replaced by the sidebar. |
+| **Categories** | `/categories`, `/categories/new`, `/categories/[id]` | Product grouping, with a default count frequency per category. Manager only. |
+| **Team** | `/settings/team` | Invite by email, roles, pending invitations. Owner only. Note: inviting writes a row, it does not send mail — no email is implemented yet. |
+| **Store info** | `/settings/store` | Name, country, currency, timezone. Owner only. |
 | **VAT rates** | `/settings/vat` | Per-tenant rate bands. Owner only. |
-| **Sign in** | `/sign-in` | Email → magic link. No password anywhere in the product. |
+| **Sign in** | `/sign-in` | Email plus optional password. Password signs in directly; leaving it blank sends a magic link instead. |
 | **First run** | on `/` when empty | Three-step checklist: load products → receive a delivery → count a shelf. |
 
 ## 6. Realistic content
@@ -189,7 +210,7 @@ them directly.
 
 ## 8. Please push back on
 
-- **The bottom tab bar** (Today · Receive · Count · Write off · More). It is a guess at the daily loop, not validated.
+- **The tab bar** (Today · Checkout · Receive · Count · More). Still a guess at the daily loop, not validated with a real shop. On desktop it becomes a sidebar; the question of *which five* destinations earn a slot is open either way.
 - **Colour reserved solely for expiry urgency.** Defensible, but it leaves the rest of the UI monochrome. If you disagree, argue it — just keep the colourblind and contrast rules.
 - **Dense-over-airy.** Correct for a data tool, but it may be making things feel cheap rather than efficient.
 - **The first-run checklist.** Onboarding is the single biggest churn risk and my version is three lines and a button.
