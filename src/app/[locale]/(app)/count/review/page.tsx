@@ -13,6 +13,7 @@ import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 import { trimQuantity } from '@/lib/quantity';
 import { requireOrg } from '@/server/auth/session';
+import { roleAtLeast } from '@/server/auth/roles';
 import { recalculateConsumptionRates } from '@/server/consumption/calculate';
 import { completeCountSession, getOpenSession, getVarianceReport } from '@/server/counting/sessions';
 
@@ -31,7 +32,10 @@ export default async function CountReviewPage({
   const tBack = await getTranslations('back');
   const format = await getFormatter();
   const { session: sessionParam } = await searchParams;
-  const { orgId, userId } = await requireOrg(locale);
+  const { orgId, userId, role } = await requireOrg(locale);
+  // Counting is staff work but product detail is manager-gated, so the
+  // link is only offered to someone who can actually follow it.
+  const canOpenProduct = roleAtLeast(role, 'manager');
 
   // The count being finished is named in the URL, so this page is bookmarkable
   // and so finishing someone else's count reviews theirs, not yours.
@@ -109,7 +113,7 @@ export default async function CountReviewPage({
               return (
                 <DataRow
                   key={`${v.productId}-${v.batchId ?? 'none'}`}
-                  href={`/${locale}/products/${v.productId}`}
+                  href={canOpenProduct ? `/${locale}/products/${v.productId}` : undefined}
                   title={v.productName}
                   // Sign is stated in words as well as by the number, so the
                   // direction survives a glance and a colourblind reader.

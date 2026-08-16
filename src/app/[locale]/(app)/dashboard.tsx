@@ -4,6 +4,7 @@ import { DataGroupHeader, DataList, DataRow, HeadlineFigure } from '@/components
 import { UrgencyBadge, urgencyClass, urgencyOf } from '@/components/expiry-urgency';
 import { FirstRun } from '@/components/first-run';
 import { trimQuantity } from '@/lib/quantity';
+import { roleAtLeast } from '@/server/auth/roles';
 import { countProducts } from '@/server/catalog/import';
 import { getExpiringStock, getExpiryExposure, getProductStock } from '@/server/stock/levels';
 
@@ -19,13 +20,17 @@ export async function ExpiryDashboard({
   orgId,
   locale,
   currency,
+  role,
 }: {
   orgId: string;
   locale: string;
   currency: string;
+  /** Product detail is manager-gated, so staff must not be sent there. */
+  role: string;
 }) {
   const t = await getTranslations('dashboard');
   const format = await getFormatter();
+  const canOpenProduct = roleAtLeast(role, 'manager');
 
   const [rows, exposure] = await Promise.all([
     getExpiringStock(orgId, 14),
@@ -125,7 +130,7 @@ export async function ExpiryDashboard({
                         // The whole point of this screen is to prompt an action,
                         // and the action is nearly always about the product.
                         // Naming it and giving no way to open it is a dead end.
-                        href={`/${locale}/products/${r.productId}`}
+                        href={canOpenProduct ? `/${locale}/products/${r.productId}` : undefined}
                         tall
                         title={r.productName}
                         subtitle={
