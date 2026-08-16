@@ -80,5 +80,8 @@ export function NativeSelect({
  * Positions only — the child sizes itself with `w-full sm:w-fit`.
  */
 export function StickyAction({ children }: { children: React.ReactNode }) {
-  return <div className="fixed inset-x-4 bottom-20 z-30 sm:static sm:z-auto">{children}</div>;
+  // Pinned above the tab bar for as long as there is a tab bar. That switch is
+  // md, not sm: the bottom bar hides at md, so at sm the action used to scroll
+  // away while the bar it was clearing was still on screen.
+  return <div className="fixed inset-x-4 bottom-20 z-30 md:static md:z-auto">{children}</div>;
 }

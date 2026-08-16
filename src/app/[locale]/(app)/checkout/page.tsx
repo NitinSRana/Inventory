@@ -5,9 +5,9 @@ import Decimal from 'decimal.js';
 import { ShoppingCart, Trash2 } from 'lucide-react';
 
 import { BarcodeField } from '@/components/barcode-field';
-import { DataList, DataRow, HeadlineFigure, PageTitle } from '@/components/data-list';
+import { DataList, DataRow, PageTitle } from '@/components/data-list';
 import { EmptyState } from '@/components/empty-state';
-import { Field, StickyAction } from '@/components/form';
+import { Field } from '@/components/form';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { organizations } from '@/db/schema';
@@ -108,86 +108,88 @@ export default async function CheckoutPage({
   const cartValue = encodeCart(cart);
 
   return (
-    <main className="flex flex-1 flex-col gap-5 p-4 pb-40">
-      <PageTitle>{t('title')}</PageTitle>
+    // Two columns once there is width for them: scanning and the basket on the
+    // left, the money on the right where it stays put. A till is read for hours
+    // at a desk, and a total that scrolls away behind twenty scanned items is
+    // the one number the person operating it always needs.
+    //
+    // pb-56 on a phone, not pb-40: the pinned total is 130px tall sitting 80px
+    // up, so it covers 210px and the last line of the basket hid behind it.
+    <main className="flex flex-1 flex-col gap-5 p-4 pb-56 md:pb-4 lg:flex-row lg:items-start lg:gap-6">
+      <div className="flex min-w-0 flex-col gap-5 lg:flex-1">
+        <PageTitle>{t('title')}</PageTitle>
 
-      {scanned ? (
-        // Step two: how many. Autofocused, numeric keypad, defaults to one —
-        // most grocery scans are one unit at a time.
-        <form action={addLine} className="flex flex-col gap-4">
-          <input type="hidden" name="productId" value={scanned.id} />
-          <input type="hidden" name="cart" value={cartValue} />
-          <div className="flex flex-col gap-1">
-            <span className="text-lg font-medium">{scanned.name}</span>
-            <span className="text-muted-foreground text-sm tabular-nums">
-              {trimQuantity(scannedStock?.quantity ?? '0')}{' '}
-              <span className="opacity-70">{scanned.unit}</span> {t('onHand')}
-            </span>
-          </div>
-          <Field name="quantity" label={t('quantity')}>
-            <Input
-              id="quantity"
-              name="quantity"
-              inputMode="decimal"
-              defaultValue="1"
-              autoFocus
-              className="h-14 text-right text-lg tabular-nums"
-            />
-          </Field>
-          <Button type="submit" className="h-12 w-full sm:w-fit">
-            {t('addToCart')}
-          </Button>
-        </form>
-      ) : (
-        // Step one: identify. Live on load so a scanner gun or a thumb can go
-        // straight in without a tap.
-        <form className="flex flex-col gap-3">
-          <input type="hidden" name="cart" value={cartValue} />
-          <BarcodeField autoFocus />
-          {barcode && !scanned && (
-            <div className="flex flex-col items-start gap-2">
-              <p role="alert" className="text-sm">
-                {t('notFound', { barcode })}
-              </p>
-              <Link
-                href={`/${locale}/products/new`}
-                className={buttonVariants({ variant: 'outline', className: 'h-11' })}
-              >
-                {t('addProduct')}
-              </Link>
+        {scanned ? (
+          // Step two: how many. Autofocused, numeric keypad, defaults to one —
+          // most grocery scans are one unit at a time.
+          <form action={addLine} className="flex flex-col gap-4">
+            <input type="hidden" name="productId" value={scanned.id} />
+            <input type="hidden" name="cart" value={cartValue} />
+            <div className="flex flex-col gap-1">
+              <span className="text-lg font-medium">{scanned.name}</span>
+              <span className="text-muted-foreground text-sm tabular-nums">
+                {trimQuantity(scannedStock?.quantity ?? '0')}{' '}
+                <span className="opacity-70">{scanned.unit}</span> {t('onHand')}
+              </span>
             </div>
-          )}
-          <Button type="submit" variant="outline" className="h-11 w-fit">
-            {t('lookUp')}
-          </Button>
-        </form>
-      )}
+            <Field name="quantity" label={t('quantity')}>
+              <Input
+                id="quantity"
+                name="quantity"
+                inputMode="decimal"
+                defaultValue="1"
+                autoFocus
+                className="h-14 text-right text-lg tabular-nums"
+              />
+            </Field>
+            <Button type="submit" className="h-12 w-full sm:w-fit">
+              {t('addToCart')}
+            </Button>
+          </form>
+        ) : (
+          // Step one: identify. Live on load so a scanner gun or a thumb can go
+          // straight in without a tap.
+          <form className="flex flex-col gap-3">
+            <input type="hidden" name="cart" value={cartValue} />
+            <BarcodeField autoFocus />
+            {barcode && !scanned && (
+              <div className="flex flex-col items-start gap-2">
+                <p role="alert" className="text-sm">
+                  {t('notFound', { barcode })}
+                </p>
+                <Link
+                  href={`/${locale}/products/new`}
+                  className={buttonVariants({ variant: 'outline', className: 'h-11' })}
+                >
+                  {t('addProduct')}
+                </Link>
+              </div>
+            )}
+            <Button type="submit" variant="outline" className="h-11 w-fit">
+              {t('lookUp')}
+            </Button>
+          </form>
+        )}
 
-      {error === 'stock' && (
-        <p role="alert" className="text-destructive text-sm">
-          {t('insufficientStock')}
-        </p>
-      )}
-      {error === 'unpriced' && (
-        <p role="alert" className="text-destructive text-sm">
-          {t('unpriced')}
-        </p>
-      )}
-      {error === 'unknown' && (
-        <p role="alert" className="text-destructive text-sm">
-          {t('failed')}
-        </p>
-      )}
+        {error === 'stock' && (
+          <p role="alert" className="text-destructive text-sm">
+            {t('insufficientStock')}
+          </p>
+        )}
+        {error === 'unpriced' && (
+          <p role="alert" className="text-destructive text-sm">
+            {t('unpriced')}
+          </p>
+        )}
+        {error === 'unknown' && (
+          <p role="alert" className="text-destructive text-sm">
+            {t('failed')}
+          </p>
+        )}
 
-      {lines.length === 0 ? (
-        <EmptyState icon={ShoppingCart} title={t('cartEmpty')} body={t('cartEmptyBody')} />
-      ) : (
-        <>
-          <HeadlineFigure
-            label={t('itemCount', { count: lines.length })}
-            value={money(total)}
-          />
-
+        {lines.length === 0 ? (
+          <EmptyState icon={ShoppingCart} title={t('cartEmpty')} body={t('cartEmptyBody')} />
+        ) : (
           <DataList>
             {lines.map((l) => (
               <DataRow
@@ -215,28 +217,40 @@ export default async function CheckoutPage({
               />
             ))}
           </DataList>
+        )}
+      </div>
 
-          {/* Tender is the completing action: picking one finishes the sale,
-              there is no separate confirm step behind it. */}
-          <StickyAction>
-            <div className="flex w-full gap-3 sm:w-fit">
-              <form action={completeSale} className="flex-1 sm:flex-none">
-                <input type="hidden" name="cart" value={cartValue} />
-                <input type="hidden" name="tenderType" value="cash" />
-                <Button type="submit" variant="outline" className="h-12 w-full sm:w-32">
-                  {t('cash')}
-                </Button>
-              </form>
-              <form action={completeSale} className="flex-1 sm:flex-none">
-                <input type="hidden" name="cart" value={cartValue} />
-                <input type="hidden" name="tenderType" value="card" />
-                <Button type="submit" className="h-12 w-full sm:w-32">
-                  {t('card')}
-                </Button>
-              </form>
-            </div>
-          </StickyAction>
-        </>
+      {/* The money. Pinned above the tab bar on a phone, a sticky column on a
+          desktop till — either way the total sits directly above the buttons
+          that take it, because that is the pair the operator actually reads.
+          Tender is the completing action: picking one finishes the sale, there
+          is no separate confirm step behind it. */}
+      {lines.length > 0 && (
+        <aside className="bg-background fixed inset-x-4 bottom-20 z-30 flex flex-col gap-3 rounded-lg border p-3 md:static md:inset-x-auto md:bottom-auto md:z-auto md:border-0 md:p-0 lg:sticky lg:top-18 lg:w-80 lg:shrink-0 lg:self-start lg:rounded-lg lg:border lg:p-4">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-muted-foreground text-sm">
+              {t('itemCount', { count: lines.length })}
+            </span>
+            <span className="text-2xl font-semibold tabular-nums lg:text-3xl">{money(total)}</span>
+          </div>
+
+          <div className="flex gap-3">
+            <form action={completeSale} className="flex-1">
+              <input type="hidden" name="cart" value={cartValue} />
+              <input type="hidden" name="tenderType" value="cash" />
+              <Button type="submit" variant="outline" className="h-12 w-full">
+                {t('cash')}
+              </Button>
+            </form>
+            <form action={completeSale} className="flex-1">
+              <input type="hidden" name="cart" value={cartValue} />
+              <input type="hidden" name="tenderType" value="card" />
+              <Button type="submit" className="h-12 w-full">
+                {t('card')}
+              </Button>
+            </form>
+          </div>
+        </aside>
       )}
     </main>
   );
