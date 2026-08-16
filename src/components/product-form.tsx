@@ -9,6 +9,7 @@ type Defaults = {
   name?: string;
   gtin?: string | null;
   caseGtin?: string | null;
+  isWeighed?: boolean;
   unitsPerCase?: string | null;
   unit?: string;
   costPrice?: string | null;
@@ -92,6 +93,22 @@ export async function ProductForm({
         </NativeSelect>
       </Field>
 
+      {/* A native checkbox rather than a component: it is keyboard accessible,
+          announces itself correctly, and needs no JavaScript to work. */}
+      <div className="flex items-start gap-3">
+        <input
+          id="isWeighed"
+          name="isWeighed"
+          type="checkbox"
+          defaultChecked={defaults.isWeighed ?? false}
+          className="border-input accent-primary mt-3 size-5 shrink-0 rounded"
+        />
+        <label htmlFor="isWeighed" className="flex flex-col gap-0.5 py-2">
+          <span className="text-sm font-medium">{t('isWeighed')}</span>
+          <span className="text-muted-foreground text-sm">{t('isWeighedHint')}</span>
+        </label>
+      </div>
+
       <FieldRow>
         <Field name="costPrice" label={t('cost')}>
           <Input
@@ -172,6 +189,8 @@ export function productInputFrom(formData: FormData) {
     gtin: value('gtin'),
     caseGtin: value('caseGtin'),
     unitsPerCase: value('unitsPerCase'),
+    // An unchecked box posts nothing at all, so absence is false.
+    isWeighed: formData.get('isWeighed') !== null,
     unit: (value('unit') ?? 'each') as (typeof UNITS)[number],
     // Money stays a string all the way to the database.
     costPrice: value('costPrice'),

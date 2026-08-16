@@ -15,7 +15,12 @@ import { withTenant } from '@/db/tenant';
 import { addToCart, encodeCart, parseCart, removeFromCart } from '@/lib/cart';
 import { trimQuantity } from '@/lib/quantity';
 import { requireOrg } from '@/server/auth/session';
-import { findProductByBarcode, getProductsByIds } from '@/server/catalog/products';
+import {
+  findProductByBarcode,
+  getProduct,
+  getProductsByIds,
+  listProducts,
+} from '@/server/catalog/products';
 import { UnpricedProductError, checkout } from '@/server/pos/checkout';
 import { InsufficientStockError } from '@/server/stock/fefo';
 import { getProductStock } from '@/server/stock/levels';
@@ -31,7 +36,8 @@ export default async function CheckoutPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const { gtin, cart: cartParam, error, done } = await searchParams;
+  const { gtin, cart: cartParam, error, done, pick } = await searchParams;
+  const picked = typeof pick === 'string' ? pick : undefined;
   const t = await getTranslations('checkout');
   const format = await getFormatter();
   const { orgId } = await requireOrg(locale);
@@ -66,8 +72,25 @@ export default async function CheckoutPage({
 
   const total = lines.reduce((acc, l) => acc.plus(l.lineTotal), new Decimal(0)).toDecimalPlaces(2).toString();
 
-  const barcode = typeof gtin === 'string' ? gtin : undefined;
-  const scanned = barcode ? await findProductByBarcode(orgId, barcode) : null;
+  const query = typeof gtin === 'string' ? gtin.trim() : undefined;
+
+  /**
+   * One field resolves both ways. A scanner gun and a barcode typed by hand
+   * land on a product directly; anything else is treated as a name, because a
+   * product sold loose has no barcode to type. `pick` is the row chosen from
+   * those results, which is how a barcodeless product gets identified at all.
+   */
+  const scanned = picked
+    ? await getProduct(orgId, picked)
+    : query
+      ? await findProductByBarcode(orgId, query)
+      : null;
+
+  // Only search when the input was not a usable barcode, so the common case
+  // costs one query and a scan never waits on a name lookup.
+  const matches =
+    !scanned && query ? await listProducts(orgId, { search: query, limit: 8 }) : null;
+
   const [scannedStock] = scanned ? await getProductStock(orgId, scanned.id) : [];
 
   async function addLine(formData: FormData) {
@@ -132,12 +155,19 @@ export default async function CheckoutPage({
                 <span className="opacity-70">{scanned.unit}</span> {t('onHand')}
               </span>
             </div>
-            <Field name="quantity" label={t('quantity')}>
+            {/* Loose goods get no default. One is the right guess for a tin and
+                a meaningless one for 400g of cheese — and a pre-filled 1 that
+                nobody notices sells a kilo. */}
+            <Field
+              name="quantity"
+              label={scanned.isWeighed ? t('weight', { unit: scanned.unit }) : t('quantity')}
+            >
               <Input
                 id="quantity"
                 name="quantity"
                 inputMode="decimal"
-                defaultValue="1"
+                defaultValue={scanned.isWeighed ? '' : '1'}
+                required={scanned.isWeighed}
                 autoFocus
                 className="h-14 text-right text-lg tabular-nums"
               />
@@ -152,10 +182,31 @@ export default async function CheckoutPage({
           <form className="flex flex-col gap-3">
             <input type="hidden" name="cart" value={cartValue} />
             <BarcodeField autoFocus />
-            {barcode && !scanned && (
+            <p className="text-muted-foreground text-sm">{t('orSearchHint')}</p>
+
+            {/* Typed something that is not a barcode? Then it was a name.
+                Loose goods — the deli counter, the cheese, the fruit — have no
+                barcode to scan at all, and until now the till simply could not
+                ring them up. One field either way: a mode switch is one more
+                thing to get wrong with a queue waiting. */}
+            {matches !== null && matches.length > 0 && (
+              <DataList>
+                {matches.map((m) => (
+                  <DataRow
+                    key={m.id}
+                    href={`/${locale}/checkout?gtin=${encodeURIComponent(m.gtin ?? '')}&pick=${m.id}&cart=${encodeURIComponent(cartValue)}`}
+                    title={m.name}
+                    subtitle={m.isWeighed ? t('soldByWeight', { unit: m.unit }) : (m.gtin ?? t('noBarcode'))}
+                    value={m.sellPrice ? money(m.sellPrice) : t('noPrice')}
+                  />
+                ))}
+              </DataList>
+            )}
+
+            {matches !== null && matches.length === 0 && (
               <div className="flex flex-col items-start gap-2">
                 <p role="alert" className="text-sm">
-                  {t('notFound', { barcode })}
+                  {t('notFound', { barcode: String(query) })}
                 </p>
                 <Link
                   href={`/${locale}/products/new`}
@@ -165,6 +216,7 @@ export default async function CheckoutPage({
                 </Link>
               </div>
             )}
+
             <Button type="submit" variant="outline" className="h-11 w-fit">
               {t('lookUp')}
             </Button>

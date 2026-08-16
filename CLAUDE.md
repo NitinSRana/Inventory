@@ -91,7 +91,7 @@ Several are planned for later. The schema already accommodates them — that's w
 
 ## Open questions — flag, don't invent an answer
 
-- **Weighed/loose goods** (deli, produce) have no fixed EAN. `products.is_weighed` exists; the scanning UX is undecided.
+- **Weighed/loose goods** (deli, produce): partly answered. `products.is_weighed` is now set from the product form, and the till resolves one input two ways — a barcode if it is one, otherwise a name search — so loose goods can be rung up by name and priced per kg. **Still undecided: scale-printed barcodes.** A counter scale prints an EAN-13 in the GS1 restricted range (prefix `02`/`2x`) encoding an item number plus either a weight or a price, and the layout is a per-country, per-scale-vendor convention with no single standard. Decoding it wrong sells a €40 cheese for €4. Needs a real scale and a real store before anyone writes that parser.
 - **Default count frequencies** — fresh weekly, ambient monthly is a placeholder, not validated with a real store.
 - **Onboarding data entry** — a store facing a 2,000-SKU manual catalog build will churn in week one. Unsolved.
 

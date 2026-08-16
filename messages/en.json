@@ -124,7 +124,10 @@
       "supplier_return": "Returned to supplier",
       "correction": "Correction",
       "other": "Other"
-    }
+    },
+    "isWeighed": "Sold loose, by weight",
+    "isWeighedHint": "Deli, cheese and produce have no barcode on the item. Weigh it at the till and type the weight. Set the unit to kg or g and price per that unit.",
+    "soldByWeight": "Sold by weight"
   },
   "home": {
     "signedOut": "Not signed in",
@@ -501,7 +504,12 @@
     "failed": "Couldn't complete that sale. Try again.",
     "saleComplete": "Sale complete",
     "newSale": "New sale",
-    "voided": "Sale voided. Stock has been restored."
+    "voided": "Sale voided. Stock has been restored.",
+    "orSearchHint": "Scan it, or type part of the name for anything sold loose.",
+    "soldByWeight": "Sold by weight ({unit})",
+    "noBarcode": "No barcode",
+    "noPrice": "No price set",
+    "weight": "Weight ({unit})"
   },
   "store": {
     "title": "Store",
