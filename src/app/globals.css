@@ -2,7 +2,18 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/**
+ * Dark follows the device, and only the device.
+ *
+ * This was `&:is(.dark *)` — a class nothing in the app ever set, so the whole
+ * dark theme below was unreachable. A phone in a chilled aisle at 7am is
+ * already in dark mode; honouring that costs no toggle, no stored preference,
+ * no client JavaScript, and no flash of the wrong theme on first paint.
+ *
+ * A manual override is a real feature, not a free one: it needs persistence and
+ * a blocking script to avoid that flash. Worth adding when someone asks.
+ */
+@custom-variant dark (@media (prefers-color-scheme: dark));
 
 @theme inline {
   --color-success: var(--success);
@@ -94,43 +105,47 @@
   --success: oklch(0.46 0.12 155);
 }
 
-.dark {
-  --background: oklch(0.185 0.008 250);
-  --foreground: oklch(0.965 0.003 250);
-  --card: oklch(0.235 0.008 250);
-  --card-foreground: oklch(0.965 0.003 250);
-  --popover: oklch(0.235 0.008 250);
-  --popover-foreground: oklch(0.965 0.003 250);
-  --primary: oklch(0.72 0.11 235);
-  --primary-foreground: oklch(0.185 0.008 250);
-  --secondary: oklch(0.265 0.008 250);
-  --secondary-foreground: oklch(0.965 0.003 250);
-  --muted: oklch(0.265 0.008 250);
-  --muted-foreground: oklch(0.715 0.012 250);
-  --accent: oklch(0.265 0.008 250);
-  --accent-foreground: oklch(0.965 0.003 250);
-  --destructive: oklch(0.705 0.155 25);
-  --warning: oklch(0.80 0.115 78);
-  --warning-foreground: oklch(0.185 0.008 250);
-  --border: oklch(0.305 0.01 250);
-  --input: oklch(0.305 0.01 250);
-  --ring: oklch(0.72 0.11 235);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-  --destructive-subtle: oklch(0.705 0.155 25 / 16%);
-  --warning-subtle: oklch(0.80 0.115 78 / 16%);
-  --success: oklch(0.72 0.13 155);
+/* Same tokens, reached by the device preference rather than a class that
+   nothing sets. Kept as one block so light and dark cannot drift. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: oklch(0.185 0.008 250);
+    --foreground: oklch(0.965 0.003 250);
+    --card: oklch(0.235 0.008 250);
+    --card-foreground: oklch(0.965 0.003 250);
+    --popover: oklch(0.235 0.008 250);
+    --popover-foreground: oklch(0.965 0.003 250);
+    --primary: oklch(0.72 0.11 235);
+    --primary-foreground: oklch(0.185 0.008 250);
+    --secondary: oklch(0.265 0.008 250);
+    --secondary-foreground: oklch(0.965 0.003 250);
+    --muted: oklch(0.265 0.008 250);
+    --muted-foreground: oklch(0.715 0.012 250);
+    --accent: oklch(0.265 0.008 250);
+    --accent-foreground: oklch(0.965 0.003 250);
+    --destructive: oklch(0.705 0.155 25);
+    --warning: oklch(0.80 0.115 78);
+    --warning-foreground: oklch(0.185 0.008 250);
+    --border: oklch(0.305 0.01 250);
+    --input: oklch(0.305 0.01 250);
+    --ring: oklch(0.72 0.11 235);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+    --destructive-subtle: oklch(0.705 0.155 25 / 16%);
+    --warning-subtle: oklch(0.80 0.115 78 / 16%);
+    --success: oklch(0.72 0.13 155);
+  }
 }
 
 @layer base {
