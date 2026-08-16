@@ -97,7 +97,34 @@
     "retry": "Try again",
     "import": "Import from CSV",
     "category": "Category",
-    "noCategory": "No category"
+    "noCategory": "No category",
+    "edit": "Edit",
+    "onHand": "On hand",
+    "batches": "Batches",
+    "noExpiry": "No expiry date",
+    "noStock": "None on hand",
+    "noStockBody": "Receive a delivery and the batches will appear here with their expiry dates.",
+    "daysLeft": "{days, plural, =0 {expires today} one {# day left} other {# days left}}",
+    "expiredDaysAgo": "{days, plural, one {expired # day ago} other {expired # days ago}}",
+    "recentMovements": "Recent movements",
+    "noMovements": "Nothing has moved this product yet.",
+    "movementTypes": {
+      "receipt": "Received",
+      "waste": "Written off",
+      "count_adjustment": "Count adjustment",
+      "manual_adjustment": "Manual adjustment",
+      "consumption": "Sold"
+    },
+    "reasonCodes": {
+      "expired": "Expired",
+      "damaged": "Damaged",
+      "theft": "Theft",
+      "staff_use": "Staff use",
+      "sampling": "Sampling",
+      "supplier_return": "Returned to supplier",
+      "correction": "Correction",
+      "other": "Other"
+    }
   },
   "home": {
     "signedOut": "Not signed in",
@@ -409,7 +436,8 @@
     "reports": "Reports",
     "count": "Count",
     "more": "More",
-    "categories": "Categories"
+    "categories": "Categories",
+    "product": "Product"
   },
   "firstRun": {
     "title": "Get set up",

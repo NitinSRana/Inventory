@@ -10,7 +10,6 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { trimQuantity } from '@/lib/quantity';
 import { requireOrg } from '@/server/auth/session';
-import { roleAtLeast } from '@/server/auth/roles';
 import { findProductByBarcode } from '@/server/catalog/products';
 import { getDueForCount } from '@/server/counting/due';
 import {
@@ -32,10 +31,7 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
 
   const { gtin, notFound, session: sessionId, taken, saved } = await searchParams;
   const t = await getTranslations('count');
-  const { orgId, userId, role } = await requireOrg(locale);
-  // Counting is staff work but product detail is manager-gated, so the
-  // link is only offered to someone who can actually follow it.
-  const canOpenProduct = roleAtLeast(role, 'manager');
+  const { orgId, userId } = await requireOrg(locale);
 
   // Your own count, unless you have explicitly opened someone else's to finish it.
   const session = await getOpenSession(orgId, userId, typeof sessionId === 'string' ? sessionId : undefined);
@@ -94,7 +90,7 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
               {due.slice(0, 10).map((p) => (
                 <DataRow
                   key={p.id}
-                  href={canOpenProduct ? `/${locale}/products/${p.id}` : undefined}
+                  href={`/${locale}/products/${p.id}`}
                   title={p.name}
                   meta={
                     p.lastCountedAt ? t('daysOver', { days: p.daysOverdue }) : t('neverCounted')

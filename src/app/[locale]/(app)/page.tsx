@@ -77,12 +77,7 @@ export default async function HomePage({ params, searchParams }: PageProps<'/[lo
         </p>
       )}
 
-      <ExpiryDashboard
-        orgId={session.orgId}
-        locale={locale}
-        currency={org.currencyCode}
-        role={session.role}
-      />
+      <ExpiryDashboard orgId={session.orgId} locale={locale} currency={org.currencyCode} />
 
     </main>
   );
