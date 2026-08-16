@@ -51,11 +51,11 @@ async function stockOnHand(orgId: string): Promise<Report> {
     columns: [
       { key: 'name', label: 'product' },
       { key: 'gtin', label: 'barcode' },
-      { key: 'quantity', label: 'onHand', numeric: true },
+      { key: 'quantity', label: 'onHand', numeric: true, format: 'quantity' },
       { key: 'unit', label: 'unit' },
-      { key: 'costPrice', label: 'unitCost', numeric: true },
-      { key: 'value', label: 'value', numeric: true },
-      { key: 'grossValue', label: 'grossValue', numeric: true },
+      { key: 'costPrice', label: 'unitCost', numeric: true, format: 'money' },
+      { key: 'value', label: 'value', numeric: true, format: 'money' },
+      { key: 'grossValue', label: 'grossValue', numeric: true, format: 'money' },
     ],
     rows: rows.map((r) => ({
       name: r.name,
@@ -94,8 +94,8 @@ async function wasteByReason(orgId: string, days: number): Promise<Report> {
     columns: [
       { key: 'reasonCode', label: 'reason' },
       { key: 'events', label: 'events', numeric: true },
-      { key: 'quantity', label: 'quantity', numeric: true },
-      { key: 'value', label: 'value', numeric: true },
+      { key: 'quantity', label: 'quantity', numeric: true, format: 'quantity' },
+      { key: 'value', label: 'value', numeric: true, format: 'money' },
     ],
     rows: rows.map((r) => ({
       reasonCode: r.reasonCode ?? '',
@@ -122,8 +122,8 @@ async function expiryExposure(orgId: string, days: number): Promise<Report> {
       { key: 'expiryDate', label: 'expires' },
       { key: 'daysRemaining', label: 'daysLeft', numeric: true },
       { key: 'lotNumber', label: 'lot' },
-      { key: 'quantity', label: 'quantity', numeric: true },
-      { key: 'valueAtRisk', label: 'valueAtRisk', numeric: true },
+      { key: 'quantity', label: 'quantity', numeric: true, format: 'quantity' },
+      { key: 'valueAtRisk', label: 'valueAtRisk', numeric: true, format: 'money' },
     ],
     rows: rows.map((r) => ({
       productName: r.productName ?? '',
@@ -162,8 +162,8 @@ async function lowStock(orgId: string): Promise<Report> {
     columns: [
       { key: 'name', label: 'product' },
       { key: 'gtin', label: 'barcode' },
-      { key: 'quantity', label: 'onHand', numeric: true },
-      { key: 'minStock', label: 'minimum', numeric: true },
+      { key: 'quantity', label: 'onHand', numeric: true, format: 'quantity' },
+      { key: 'minStock', label: 'minimum', numeric: true, format: 'quantity' },
       { key: 'unit', label: 'unit' },
       { key: 'supplierName', label: 'supplier' },
     ],
@@ -204,10 +204,10 @@ async function salesByProduct(orgId: string, days: number): Promise<Report> {
     columns: [
       { key: 'name', label: 'product' },
       { key: 'gtin', label: 'barcode' },
-      { key: 'quantity', label: 'quantity', numeric: true },
+      { key: 'quantity', label: 'quantity', numeric: true, format: 'quantity' },
       { key: 'unit', label: 'unit' },
-      { key: 'vat', label: 'vat', numeric: true },
-      { key: 'grossRevenue', label: 'grossRevenue', numeric: true },
+      { key: 'vat', label: 'vat', numeric: true, format: 'money' },
+      { key: 'grossRevenue', label: 'grossRevenue', numeric: true, format: 'money' },
     ],
     rows: rows.map((r) => ({
       name: r.name,

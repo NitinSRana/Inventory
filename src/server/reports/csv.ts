@@ -3,7 +3,19 @@
  * stays a pure module — testable on its own, and cheap to reason about.
  */
 
-export type Column = { key: string; label: string; numeric?: boolean };
+export type Column = {
+  key: string;
+  label: string;
+  /** Right-aligned and tabular. Says how it sits in a column, not what it is. */
+  numeric?: boolean;
+  /**
+   * How to render it for a human. The rows themselves stay raw — `123.4500`,
+   * `22.000` — because this same report is the CSV a shop re-imports, and a
+   * currency symbol in a spreadsheet column is a broken import. The screen
+   * formats at the last moment; the file does not.
+   */
+  format?: 'money' | 'quantity';
+};
 export type Report = { columns: Column[]; rows: Record<string, string>[] };
 
 /**

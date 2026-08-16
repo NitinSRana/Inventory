@@ -1,4 +1,4 @@
-import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { getFormatter, getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { FileX2 } from 'lucide-react';
@@ -8,8 +8,12 @@ import { PageTitle } from '@/components/data-list';
 import { EmptyState } from '@/components/empty-state';
 import { buttonVariants } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { organizations } from '@/db/schema';
+import { withTenant } from '@/db/tenant';
+import { trimQuantity } from '@/lib/quantity';
 import { requireOrg } from '@/server/auth/session';
 import { REPORT_SLUGS, buildReport, type ReportSlug } from '@/server/reports';
+import { formatCell } from '@/server/reports/display';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
 // behind auth is a cross-tenant leak waiting to happen.
@@ -31,8 +35,19 @@ export default async function ReportPage({ params, searchParams }: PageProps<'/[
 
   const t = await getTranslations('reports');
   const tBack = await getTranslations('back');
+  const format = await getFormatter();
   const { orgId } = await requireOrg(locale);
   const report = await buildReport(orgId, reportSlug, period);
+  const [org] = await withTenant(orgId, (tx) => tx.select().from(organizations));
+
+  // Rows arrive raw so the CSV stays re-importable; the screen formats at the
+  // last moment. The rules live in display.ts, where they are testable without
+  // a request or a locale.
+  const cell = (column: (typeof report.columns)[number], raw: string | undefined) =>
+    formatCell(column, raw, {
+      money: (v) => format.number(v, { style: 'currency', currency: org.currencyCode }),
+      quantity: trimQuantity,
+    });
 
   const showPeriod = TIME_BOUNDED.includes(reportSlug);
   const exportHref =
@@ -67,24 +82,29 @@ export default async function ReportPage({ params, searchParams }: PageProps<'/[
         <EmptyState icon={FileX2} title={t('empty')} body={t('emptyBody')} />
       ) : (
         <>
-          {/* Stacked on a phone, table on desktop — never a sideways-scrolling table. */}
-          <ul className="flex flex-col gap-2 sm:hidden">
-            {report.rows.map((row, i) => (
-              <li key={i} className="flex flex-col gap-1 rounded-lg border p-3">
-                <span className="font-medium">{row[report.columns[0].key]}</span>
-                <dl className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-sm">
-                  {report.columns.slice(1).map((c) => (
-                    <div key={c.key} className="contents">
-                      <dt className="text-muted-foreground">{t(`columns.${c.label}`)}</dt>
-                      <dd className={c.numeric ? 'text-right tabular-nums' : ''}>
-                        {row[c.key] || '—'}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </li>
-            ))}
-          </ul>
+          {/* Stacked on a phone, table on desktop — never a sideways-scrolling
+              table. One bordered container with dividers rather than a card per
+              row: cards spend roughly 24px of gutter and shadow each and buy
+              nothing, which is the same call every other list in the app makes. */}
+          <div className="overflow-hidden rounded-lg border sm:hidden">
+            <ul className="divide-border divide-y">
+              {report.rows.map((row, i) => (
+                <li key={i} className="flex flex-col gap-1 px-4 py-3">
+                  <span className="font-medium">{row[report.columns[0].key]}</span>
+                  <dl className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-sm">
+                    {report.columns.slice(1).map((c) => (
+                      <div key={c.key} className="contents">
+                        <dt className="text-muted-foreground">{t(`columns.${c.label}`)}</dt>
+                        <dd className={c.numeric ? 'text-right tabular-nums' : ''}>
+                          {cell(c, row[c.key])}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </li>
+              ))}
+            </ul>
+          </div>
 
           <div className="hidden overflow-x-auto sm:block">
             <Table>
@@ -105,7 +125,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<'/[
                         key={c.key}
                         className={c.numeric ? 'text-right tabular-nums' : ''}
                       >
-                        {row[c.key] || '—'}
+                        {cell(c, row[c.key])}
                       </TableCell>
                     ))}
                   </TableRow>
