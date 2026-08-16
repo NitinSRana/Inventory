@@ -122,6 +122,10 @@ export async function ExpiryDashboard({
                     return (
                       <DataRow
                         key={r.batchId}
+                        // The whole point of this screen is to prompt an action,
+                        // and the action is nearly always about the product.
+                        // Naming it and giving no way to open it is a dead end.
+                        href={`/${locale}/products/${r.productId}`}
                         tall
                         title={r.productName}
                         subtitle={

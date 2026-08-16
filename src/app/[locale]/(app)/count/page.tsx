@@ -90,6 +90,7 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
               {due.slice(0, 10).map((p) => (
                 <DataRow
                   key={p.id}
+                  href={`/${locale}/products/${p.id}`}
                   title={p.name}
                   meta={
                     p.lastCountedAt ? t('daysOver', { days: p.daysOverdue }) : t('neverCounted')

@@ -85,6 +85,9 @@ export default async function ReorderPage({ params }: PageProps<'/[locale]/reord
                 {g.lines.map((l) => (
                   <DataRow
                     key={l.productId}
+                    // Deciding what to order usually means checking the product
+                    // first — its cost, its supplier, its minimum.
+                    href={`/${locale}/products/${l.productId}`}
                     title={l.productName}
                     subtitle={
                       <>

@@ -44,8 +44,7 @@ export default async function CountReviewPage({
     return (
       <main className="flex flex-1 flex-col items-start gap-4 p-4">
         <BackLink href={`/${locale}/count`} label={tBack('count')} />
-        <h1 className="text-xl font-semibold">{t('reviewTitle')}</h1>
-        <p className="text-muted-foreground text-sm">{t('noSession')}</p>
+        <PageTitle caption={t('noSession')}>{t('reviewTitle')}</PageTitle>
         <Link href={`/${locale}/count`} className={buttonVariants({ className: 'h-12' })}>
           {t('start')}
         </Link>
@@ -110,6 +109,7 @@ export default async function CountReviewPage({
               return (
                 <DataRow
                   key={`${v.productId}-${v.batchId ?? 'none'}`}
+                  href={`/${locale}/products/${v.productId}`}
                   title={v.productName}
                   // Sign is stated in words as well as by the number, so the
                   // direction survives a glance and a colourblind reader.

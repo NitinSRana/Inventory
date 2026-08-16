@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 import { requireOrg, requireRole } from '@/server/auth/session';
+import { roleAtLeast } from '@/server/auth/roles';
 import {
   cancelPurchaseOrder,
   getPurchaseOrder,
@@ -31,7 +32,12 @@ export default async function OrderPage({ params, searchParams }: PageProps<'/[l
   const t = await getTranslations('orders');
   const tBack = await getTranslations('back');
   const format = await getFormatter();
-  const { orgId } = await requireOrg(locale);
+  const session = await requireOrg(locale);
+  const { orgId } = session;
+  // Both actions below re-check this server-side; hiding is presentation,
+  // not enforcement. Showing staff a button that always fails is just a
+  // worse way of saying no.
+  const canManage = roleAtLeast(session.role, 'manager');
 
   // RLS scopes this, so another tenant's id is indistinguishable from a missing one.
   const po = await getPurchaseOrder(orgId, id);
@@ -122,7 +128,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<'/[l
         })}
       </DataList>
 
-      {po.status === 'draft' && (
+      {canManage && po.status === 'draft' && (
         <form action={send} className="flex flex-col gap-2">
           <p className="text-muted-foreground text-sm">{t('sendHint')}</p>
           <Button type="submit" className="h-12 w-fit">
@@ -131,7 +137,7 @@ export default async function OrderPage({ params, searchParams }: PageProps<'/[l
         </form>
       )}
 
-      {po.status !== 'received' && po.status !== 'cancelled' && (
+      {canManage && po.status !== 'received' && po.status !== 'cancelled' && (
         <form action={cancel}>
           {/* Stops the outstanding quantity so reorder suggestions come back.
               Anything already delivered stays in the ledger. */}
