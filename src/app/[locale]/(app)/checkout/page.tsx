@@ -21,7 +21,7 @@ import {
   getProductsByIds,
   listProducts,
 } from '@/server/catalog/products';
-import { UnpricedProductError, checkout } from '@/server/pos/checkout';
+import { UnpricedProductError, checkout, getSale } from '@/server/pos/checkout';
 import { InsufficientStockError } from '@/server/stock/fefo';
 import { getProductStock } from '@/server/stock/levels';
 
@@ -46,11 +46,75 @@ export default async function CheckoutPage({
   const money = (v: string) => format.number(Number(v), { style: 'currency', currency: org.currencyCode });
 
   if (typeof done === 'string') {
+    const receipt = await getSale(orgId, done);
+    // The id came straight back from checkout() a moment ago, so its absence
+    // here means something is genuinely wrong — say so rather than pretend the
+    // bare confirmation the old version showed was ever the goal.
+    if (!receipt) {
+      return (
+        <main className="flex flex-1 flex-col items-start gap-4 p-4">
+          <PageTitle>{t('saleNotFound')}</PageTitle>
+          <p className="text-muted-foreground text-sm">{t('saleNotFoundBody')}</p>
+          <Link href={`/${locale}/checkout`} className={buttonVariants({ className: 'h-12' })}>
+            {t('newSale')}
+          </Link>
+        </main>
+      );
+    }
+
+    const tVat = await getTranslations('vat');
+    const { sale, lines, vatBreakdown } = receipt;
+    const netTotal = new Decimal(sale.subtotal);
+
     return (
-      <main className="flex flex-1 flex-col items-start gap-4 p-4">
-        <PageTitle>{t('saleComplete')}</PageTitle>
-        <p className="text-3xl font-semibold tabular-nums">{money(done)}</p>
-        <Link href={`/${locale}/checkout`} className={buttonVariants({ className: 'h-12' })}>
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 p-4">
+        <div className="flex flex-col items-start gap-1">
+          <PageTitle>{t('saleComplete')}</PageTitle>
+          <p className="text-muted-foreground text-sm">
+            {t('receiptMeta', {
+              number: sale.saleNumber,
+              tender: t(`tenderTypes.${sale.tenderType}`),
+              time: format.dateTime(new Date(sale.createdAt), { dateStyle: 'medium', timeStyle: 'short' }),
+            })}
+          </p>
+        </div>
+
+        <DataList>
+          {lines.map((l) => (
+            <DataRow
+              key={l.productId}
+              title={l.name}
+              subtitle={
+                <>
+                  {trimQuantity(l.quantity)} {l.unit} × {money(l.unitPrice)}
+                </>
+              }
+              value={money(l.lineTotal)}
+            />
+          ))}
+        </DataList>
+
+        {/* The breakdown a return actually needs: what came back has to be
+            refunded at the rate it was charged, and one summed VAT line cannot
+            say what that was. */}
+        <div className="flex flex-col gap-1 border-t pt-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{t('subtotal')}</span>
+            <span className="tabular-nums">{money(netTotal.toFixed(2))}</span>
+          </div>
+          {vatBreakdown.map((b) => (
+            <div key={b.band} className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{tVat(`bands.${b.band}`)}</span>
+              <span className="tabular-nums">{money(b.vat)}</span>
+            </div>
+          ))}
+          <div className="flex justify-between border-t pt-2 text-lg font-semibold">
+            <span>{t('total')}</span>
+            <span className="tabular-nums">{money(sale.total)}</span>
+          </div>
+        </div>
+
+        <Link href={`/${locale}/checkout`} className={buttonVariants({ className: 'h-12 w-fit' })}>
           {t('newSale')}
         </Link>
       </main>
@@ -117,15 +181,17 @@ export default async function CheckoutPage({
     const rawCart = String(formData.get('cart') ?? '');
     const current = parseCart(rawCart);
 
-    let total: string;
+    let saleId: string;
     try {
       const sale = await checkout(orgId, { lines: current, tenderType, actorId: userId });
-      total = sale.total;
+      saleId = sale.id;
     } catch (e) {
       const code = e instanceof InsufficientStockError ? 'stock' : e instanceof UnpricedProductError ? 'unpriced' : 'unknown';
       redirect(`/${locale}/checkout?cart=${encodeURIComponent(rawCart)}&error=${code}`);
     }
-    redirect(`/${locale}/checkout?done=${total}`);
+    // The id, not the total: a bare figure cannot show what was actually sold,
+    // and that is the thing a completed sale most needs to prove.
+    redirect(`/${locale}/checkout?done=${saleId}`);
   }
 
   const cartValue = encodeCart(cart);

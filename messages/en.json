@@ -520,7 +520,15 @@
     "soldByWeight": "Sold by weight ({unit})",
     "noBarcode": "No barcode",
     "noPrice": "No price set",
-    "weight": "Weight ({unit})"
+    "weight": "Weight ({unit})",
+    "receiptMeta": "{number} · {tender} · {time}",
+    "tenderTypes": {
+      "cash": "Cash",
+      "card": "Card"
+    },
+    "subtotal": "Subtotal",
+    "saleNotFound": "Can't find that sale",
+    "saleNotFoundBody": "It may have been on a different device or organisation. Nothing was lost — check Reports for the sales list."
   },
   "store": {
     "title": "Store",

@@ -174,6 +174,64 @@ export async function checkout(
  * movement") — plus a status update on `sales`, which is a normal table update,
  * not the append-only ledger.
  */
+/**
+ * A sale and everything printed on its receipt.
+ *
+ * The figures are read back rather than recomputed. Prices and VAT rates both
+ * change, and a receipt that recalculates itself from today's rates would show
+ * a different total tomorrow than the customer was charged today. What was
+ * charged is what `sale_lines` recorded at the time.
+ */
+export async function getSale(orgId: string, saleId: string) {
+  return withTenant(orgId, async (tx) => {
+    const [sale] = await tx.select().from(sales).where(eq(sales.id, saleId)).limit(1);
+    if (!sale) return null;
+
+    const lines = await tx
+      .select({
+        productId: saleLines.productId,
+        name: products.name,
+        gtin: products.gtin,
+        unit: products.unit,
+        quantity: saleLines.quantity,
+        unitPrice: saleLines.unitPrice,
+        vatBand: saleLines.vatBand,
+        vatAmount: saleLines.vatAmount,
+        lineTotal: saleLines.lineTotal,
+      })
+      .from(saleLines)
+      .innerJoin(products, eq(products.id, saleLines.productId))
+      .where(eq(saleLines.saleId, saleId))
+      .orderBy(products.name);
+
+    /**
+     * VAT grouped by band, which is the breakdown a receipt actually needs:
+     * a shop taking something back has to refund the tax at the rate it was
+     * charged at, and one summed VAT figure cannot tell you what that was.
+     */
+    const byBand = new Map<string, { net: Decimal; vat: Decimal }>();
+    for (const line of lines) {
+      const net = new Decimal(line.lineTotal).minus(line.vatAmount);
+      const seen = byBand.get(line.vatBand) ?? { net: new Decimal(0), vat: new Decimal(0) };
+      byBand.set(line.vatBand, {
+        net: seen.net.plus(net),
+        vat: seen.vat.plus(line.vatAmount),
+      });
+    }
+
+    const vatBreakdown = [...byBand.entries()]
+      .map(([band, totals]) => ({
+        band,
+        net: totals.net.toFixed(2),
+        vat: totals.vat.toFixed(2),
+      }))
+      // Largest first: the standard band is usually the bulk of a basket.
+      .sort((a, b) => Number(b.vat) - Number(a.vat));
+
+    return { sale, lines, vatBreakdown };
+  });
+}
+
 export async function voidSale(orgId: string, saleId: string, actorId?: string | null) {
   return withTenant(orgId, async (tx) => {
     const [sale] = await tx.select().from(sales).where(eq(sales.id, saleId)).limit(1);
