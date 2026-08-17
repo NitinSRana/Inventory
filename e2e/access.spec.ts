@@ -18,6 +18,7 @@ const PROTECTED = [
   '/en/products',
   '/en/orders',
   '/en/categories',
+  '/en/insights',
   '/en/settings/store',
 ];
 

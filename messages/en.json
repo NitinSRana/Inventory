@@ -426,7 +426,8 @@
       "vat": "VAT rates",
       "categories": "Categories",
       "waste": "Write off",
-      "store": "Store"
+      "store": "Store",
+      "insights": "Insights"
     }
   },
   "errors": {
@@ -528,5 +529,24 @@
     "save": "Save",
     "saved": "Saved.",
     "saveFailed": "Couldn't save that. Check the fields and try again."
+  },
+  "insights": {
+    "title": "Insights",
+    "intro": "What came in, what was lost, and where.",
+    "periodLabel": "Choose a period",
+    "lastDays": "Last {days} days",
+    "takings": "Takings",
+    "takingsChart": "Takings per day over the last {days} days",
+    "losses": "Written off",
+    "lossesChart": "Value written off per day over the last {days} days",
+    "lossesShare": "{percent}% of takings",
+    "lossesNoSales": "No sales in this period to compare against.",
+    "topProducts": "Top products",
+    "lossesByReason": "Where it went",
+    "noSales": "Nothing sold in this period.",
+    "noWaste": "Nothing written off in this period. Good.",
+    "emptyTitle": "Nothing to show yet",
+    "emptyBody": "Charts appear once the till has taken money or something has been written off. Ring a sale through checkout and this screen fills in.",
+    "goToCheckout": "Open checkout"
   }
 }

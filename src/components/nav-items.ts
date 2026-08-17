@@ -10,6 +10,7 @@ import {
   Store,
   Tag,
   Trash2,
+  TrendingUp,
   Truck,
   Users,
 } from 'lucide-react';
@@ -73,7 +74,10 @@ export const SECTIONS = [
   },
   {
     key: 'insight',
-    items: [{ path: 'reports', key: 'reports', Icon: BarChart3, needs: 'staff' }],
+    items: [
+      { path: 'insights', key: 'insights', Icon: TrendingUp, needs: 'manager' },
+      { path: 'reports', key: 'reports', Icon: BarChart3, needs: 'staff' },
+    ],
   },
   {
     key: 'settings',
