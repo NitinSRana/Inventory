@@ -3,12 +3,15 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { BarcodeField } from '@/components/barcode-field';
-import { Field, FieldRow, StickyAction } from '@/components/form';
+import { Field, FieldRow, NativeSelect, StickyAction } from '@/components/form';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import Decimal from 'decimal.js';
+
 import { trimQuantity } from '@/lib/quantity';
 import { requireOrg } from '@/server/auth/session';
-import { findProductByBarcode } from '@/server/catalog/products';
+import { normalizeGtin } from '@/server/catalog/ean';
+import { findProductByBarcode, getProduct } from '@/server/catalog/products';
 import { getProductStock, suggestedExpiryDate } from '@/server/stock/levels';
 import { receiveStock } from '@/server/stock/movements';
 import { PageTitle } from '@/components/data-list';
@@ -27,6 +30,11 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
 
   const barcode = typeof gtin === 'string' ? gtin : undefined;
   const product = barcode ? await findProductByBarcode(orgId, barcode) : null;
+  // What was actually pointed at. Scanning the carton means the delivery is
+  // being counted in cartons, so that is the sensible default.
+  const scannedTheCase = Boolean(
+    product?.caseGtin && barcode && normalizeGtin(barcode) === product.caseGtin,
+  );
   const [stock] = product ? await getProductStock(orgId, product.id) : [];
 
   // Shelf life gives a sensible default expiry, which is the field people are
@@ -51,10 +59,30 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
       return typeof v === 'string' && v.trim() ? v.trim() : null;
     };
 
+    const productId = String(formData.get('productId'));
+
+    // A delivery arrives in cases, so it can be counted in cases. The ledger
+    // only ever stores units — the multiplication happens here, once, rather
+    // than in someone's head at the back door with a box in the other hand.
+    //
+    // The case size is read back from the database rather than taken from the
+    // form. It is a number that multiplies what lands in an append-only ledger,
+    // and posting one is the only correction available; that is not a figure to
+    // accept from the page just because the page happens to know it.
+    // Decimal because units_per_case is numeric too: 0.5 kg tubs, 6 to a tray.
+    const typed = String(formData.get('quantity') ?? '').trim();
+    let quantity = typed;
+    if (formData.get('entryUnit') === 'case') {
+      const fresh = await getProduct(orgId, productId);
+      if (fresh?.unitsPerCase) {
+        quantity = new Decimal(typed).times(fresh.unitsPerCase).toString();
+      }
+    }
+
     try {
       await receiveStock(orgId, {
-        productId: String(formData.get('productId')),
-        quantity: String(formData.get('quantity') ?? '').trim(),
+        productId,
+        quantity,
         expiryDate: value('expiryDate'),
         lotNumber: value('lotNumber'),
         unitCost: value('unitCost'),
@@ -112,17 +140,51 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
             </span>
           </div>
 
-          {/* The one number typed while holding the box: taller than the rest. */}
-          <Field name="quantity" label={t('quantity', { unit: product.unit })}>
-            <Input
-              id="quantity"
-              name="quantity"
-              inputMode="decimal"
-              required
-              autoFocus
-              className="h-14 text-right text-lg tabular-nums"
-            />
-          </Field>
+          {/* The one number typed while holding the box: taller than the rest.
+              A product that comes in cases can be counted in cases — the boxes
+              are what is stacked at the door, and the multiplication is the
+              app's job. Defaults to cases when the case barcode was the thing
+              scanned, because that is what the scanner was pointed at. */}
+          {product.unitsPerCase ? (
+            <>
+              <FieldRow>
+                <Field name="quantity" label={t('quantityReceived')}>
+                  <Input
+                    id="quantity"
+                    name="quantity"
+                    inputMode="decimal"
+                    required
+                    autoFocus
+                    className="h-14 text-right text-lg tabular-nums"
+                  />
+                </Field>
+                <Field name="entryUnit" label={t('countedIn')}>
+                  <NativeSelect
+                    id="entryUnit"
+                    name="entryUnit"
+                    defaultValue={scannedTheCase ? 'case' : 'unit'}
+                    className="h-14"
+                  >
+                    <option value="unit">{t('inUnits', { unit: product.unit })}</option>
+                    <option value="case">
+                      {t('inCases', { perCase: trimQuantity(product.unitsPerCase) })}
+                    </option>
+                  </NativeSelect>
+                </Field>
+              </FieldRow>
+            </>
+          ) : (
+            <Field name="quantity" label={t('quantity', { unit: product.unit })}>
+              <Input
+                id="quantity"
+                name="quantity"
+                inputMode="decimal"
+                required
+                autoFocus
+                className="h-14 text-right text-lg tabular-nums"
+              />
+            </Field>
+          )}
 
           <Field
             name="expiryDate"
@@ -148,7 +210,11 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
             <Field name="lotNumber" label={t('lot')}>
               <Input id="lotNumber" name="lotNumber" autoComplete="off" className="h-12 font-mono" />
             </Field>
-            <Field name="unitCost" label={t('unitCost')}>
+            <Field
+              name="unitCost"
+              label={t('unitCost')}
+              hint={product.unitsPerCase ? t('unitCostPerUnit') : undefined}
+            >
               <Input
                 id="unitCost"
                 name="unitCost"

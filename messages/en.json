@@ -213,7 +213,12 @@
     "unitCost": "Unit cost",
     "submit": "Receive",
     "received": "Delivery recorded.",
-    "failed": "Couldn’t record that. Check the quantity and try again."
+    "failed": "Couldn’t record that. Check the quantity and try again.",
+    "quantityReceived": "Quantity received",
+    "countedIn": "Counted in",
+    "inUnits": "Units ({unit})",
+    "inCases": "Cases of {perCase}",
+    "unitCostPerUnit": "Per unit, not per case."
   },
   "import": {
     "title": "Import products",
