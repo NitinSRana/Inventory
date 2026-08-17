@@ -552,6 +552,16 @@
     "noWaste": "Nothing written off in this period. Good.",
     "emptyTitle": "Nothing to show yet",
     "emptyBody": "Charts appear once the till has taken money or something has been written off. Ring a sale through checkout and this screen fills in.",
-    "goToCheckout": "Open checkout"
+    "goToCheckout": "Open checkout",
+    "margin": "Gross margin",
+    "marginPercent": "{percent}% of takings",
+    "marginWorking": "{revenue} taken, {cogs} the stock cost",
+    "vsPrevious": "{percent}% vs previous {days} days —",
+    "better": "better",
+    "worse": "worse",
+    "noPrior": "No earlier period to compare against yet.",
+    "deadStock": "Not moving",
+    "deadStockHint": "On the shelf, nothing sold in {days} days. Money that is not working.",
+    "noDeadStock": "Everything on the shelf has sold at least once. Good."
   }
 }
