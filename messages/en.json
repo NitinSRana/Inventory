@@ -390,7 +390,12 @@
       "invalidEmail": "That does not look like an email address.",
       "lastOwner": "An organization must keep at least one owner.",
       "unknown": "That did not work. Try again."
-    }
+    },
+    "invitedSent": "Invitation sent. They join this shop the first time they sign in.",
+    "invitedNoMail": "Invitation created — but no email was sent.",
+    "invitedNoMailHint": "Tell them to sign in with this address. They join this shop automatically the first time they do.",
+    "invitedMailFailed": "Invitation created, but the email could not be sent.",
+    "noMailProvider": "No mail provider is configured, so invitations are not emailed. Add RESEND_API_KEY and MAIL_FROM to send them."
   },
   "nav": {
     "primary": "Main",

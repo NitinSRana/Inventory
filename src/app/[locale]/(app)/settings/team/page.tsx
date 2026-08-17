@@ -1,4 +1,5 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { BackLink } from '@/components/back-link';
@@ -6,6 +7,10 @@ import { PageTitle } from '@/components/data-list';
 import { Field, NativeSelect, StickyAction } from '@/components/form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { organizations } from '@/db/schema';
+import { withTenant } from '@/db/tenant';
+import { invitationEmail } from '@/server/email/invitation';
+import { mailIsConfigured, sendEmail } from '@/server/email/send';
 import { requireRole } from '@/server/auth/session';
 import { ROLE_RANK, type Role } from '@/server/auth/roles';
 import {
@@ -29,6 +34,7 @@ export default async function TeamPage({ params, searchParams }: PageProps<'/[lo
   setRequestLocale(locale);
 
   const { error, invited } = await searchParams;
+  const mailConfigured = mailIsConfigured();
   const t = await getTranslations('team');
   const tBack = await getTranslations('back');
   // Changing who can do what is an owner decision.
@@ -41,17 +47,38 @@ export default async function TeamPage({ params, searchParams }: PageProps<'/[lo
 
   async function invite(formData: FormData) {
     'use server';
-    const { orgId, userId } = await requireRole(locale, 'owner');
+    const { orgId, userId, email: inviterEmail } = await requireRole(locale, 'owner');
+    const address = String(formData.get('email') ?? '');
     try {
       await inviteMember(orgId, {
-        email: String(formData.get('email') ?? ''),
+        email: address,
         role: String(formData.get('role') ?? 'staff') as Role,
         invitedBy: userId,
       });
     } catch {
       redirect(`/${locale}/settings/team?error=invalidEmail`);
     }
-    redirect(`/${locale}/settings/team?invited=1`);
+
+    // The row is what grants access; the email is how the person finds out.
+    // So a mail failure must not undo the invitation — but it must be said
+    // out loud, or the owner waits for someone who was never told.
+    const [org] = await withTenant(orgId, (tx) => tx.select().from(organizations));
+    const h = await headers();
+    const origin =
+      h.get('origin') ??
+      process.env.NEXT_PUBLIC_SITE_URL ??
+      `http://${h.get('host') ?? 'localhost:3000'}`;
+
+    const result = await sendEmail({
+      to: address.trim().toLowerCase(),
+      ...invitationEmail({
+        organizationName: org.name,
+        signInUrl: `${origin}/${locale}/sign-in`,
+        invitedByEmail: inviterEmail,
+      }),
+    });
+
+    redirect(`/${locale}/settings/team?invited=${result.status}`);
   }
 
   async function revoke(formData: FormData) {
@@ -89,11 +116,29 @@ export default async function TeamPage({ params, searchParams }: PageProps<'/[lo
       <BackLink href={`/${locale}/more`} label={tBack('more')} />
       <PageTitle caption={t('intro')}>{t('title')}</PageTitle>
 
-      {invited && (
+      {/* Three different things can have happened, and telling the owner the
+          wrong one costs a new member their first day. */}
+      {invited === 'sent' && (
         <p role="status" className="text-sm">
-          {t('invitedNote')}
+          {t('invitedSent')}
         </p>
       )}
+      {invited === 'notConfigured' && (
+        <p role="status" className="flex flex-col gap-1 text-sm">
+          <span>{t('invitedNoMail')}</span>
+          <span className="text-muted-foreground">{t('invitedNoMailHint')}</span>
+        </p>
+      )}
+      {invited === 'failed' && (
+        <p role="alert" className="flex flex-col gap-1 text-sm">
+          <span className="text-destructive">{t('invitedMailFailed')}</span>
+          <span className="text-muted-foreground">{t('invitedNoMailHint')}</span>
+        </p>
+      )}
+
+      {/* Said before they type, not after: an owner who knows no mail goes out
+          will tell the person themselves rather than waiting on an inbox. */}
+      {!mailConfigured && <p className="text-muted-foreground text-sm">{t('noMailProvider')}</p>}
       {error && (
         <p role="alert" className="text-destructive text-sm">
           {t(`errors.${error}`)}
