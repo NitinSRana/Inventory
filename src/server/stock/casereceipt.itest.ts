@@ -68,9 +68,12 @@ describe('receiving by the case', () => {
     const fresh = await getProduct(org.orgId, cased);
     assert.equal(fresh?.unitsPerCase, '12.000');
 
-    const before = (await getProductStock(org.orgId, cased))[0].quantity;
+    // product_stock sums the ledger, so quantity is nullable for a product
+    // nothing has ever moved. This one has, but the type says otherwise and
+    // Decimal will not take null.
+    const before = (await getProductStock(org.orgId, cased))[0].quantity ?? '0';
     await receiveInCases(org.orgId, cased, '1');
-    const after = (await getProductStock(org.orgId, cased))[0].quantity;
+    const after = (await getProductStock(org.orgId, cased))[0].quantity ?? '0';
     assert.equal(
       new Decimal(after).minus(before).toString(),
       '12',
