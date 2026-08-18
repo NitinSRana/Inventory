@@ -9,7 +9,7 @@ colour, contrast, density) that any redesign has to hold. **Read the brief's §4
 before changing anything**; several of those rules come from where the product is
 used and one of them is a legal requirement.
 
-Last updated against commit `064709c`.
+Last updated against commit `3573f13`.
 
 ---
 
