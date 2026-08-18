@@ -13,11 +13,9 @@ import { trimQuantity } from '@/lib/quantity';
 import { requireRole } from '@/server/auth/session';
 import {
   dailyRevenue,
-  dailyWaste,
   deadStock,
   grossMargin,
   topProductsByRevenue,
-  wasteByReason,
   windowFor,
 } from '@/server/analytics/trends';
 
@@ -43,18 +41,15 @@ export default async function InsightsPage({ params, searchParams }: PageProps<'
 
   const t = await getTranslations('insights');
   const tBack = await getTranslations('back');
-  const tReasons = await getTranslations('products.reasonCodes');
   const format = await getFormatter();
   const { orgId } = await requireRole(locale, 'manager');
 
   const [org] = await withTenant(orgId, (tx) => tx.select().from(organizations));
   const now = windowFor(period);
   const previous = windowFor(period, 1);
-  const [revenue, waste, topProducts, losses, margin, priorMargin, stuck] = await Promise.all([
+  const [revenue, topProducts, margin, priorMargin, stuck] = await Promise.all([
     dailyRevenue(orgId, period),
-    dailyWaste(orgId, period),
     topProductsByRevenue(orgId, period, 5),
-    wasteByReason(orgId, period),
     grossMargin(orgId, now),
     grossMargin(orgId, previous),
     deadStock(orgId, now, 8),
@@ -67,14 +62,7 @@ export default async function InsightsPage({ params, searchParams }: PageProps<'
     points.reduce((acc, p) => acc.plus(p.value), new Decimal(0)).toFixed(2);
 
   const revenueTotal = sum(revenue);
-  const wasteTotal = sum(waste);
-  // What the losses cost as a share of what came in — the one derived figure
-  // here, and the one a shopkeeper reads first.
-  const wasteShare = new Decimal(revenueTotal).greaterThan(0)
-    ? new Decimal(wasteTotal).dividedBy(revenueTotal).times(100).toDecimalPlaces(1).toString()
-    : null;
-
-  const nothingYet = new Decimal(revenueTotal).equals(0) && new Decimal(wasteTotal).equals(0);
+  const nothingYet = new Decimal(revenueTotal).equals(0);
 
   /**
    * Change against the period before. A figure alone says almost nothing: six
@@ -99,7 +87,8 @@ export default async function InsightsPage({ params, searchParams }: PageProps<'
     : null;
 
   /**
-   * Up is not automatically good: more takings is, more waste is not.
+   * `higherIsBetter` stays a parameter rather than being assumed: not every
+   * figure this could ever be attached to is one where up is good news.
    *
    * A function returning elements rather than a component declared in render —
    * it holds no state, so nesting a component here would only give React
@@ -176,25 +165,12 @@ export default async function InsightsPage({ params, searchParams }: PageProps<'
             </p>
           </section>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <section className="flex flex-col gap-2 rounded-lg border p-4">
-              <SectionHeading>{t('takings')}</SectionHeading>
-              <p className="text-3xl font-semibold tabular-nums">{money(revenueTotal)}</p>
-              {delta(takingsChange, true)}
-              <TrendBars points={revenue} format={money} label={t('takingsChart', { days: period })} />
-            </section>
-
-            <section className="flex flex-col gap-2 rounded-lg border p-4">
-              <SectionHeading>{t('losses')}</SectionHeading>
-              <p className="text-3xl font-semibold tabular-nums">{money(wasteTotal)}</p>
-              {/* Stated against takings, because £40 of waste means nothing
-                  until you know whether the shop took £400 or £4,000. */}
-              <p className="text-muted-foreground text-sm">
-                {wasteShare === null ? t('lossesNoSales') : t('lossesShare', { percent: wasteShare })}
-              </p>
-              <TrendBars points={waste} format={money} label={t('lossesChart', { days: period })} />
-            </section>
-          </div>
+          <section className="flex flex-col gap-2 rounded-lg border p-4">
+            <SectionHeading>{t('takings')}</SectionHeading>
+            <p className="text-3xl font-semibold tabular-nums">{money(revenueTotal)}</p>
+            {delta(takingsChange, true)}
+            <TrendBars points={revenue} format={money} label={t('takingsChart', { days: period })} />
+          </section>
 
           <div className="grid gap-6 md:grid-cols-2">
             <section className="flex flex-col gap-3 rounded-lg border p-4">
@@ -202,42 +178,33 @@ export default async function InsightsPage({ params, searchParams }: PageProps<'
               <RankedBars items={topProducts} format={money} emptyLabel={t('noSales')} />
             </section>
 
+            {/* The other half of "what should I order": what not to. Expiry
+                catches stock about to spoil; this catches stock that will
+                never spoil and will never sell either. */}
             <section className="flex flex-col gap-3 rounded-lg border p-4">
-              <SectionHeading>{t('lossesByReason')}</SectionHeading>
-              <RankedBars
-                items={losses.map((l) => ({ ...l, label: tReasons(l.label) }))}
-                format={money}
-                emptyLabel={t('noWaste')}
-              />
+              <SectionHeading>{t('deadStock')}</SectionHeading>
+              <p className="text-muted-foreground text-sm">{t('deadStockHint', { days: period })}</p>
+              {stuck.length === 0 ? (
+                <p className="text-muted-foreground text-sm">{t('noDeadStock')}</p>
+              ) : (
+                <DataList>
+                  {stuck.map((p) => (
+                    <DataRow
+                      key={p.productId}
+                      href={`/${locale}/products/${p.productId}`}
+                      title={p.label}
+                      subtitle={
+                        <>
+                          {trimQuantity(p.quantity)} <span className="opacity-70">{p.unit}</span>
+                        </>
+                      }
+                      value={money(p.value)}
+                    />
+                  ))}
+                </DataList>
+              )}
             </section>
           </div>
-
-          {/* The other half of "what should I order": what not to. Expiry catches
-              stock about to spoil; this catches stock that will never spoil and
-              will never sell either. */}
-          <section className="flex flex-col gap-3 rounded-lg border p-4">
-            <SectionHeading>{t('deadStock')}</SectionHeading>
-            <p className="text-muted-foreground text-sm">{t('deadStockHint', { days: period })}</p>
-            {stuck.length === 0 ? (
-              <p className="text-muted-foreground text-sm">{t('noDeadStock')}</p>
-            ) : (
-              <DataList>
-                {stuck.map((p) => (
-                  <DataRow
-                    key={p.productId}
-                    href={`/${locale}/products/${p.productId}`}
-                    title={p.label}
-                    subtitle={
-                      <>
-                        {trimQuantity(p.quantity)} <span className="opacity-70">{p.unit}</span>
-                      </>
-                    }
-                    value={money(p.value)}
-                  />
-                ))}
-              </DataList>
-            )}
-          </section>
         </>
       )}
     </main>

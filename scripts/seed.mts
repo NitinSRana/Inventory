@@ -13,9 +13,8 @@ import { createProduct } from '@/server/catalog/products';
 import { createSupplier } from '@/server/catalog/suppliers';
 import { completeCountSession, recordCount, startCountSession } from '@/server/counting/sessions';
 import { recalculateConsumptionRates } from '@/server/consumption/calculate';
-import { createPurchaseOrder, markPurchaseOrderSent } from '@/server/purchasing/orders';
 import { seedVatRatesForCountry } from '@/server/settings/vat';
-import { receiveStock, recordWaste } from '@/server/stock/movements';
+import { receiveStock } from '@/server/stock/movements';
 
 const ORG_NAME = 'Demo Grocer';
 const email = process.argv[2];
@@ -120,18 +119,13 @@ for (const [name] of CATALOGUE) {
 await completeCountSession(orgId, first.id);
 await sql`update count_lines set counted_at = ${daysAgo(14)} where count_session_id = ${first.id}`;
 
-// A fortnight of trading: deliveries, a little waste, then a closing count that
-// is lower — which is what consumption is derived from.
+// A fortnight of trading: deliveries, then a closing count that is lower —
+// which is what consumption is derived from.
 for (const [name, , , , , shelf] of CATALOGUE) {
   await receiveStock(orgId, {
     productId: products[name].id, quantity: '30',
     expiryDate: inDays(Math.min(shelf, 60)),
     unitCost: products[name].cost, occurredAt: daysAgo(7),
-  });
-}
-for (const name of ['Bauernbrot 750g', 'Croissant', 'Bananen']) {
-  await recordWaste(orgId, {
-    productId: products[name].id, quantity: '4', reasonCode: 'expired', occurredAt: daysAgo(5),
   });
 }
 
@@ -161,16 +155,6 @@ for (const [name, days, qty] of expiring) {
   });
 }
 
-// One order already placed, so /orders and on-order maths are not empty.
-const po = await createPurchaseOrder(orgId, {
-  supplierId: suppliers.molkerei.id,
-  lines: [
-    { productId: products['Vollmilch 3,5% 1L'].id, quantity: '48', unitCost: '0.7900' },
-    { productId: products['Butter 250g'].id, quantity: '24', unitCost: '1.8500' },
-  ],
-});
-await markPurchaseOrderSent(orgId, po.id);
-
 if (email) {
   const [user] = await sql`select id from auth.users where email = ${email}`;
   if (user) {
@@ -186,6 +170,6 @@ if (email) {
   console.log(`no email given: run "pnpm seed you@example.com" to join ${ORG_NAME}`);
 }
 
-console.log(`\n${ORG_NAME} ready: ${CATALOGUE.length} products, 2 completed counts, 1 sent order`);
+console.log(`\n${ORG_NAME} ready: ${CATALOGUE.length} products, 2 completed counts`);
 await sql.end();
 process.exit(0);

@@ -9,7 +9,6 @@ import {
   ShoppingCart,
   Store,
   Tag,
-  Trash2,
   TrendingUp,
   Truck,
   Users,
@@ -36,9 +35,6 @@ import type { Role } from '@/server/auth/roles';
  * what a shop does every day, and the dashboard is where it starts. A launcher
  * with nine equal buttons makes the frequent things as hard to reach as the
  * rare ones.
- *
- * Write-off used to hold checkout's slot; a till gets used hundreds of times a
- * day and a write-off a handful.
  */
 export const TABS = [
   { path: '', key: 'home', Icon: Home },
@@ -54,22 +50,11 @@ export const PRIMARY = TABS.filter((t) => t.key !== 'more');
 /** Everything outside the daily loop, grouped by what it is for. */
 export const SECTIONS = [
   {
-    key: 'stock',
-    items: [{ path: 'waste', key: 'waste', Icon: Trash2, needs: 'staff' }],
-  },
-  {
     key: 'catalogue',
     items: [
       { path: 'products', key: 'products', Icon: Package, needs: 'staff' },
       { path: 'suppliers', key: 'suppliers', Icon: Truck, needs: 'staff' },
       { path: 'categories', key: 'categories', Icon: Tag, needs: 'manager' },
-    ],
-  },
-  {
-    key: 'buying',
-    items: [
-      { path: 'reorder', key: 'reorder', Icon: ShoppingCart, needs: 'manager' },
-      { path: 'orders', key: 'orders', Icon: ShoppingCart, needs: 'staff' },
     ],
   },
   {

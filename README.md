@@ -2,15 +2,20 @@
 
 Inventory management for independent European grocery stores.
 
-Tells a shop owner **what's about to expire** and **what to order**, without them
-counting anything by hand.
+Tells a shop owner **what's about to expire**, without them counting anything by
+hand.
 
-There is no POS integration and no sales entry. Stock changes only from
-receiving, waste and cycle counts; consumption is derived:
+Stock changes from three events: receiving, cycle counts, and a POS checkout.
+Consumption is exact where a sale rang it up, and falls back to the
+count-to-count formula only for a product with no sale history yet:
 
 ```
 consumption = opening count + receipts − waste − closing count
 ```
+
+(`waste` reads whatever the ledger already holds; nothing currently writes a
+new `waste`-typed row, since the write-off screen was removed — see
+`CLAUDE.md`.)
 
 Scope and rationale: [`docs/mvp-spec.md`](docs/mvp-spec.md).
 Working rules for this codebase: [`CLAUDE.md`](CLAUDE.md).
@@ -31,9 +36,8 @@ Then sign in at `/en/sign-in` with that email — the link arrives by mail, ther
 is no password.
 
 `pnpm seed` builds a shop with 18 products, batches across every expiry band,
-two completed count cycles (so consumption rates exist), some waste and an open
-purchase order. It runs through the real server layer, so the data is data the
-app could have produced.
+and two completed count cycles (so consumption rates exist). It runs through
+the real server layer, so the data is data the app could have produced.
 
 Adopting a database that was migrated by hand:
 
@@ -127,9 +131,15 @@ they will have ten.
 
 ## Known gaps
 
-- Purchase orders cannot be emailed to suppliers yet — needs a mail provider.
 - An organization cannot be deleted once it has ledger rows, because the
   append-only trigger blocks the cascade. That is a GDPR erasure question with
   no answer yet.
-- Weighed goods (`products.is_weighed`) have no scanning UX.
-- Supabase's built-in SMTP is rate limited; a pilot needs a real mail provider.
+- A checkout sale has no undo and no history screen — `voidSale()` exists but
+  nothing calls it.
+- Reorder suggestions and purchase order management were built, then removed
+  as a deliberate product decision. See `CLAUDE.md`.
+
+This README has more staleness than today's edit touched — the auth
+description, exact test counts, and device-priority framing predate later
+changes in the project's history and were left alone here rather than
+silently rewritten as a side effect of an unrelated change.

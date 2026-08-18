@@ -11,34 +11,27 @@ import {
   recordCount,
   startCountSession,
 } from '@/server/counting/sessions';
-import {
-  createPurchaseOrder,
-  getPurchaseOrder,
-  markPurchaseOrderSent,
-  receiveAgainstPurchaseOrder,
-} from '@/server/purchasing/orders';
-import { getLivePosRates } from '@/server/consumption/posRate';
-import { getReorderSuggestions } from '@/server/purchasing/reorder';
 import { checkout } from '@/server/pos/checkout';
 import { buildReport } from '@/server/reports';
 import { seedVatRatesForCountry } from '@/server/settings/vat';
 import { getExpiringStock, getExpiryExposure, getProductStock } from '@/server/stock/levels';
-import { recordWaste, receiveStock } from '@/server/stock/movements';
+import { receiveStock } from '@/server/stock/movements';
 import { adminSql, createTestOrg } from '@/server/testing/fixtures';
 
 /**
  * One shop's first three weeks, in order, as a single narrative.
  *
  * The per-module suites each prove their own piece. None of them proves the
- * pieces compose: that a catalogue imported on Monday produces a consumption
- * rate a fortnight later, that the rate produces an order, that receiving the
- * order stops it being suggested again. Every number a store owner will ever
- * act on is the output of that whole chain, and a break anywhere in it is
- * invisible to a test that only looks at one link.
+ * pieces compose: that a catalogue imported on Monday still has correct stock
+ * a fortnight later, that a count's variance is derived correctly, that a sale
+ * rung up at the till is visible on the dashboard and in the reports in the
+ * same numbers. Every figure a store owner will ever act on is the output of
+ * that whole chain, and a break anywhere in it is invisible to a test that
+ * only looks at one link.
  *
  * The steps are the real user journey — sign up, build a catalogue, receive,
- * count, write off, count again, reorder, receive against the order — and they
- * run against the same server functions the screens call.
+ * count, count again, sell through the till — and they run against the same
+ * server functions the screens call.
  */
 
 const DAY = 86_400_000;
@@ -48,27 +41,22 @@ const inDays = (n: number) => new Date(Date.now() + n * DAY).toISOString().slice
 describe('a store first three weeks', () => {
   let org: Awaited<ReturnType<typeof createTestOrg>>;
   const product: Record<string, string> = {};
-  let supplierId: string;
 
   test('day 0 — a new shop starts with nothing to show', async () => {
     org = await createTestOrg('Journey Grocer');
     await seedVatRatesForCountry(org.orgId, 'DE');
 
     assert.deepEqual(await listProducts(org.orgId), [], 'a new org must not see anyone else rows');
-    const { groups, withoutRate } = await getReorderSuggestions(org.orgId);
-    assert.deepEqual(groups, [], 'nothing to order before anything is known');
-    assert.equal(withoutRate, 0);
   });
 
   test('day 0 — the catalogue arrives as a supplier CSV, not typed in', async () => {
     // The supplier has to exist first: the file names them, and an import that
     // invented suppliers would quietly create duplicates of the real ones.
-    const supplier = await createSupplier(org.orgId, {
+    await createSupplier(org.orgId, {
       name: 'Molkerei Nord',
       leadTimeDays: 2,
       minOrderValue: '20.0000',
     });
-    supplierId = supplier.id;
 
     const csv = [
       'name,barcode,sku,unit,cost,price,min_stock,shelf_life_days,supplier',
@@ -129,25 +117,11 @@ describe('a store first three weeks', () => {
     // One count is a point, not a rate. Guessing from a single observation is
     // exactly the wrong-number-worse-than-no-number case the spec calls out.
     await recalculateConsumptionRates(org.orgId);
-    const { withoutRate } = await getReorderSuggestions(org.orgId);
-    assert.equal(withoutRate, 2, 'one count cannot produce a rate for either product');
-  });
-
-  test('day 18 — stock goes out of the door as waste', async () => {
-    await recordWaste(org.orgId, {
-      productId: product['Vollmilch 1L'],
-      quantity: '4',
-      reasonCode: 'expired',
-      actorId: org.userId,
-    });
-
-    const [stock] = await getProductStock(org.orgId, product['Vollmilch 1L']);
-    assert.equal(Number(stock.quantity), 36, 'waste must leave the ledger lower, not equal');
   });
 
   test('day 21 — the second count is where consumption finally becomes knowable', async () => {
     const session = await startCountSession(org.orgId, { name: 'Chiller', startedBy: org.userId });
-    // Sold down from 36 to 8: fourteen days of trading, minus the four binned.
+    // Sold down from 40 to 8: three weeks of trading, no write-off in the way.
     await recordCount(org.orgId, {
       countSessionId: session.id,
       productId: product['Vollmilch 1L'],
@@ -173,78 +147,6 @@ describe('a store first three weeks', () => {
     await recalculateConsumptionRates(org.orgId);
   });
 
-  test('day 21 — two counts produce an order the owner can check by hand', async () => {
-    const { groups, withoutRate } = await getReorderSuggestions(org.orgId);
-    assert.equal(withoutRate, 0, 'both products now have two counts, so both can be advised on');
-    assert.equal(groups.length, 1, 'one supplier, one order');
-
-    const group = groups[0];
-    assert.equal(group.supplierId, supplierId);
-    assert.equal(group.leadTimeDays, 2);
-    assert.equal(group.lines.length, 2);
-
-    for (const line of group.lines) {
-      assert.ok(Number(line.suggestedQuantity) > 0, `${line.productName} must be worth ordering`);
-      // A grocer orders whole bottles. Fractions here are the fastest way to
-      // lose their trust in every other number on the screen.
-      assert.match(line.suggestedQuantity, /^\d+$/, `${line.suggestedQuantity} is not orderable`);
-    }
-  });
-
-  test('day 21 — the suggestion becomes a real order', async () => {
-    const { groups } = await getReorderSuggestions(org.orgId);
-    const po = await createPurchaseOrder(org.orgId, {
-      supplierId,
-      createdBy: org.userId,
-      lines: groups[0].lines.map((l) => ({
-        productId: l.productId,
-        quantity: l.suggestedQuantity,
-        unitCost: l.costPrice,
-      })),
-    });
-
-    const created = await getPurchaseOrder(org.orgId, po.id);
-    assert.equal(created!.status, 'draft');
-    assert.match(created!.poNumber, /^PO-\d{4}-\d{4}$/);
-
-    // A draft is not on order. Until it is sent it must not suppress a
-    // suggestion, or a forgotten draft silently stops the shop reordering.
-    const stillSuggested = await getReorderSuggestions(org.orgId);
-    assert.equal(stillSuggested.groups.length, 1, 'a draft must not count as on order');
-
-    await markPurchaseOrderSent(org.orgId, po.id);
-    const afterSending = await getReorderSuggestions(org.orgId);
-    assert.equal(afterSending.groups.length, 0, 'a sent order must stop the same suggestion');
-
-    process.env.JOURNEY_PO = po.id;
-  });
-
-  test('day 23 — the delivery arrives short, and the shortfall stays outstanding', async () => {
-    const poId = process.env.JOURNEY_PO!;
-    const po = await getPurchaseOrder(org.orgId, poId);
-    const line = po!.lines[0];
-    const short = String(Number(line.quantityOrdered) - 2);
-
-    const before = await getProductStock(org.orgId, line.productId);
-    await receiveAgainstPurchaseOrder(
-      org.orgId,
-      poId,
-      [{ lineId: line.id, quantity: short, expiryDate: inDays(10), lotNumber: 'L-1' }],
-      org.userId,
-    );
-
-    const after = await getProductStock(org.orgId, line.productId);
-    assert.equal(
-      Number(after[0].quantity) - Number(before[0]?.quantity ?? 0),
-      Number(short),
-      'what was received must be what reaches the shelf',
-    );
-
-    const updated = await getPurchaseOrder(org.orgId, poId);
-    assert.equal(updated!.status, 'partially_received');
-    assert.equal(Number(updated!.lines[0].quantityReceived), Number(short));
-  });
-
   test('day 24 — a sale is rung up, sold through the till, not typed in', async () => {
     const [before] = await getProductStock(org.orgId, product['Vollmilch 1L']);
 
@@ -258,24 +160,9 @@ describe('a store first three weeks', () => {
     assert.match(sale.saleNumber, /^TXN-\d{4}-\d{4}$/);
     const [after] = await getProductStock(org.orgId, product['Vollmilch 1L']);
     assert.equal(Number(after.quantity), Number(before.quantity) - 3);
-
-    // Real sales are the primary consumption signal now — day 21 established a
-    // count-window rate for this exact product. One sale is not yet enough
-    // history to override it (posRate.ts's own floor is three distinct
-    // sale-days), so it must not show up as a POS rate yet. Asserted directly
-    // against getLivePosRates rather than round-tripping through
-    // getReorderSuggestions, whose group membership also depends on whether
-    // the sale's own 3-unit drop pushed stock below the reorder threshold —
-    // a real but separate effect this test isn't about.
-    const posRates = await getLivePosRates(org.orgId);
-    assert.equal(
-      posRates.has(product['Vollmilch 1L']),
-      false,
-      'one sale is insufficient history to become the reorder rate',
-    );
   });
 
-  test('day 24 — the shop can still answer the five questions it bought this for', async () => {
+  test('day 24 — the shop can still answer the questions it bought this for', async () => {
     const expiring = await getExpiringStock(org.orgId, 14);
     assert.ok(expiring.length > 0, 'the delivery just received has an expiry date');
     assert.ok(
@@ -283,13 +170,10 @@ describe('a store first three weeks', () => {
       'every row must name a product and a value, or the dashboard cannot be acted on',
     );
 
-    for (const slug of ['stock', 'waste', 'expiry', 'low-stock', 'sales'] as const) {
+    for (const slug of ['stock', 'expiry', 'low-stock', 'sales'] as const) {
       const report = await buildReport(org.orgId, slug, 30);
       assert.ok(report.columns.length > 0, `${slug} must define its columns`);
     }
-
-    const waste = await buildReport(org.orgId, 'waste', 30);
-    assert.equal(waste.rows.length, 1, 'the one write-off must appear in the waste report');
 
     const salesReport = await buildReport(org.orgId, 'sales', 30);
     assert.equal(salesReport.rows.length, 1, 'the one sale must appear in the sales report');

@@ -4,7 +4,7 @@ import { before, describe, test } from 'node:test';
 import { createProduct } from '@/server/catalog/products';
 import { InsufficientStockError } from '@/server/stock/fefo';
 import { getBatchStock, getExpiringStock, getProductStock } from '@/server/stock/levels';
-import { adjustStock, receiveStock, recordWaste } from '@/server/stock/movements';
+import { adjustStock, receiveStock } from '@/server/stock/movements';
 import { adminSql, createTestOrg, type TestOrg } from '@/server/testing/fixtures';
 
 /**
@@ -49,9 +49,12 @@ describe('stock ledger', () => {
     assert.equal(sept[0].quantity, '14.000');
   });
 
-  test('waste depletes earliest expiry first, spanning batches', async () => {
+  test('a negative adjustment with no batch named depletes earliest expiry first, spanning batches', async () => {
     // 6 @ 08-20 and 14 @ 09-30 on hand. Take 8: the near batch empties first.
-    await recordWaste(org.orgId, { productId, quantity: '8', reasonCode: 'expired' });
+    // Posting it against batch_id null instead would leave every batch
+    // untouched while lowering the product total, which overstates value at
+    // risk on the expiry dashboard — the reason adjustStock forces FEFO here.
+    await adjustStock(org.orgId, { productId, quantityDelta: '-8', reasonCode: 'expired' });
 
     const batches = await getBatchStock(org.orgId, productId, org.locationId);
     assert.equal(batches.find((b) => b.expiryDate === '2026-08-20'), undefined);
@@ -59,14 +62,14 @@ describe('stock ledger', () => {
 
     const rows = await adminSql`
       select quantity_delta::text d from stock_movements
-      where organization_id = ${org.orgId} and movement_type = 'waste'
+      where organization_id = ${org.orgId} and movement_type = 'manual_adjustment'
       order by quantity_delta`;
     assert.deepEqual(rows.map((r) => r.d), ['-6.000', '-2.000']);
   });
 
   test('over-allocation is refused, not silently clamped', async () => {
     await assert.rejects(
-      () => recordWaste(org.orgId, { productId, quantity: '9999', reasonCode: 'damaged' }),
+      () => adjustStock(org.orgId, { productId, quantityDelta: '-9999', reasonCode: 'damaged' }),
       InsufficientStockError,
     );
     const [stock] = await getProductStock(org.orgId, productId);

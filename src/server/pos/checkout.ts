@@ -13,12 +13,11 @@ import { getBatchStock } from '@/server/stock/levels';
  * A sale is rung up, not typed in after the fact — the till records it as a
  * side effect of completing the transaction, the same way receiving records a
  * delivery. Depletes stock through the same append-only ledger every other
- * movement uses, FEFO, exactly like a write-off with no batch specified.
+ * movement uses, FEFO.
  *
- * Modeled on receiveAgainstPurchaseOrder (src/server/purchasing/orders.ts):
- * loop over lines inside one withTenant transaction, ledger rows composed into
- * that same transaction. Price and VAT are always derived from the product and
- * the tenant's own rates — never trusted from the caller, so nothing about the
+ * Lines loop inside one withTenant transaction, ledger rows composed into that
+ * same transaction. Price and VAT are always derived from the product and the
+ * tenant's own rates — never trusted from the caller, so nothing about the
  * total can be posted from the client.
  */
 

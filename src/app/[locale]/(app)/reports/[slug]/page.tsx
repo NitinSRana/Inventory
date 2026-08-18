@@ -21,7 +21,7 @@ export const dynamic = 'force-dynamic';
 
 const PERIODS = [7, 30, 90] as const;
 /** Only these two are time-bounded; stock and low-stock are point-in-time. */
-const TIME_BOUNDED: ReportSlug[] = ['waste', 'expiry', 'sales'];
+const TIME_BOUNDED: ReportSlug[] = ['expiry', 'sales'];
 
 export default async function ReportPage({ params, searchParams }: PageProps<'/[locale]/reports/[slug]'>) {
   const { locale, slug } = await params;

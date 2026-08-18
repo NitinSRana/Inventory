@@ -12,11 +12,8 @@ test.use({ storageState: { cookies: [], origins: [] } });
 const PROTECTED = [
   '/en/receive',
   '/en/count',
-  '/en/waste',
   '/en/checkout',
-  '/en/reorder',
   '/en/products',
-  '/en/orders',
   '/en/categories',
   '/en/insights',
   '/en/settings/store',

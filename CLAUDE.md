@@ -4,17 +4,19 @@ Inventory management SaaS for independent European grocery stores and small supe
 
 ## What this product does
 
-Tells a store owner **what's about to expire** and **what to order**, without them counting anything by hand.
+Tells a store owner **what's about to expire**, without them counting anything by hand.
 
 If a proposed feature doesn't serve that sentence, push back before building it.
 
-**Stock changes from four events: receiving, waste, cycle counts, and POS sales.** A real till records sales automatically as a side effect of ringing something up — nobody types in 300-800 transactions a day, the checkout screen does it for them. That was always the constraint; manual entry was never the plan.
+**Stock changes from three events: receiving, cycle counts, and POS sales.** A real till records sales automatically as a side effect of ringing something up — nobody types in 300-800 transactions a day, the checkout screen does it for them. That was always the constraint; manual entry was never the plan.
 
-POS-recorded sales are the **primary** signal for consumption and reorder math — they're exact, not inferred. Cycle counting no longer derives consumption; it's a **shrinkage audit**: the gap between what the ledger says should be on the shelf (given real sales) and what's physically counted, which is theft, spoilage, or a miscount. For a product with no POS sale history yet (new, or never rung up through the till), consumption still falls back to the count-to-count formula:
+There is no standalone write-off screen. A count is how loss gets found: cycle counting is a **shrinkage audit**, the gap between what the ledger says should be on the shelf (given real sales) and what's physically counted, which is theft, spoilage, or a miscount. Posting that gap corrects the ledger without needing anyone to have logged the loss as it happened. For a product with no POS sale history yet (new, or never rung up through the till), consumption falls back to the count-to-count formula:
 
 ```
 consumption = opening count + receipts − waste − closing count
 ```
+
+The `waste` term is a ledger read, not a live input — nothing in the product writes a `waste`-typed movement any more, so it is whatever history already exists and trends to zero for new windows. Kept rather than simplified away: existing tenant data still has real waste rows, and the formula must still account for them honestly.
 
 Do not add manual per-sale data entry outside the checkout flow — someone typing in a till receipt after the fact is exactly the stale-numbers trap this was built to avoid.
 
@@ -88,6 +90,8 @@ pnpm db:test         # applies 0001_init.sql + 0001_init.test.sql to a scratch D
 Real card/payment processing (Stripe Terminal or similar — checkout v1 records tender type only, cash/card, no actual processing), accounting integrations (Xero, DATEV, Exact), partial/line-level refunds (only whole-sale void ships), self-serve signup, multi-location transfer UI, demand forecasting, label printing, native mobile apps, offline mode, supplier portal.
 
 Several are planned for later. The schema already accommodates them — that's why they're safe to leave out now.
+
+**Removed, not merely never built:** reorder suggestions, purchase orders, and the write-off screen were implemented, then pulled as a deliberate product decision. `stock_movements.reference_type` still allows `'purchase_order'`, `on_order_quantities` and the `waste` movement type still exist in the schema, and existing tenant data may still carry rows using them — none of that was touched. What's gone is the app-layer code that created new ones: `src/server/purchasing/*`, `recordWaste`, and the three routes. Don't rebuild any of this without confirming the decision has actually reversed.
 
 ## Open questions — flag, don't invent an answer
 

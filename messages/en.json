@@ -23,29 +23,6 @@
     "stop": "Stop",
     "cameraUnavailable": "Camera unavailable. Type the barcode instead."
   },
-  "waste": {
-    "title": "Write off",
-    "lookUp": "Look up",
-    "notFound": "No product with barcode {barcode}.",
-    "addProduct": "Add it",
-    "onHand": "on hand",
-    "quantity": "Quantity to write off",
-    "reason": "Reason",
-    "submit": "Write off",
-    "recorded": "Written off.",
-    "notEnoughStock": "That's more than the stock on hand.",
-    "failed": "Couldn't record that. Try again.",
-    "reasons": {
-      "expired": "Expired",
-      "damaged": "Damaged",
-      "theft": "Theft",
-      "staff_use": "Staff use",
-      "sampling": "Sampling",
-      "supplier_return": "Returned to supplier",
-      "correction": "Correction",
-      "other": "Other"
-    }
-  },
   "dashboard": {
     "title": "Expiring soon",
     "atRisk": "at risk",
@@ -143,8 +120,8 @@
     "noOrganizationTitle": "Almost there",
     "pitch": {
       "expiry": "See what is about to expire, worst value first.",
-      "reorder": "Get told what to order, from your own consumption.",
-      "autoStock": "Every sale updates stock automatically. Nothing to count by hand."
+      "autoStock": "Every sale updates stock automatically. Nothing to count by hand.",
+      "margin": "See your real margin — what a sale actually cost, not what the price tag says."
     }
   },
   "count": {
@@ -186,19 +163,6 @@
     "shrinkHint": "Missing against what real sales say should be on the shelf — theft, spoilage, or a miscount.",
     "gainValue": "found stock",
     "gainHint": "More on the shelf than the ledger expected — check for a delivery that was never logged."
-  },
-  "reorder": {
-    "title": "What to order",
-    "nothingToOrder": "Nothing needs ordering",
-    "nothingToOrderBody": "No product is below its minimum with a consumption rate behind it. Look again after the next count.",
-    "noSupplier": "No supplier set",
-    "leadTime": "{days, plural, one {# day lead time} other {# days lead time}}",
-    "belowMinimum": "Below this supplier’s {minimum} minimum order.",
-    "onHandAndRate": "{onHand} on hand · {rate}/day",
-    "lowConfidence": "not much history yet",
-    "alreadyOnOrder": "{quantity} already on order",
-    "notEnoughData": "{count, plural, one {# product has} other {# products have}} no consumption rate yet. Count them twice to get a suggestion.",
-    "createOrder": "Create draft order"
   },
   "receive": {
     "title": "Receive delivery",
@@ -262,14 +226,12 @@
     "lastDays": "Last {days} days",
     "names": {
       "stock": "Stock on hand",
-      "waste": "Waste",
       "expiry": "Expiry exposure",
       "low-stock": "Low stock",
       "sales": "Sales"
     },
     "blurbs": {
       "stock": "Everything you hold and what it is worth.",
-      "waste": "What was binned, why, and what it cost you.",
       "expiry": "Money sitting in stock that is about to stop being sellable.",
       "low-stock": "Products under their minimum, with the supplier to call.",
       "sales": "What sold, by product, and what it brought in."
@@ -281,8 +243,6 @@
       "unit": "Unit",
       "unitCost": "Unit cost",
       "value": "Value",
-      "reason": "Reason",
-      "events": "Times",
       "quantity": "Quantity",
       "expires": "Expires",
       "daysLeft": "Days left",
@@ -294,33 +254,6 @@
       "vat": "VAT",
       "grossRevenue": "Revenue"
     }
-  },
-  "orders": {
-    "title": "Purchase orders",
-    "empty": "No purchase orders yet",
-    "emptyBody": "Orders start from what your own consumption says you need — not from a blank form.",
-    "fromSuggestions": "See what to order",
-    "lineCount": "{count, plural, one {# line} other {# lines}}",
-    "status": {
-      "draft": "Draft",
-      "sent": "Sent",
-      "partially_received": "Part delivered",
-      "received": "Complete",
-      "cancelled": "Cancelled"
-    },
-    "receivedOfOrdered": "{received} of {ordered} {unit} received",
-    "outstanding": "Outstanding",
-    "complete": "Complete",
-    "sendHint": "Send this order to the supplier yourself, then mark it sent. Only then does it count against future reorder suggestions.",
-    "markSent": "Mark as sent",
-    "receiveTitle": "Record a delivery",
-    "receiveHint": "Quantities are pre-filled with what is still outstanding. Clear a line to skip it.",
-    "quantity": "Quantity",
-    "expiry": "Expiry",
-    "lot": "Lot number",
-    "recordDelivery": "Record delivery",
-    "overDelivered": "{count, plural, one {# line was} other {# lines were}} over-delivered. The stock is recorded — check the invoice.",
-    "cancelOrder": "Cancel order"
   },
   "suppliers": {
     "title": "Suppliers",
@@ -407,7 +340,6 @@
     "home": "Today",
     "receive": "Receive",
     "count": "Count",
-    "waste": "Write off",
     "more": "More",
     "signOut": "Sign out",
     "checkout": "Checkout"
@@ -416,21 +348,16 @@
     "title": "More",
     "sections": {
       "catalogue": "Catalogue",
-      "buying": "Buying",
       "insight": "Insight",
-      "settings": "Settings",
-      "stock": "Stock"
+      "settings": "Settings"
     },
     "items": {
       "products": "Products",
       "suppliers": "Suppliers",
-      "reorder": "What to order",
-      "orders": "Purchase orders",
       "reports": "Reports",
       "team": "Team",
       "vat": "VAT rates",
       "categories": "Categories",
-      "waste": "Write off",
       "store": "Store",
       "insights": "Insights"
     }
@@ -446,7 +373,6 @@
   "back": {
     "products": "Products",
     "suppliers": "Suppliers",
-    "orders": "Orders",
     "reports": "Reports",
     "count": "Count",
     "more": "More",
@@ -550,14 +476,8 @@
     "lastDays": "Last {days} days",
     "takings": "Takings",
     "takingsChart": "Takings per day over the last {days} days",
-    "losses": "Written off",
-    "lossesChart": "Value written off per day over the last {days} days",
-    "lossesShare": "{percent}% of takings",
-    "lossesNoSales": "No sales in this period to compare against.",
     "topProducts": "Top products",
-    "lossesByReason": "Where it went",
     "noSales": "Nothing sold in this period.",
-    "noWaste": "Nothing written off in this period. Good.",
     "emptyTitle": "Nothing to show yet",
     "emptyBody": "Charts appear once the till has taken money or something has been written off. Ring a sale through checkout and this screen fills in.",
     "goToCheckout": "Open checkout",

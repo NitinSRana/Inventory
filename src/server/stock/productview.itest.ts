@@ -7,7 +7,7 @@ import { before, describe, test } from 'node:test';
 import { createProduct } from '@/server/catalog/products';
 import { createTestOrg, type TestOrg } from '@/server/testing/fixtures';
 import { getProductBatches, getProductMovements } from '@/server/stock/levels';
-import { receiveStock, recordWaste } from '@/server/stock/movements';
+import { adjustStock, receiveStock } from '@/server/stock/movements';
 
 describe('product view queries', () => {
   let org: TestOrg;
@@ -23,7 +23,9 @@ describe('product view queries', () => {
     await receiveStock(org.orgId, { productId, quantity: '10', expiryDate: inDays(3) });
     await receiveStock(org.orgId, { productId, quantity: '6', expiryDate: inDays(20) });
     await receiveStock(org.orgId, { productId, quantity: '4', expiryDate: null });
-    await recordWaste(org.orgId, { productId, quantity: '2', reasonCode: 'expired' });
+    // A movement type other than a receipt, so the "recent movements" test
+    // below proves the list can render one, not just the common case.
+    await adjustStock(org.orgId, { productId, quantityDelta: '-2', reasonCode: 'expired' });
   });
 
   test('batches come back soonest-expiry-first with nulls last', async () => {
@@ -56,11 +58,11 @@ describe('product view queries', () => {
   test('movements read newest-first and carry their reason', async () => {
     const rows = await getProductMovements(org.orgId, productId, 10);
     console.log('  ', rows.map((r) => `${r.movementType}:${r.quantityDelta}`).join(' '));
-    assert.equal(rows.length, 4, 'three receipts and one write-off');
-    const waste = rows.find((r) => r.movementType === 'waste');
-    assert.ok(waste, 'the write-off is visible');
-    assert.equal(waste.reasonCode, 'expired');
-    assert.ok(waste.quantityDelta.startsWith('-'), 'waste is negative in the ledger');
+    assert.equal(rows.length, 4, 'three receipts and one adjustment');
+    const adjustment = rows.find((r) => r.movementType === 'manual_adjustment');
+    assert.ok(adjustment, 'the adjustment is visible');
+    assert.equal(adjustment.reasonCode, 'expired');
+    assert.ok(adjustment.quantityDelta.startsWith('-'), 'a depleting adjustment is negative in the ledger');
   });
 
   test('the limit is respected, so a busy product cannot flood the screen', async () => {

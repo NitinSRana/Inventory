@@ -1,14 +1,6 @@
 import { and, asc, desc, eq, gte, isNotNull, lt, sql } from 'drizzle-orm';
 
-import {
-  expiringStock,
-  productStock,
-  products,
-  saleLines,
-  sales,
-  stockMovements,
-  suppliers,
-} from '@/db/schema';
+import { expiringStock, productStock, products, saleLines, sales, suppliers } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 
 import { getRatesByBand } from '@/server/settings/vat';
@@ -18,11 +10,11 @@ import type { Report } from './csv';
 
 /**
  * Each report returns its own columns alongside its rows, so one table
- * component and one CSV exporter serve all five. The alternative — five pages
- * and five exporters — is the same information written six times.
+ * component and one CSV exporter serve all four. The alternative — four pages
+ * and four exporters — is the same information written many times over.
  */
 
-export const REPORT_SLUGS = ['stock', 'waste', 'expiry', 'low-stock', 'sales'] as const;
+export const REPORT_SLUGS = ['stock', 'expiry', 'low-stock', 'sales'] as const;
 export type ReportSlug = (typeof REPORT_SLUGS)[number];
 
 /** Stock on hand and what it is worth. */
@@ -67,41 +59,6 @@ async function stockOnHand(orgId: string): Promise<Report> {
       // Valuation only — this is not an invoice. Bands come from the tenant's
       // own vat_rates rows, never a hardcoded country rate.
       grossValue: grossValue(r.value, rates[r.vatBand] ?? '0'),
-    })),
-  };
-}
-
-/** What was binned, why, and what it cost. */
-async function wasteByReason(orgId: string, days: number): Promise<Report> {
-  const since = new Date(Date.now() - days * 864e5);
-  const rows = await withTenant(orgId, (tx) =>
-    tx
-      .select({
-        reasonCode: stockMovements.reasonCode,
-        // quantity_delta is negative for waste; report the magnitude.
-        quantity: sql<string>`abs(sum(${stockMovements.quantityDelta}))::text`,
-        value: sql<string>`round(abs(sum(${stockMovements.quantityDelta} * coalesce(${products.costPrice}, 0))), 2)::text`,
-        events: sql<number>`count(*)::int`,
-      })
-      .from(stockMovements)
-      .innerJoin(products, eq(products.id, stockMovements.productId))
-      .where(and(eq(stockMovements.movementType, 'waste'), gte(stockMovements.occurredAt, since)))
-      .groupBy(stockMovements.reasonCode)
-      .orderBy(desc(sql`abs(sum(${stockMovements.quantityDelta} * coalesce(${products.costPrice}, 0)))`)),
-  );
-
-  return {
-    columns: [
-      { key: 'reasonCode', label: 'reason' },
-      { key: 'events', label: 'events', numeric: true },
-      { key: 'quantity', label: 'quantity', numeric: true, format: 'quantity' },
-      { key: 'value', label: 'value', numeric: true, format: 'money' },
-    ],
-    rows: rows.map((r) => ({
-      reasonCode: r.reasonCode ?? '',
-      events: String(r.events),
-      quantity: r.quantity,
-      value: r.value,
     })),
   };
 }
@@ -224,8 +181,6 @@ export function buildReport(orgId: string, slug: ReportSlug, days: number): Prom
   switch (slug) {
     case 'stock':
       return stockOnHand(orgId);
-    case 'waste':
-      return wasteByReason(orgId, days);
     case 'expiry':
       return expiryExposure(orgId, days);
     case 'low-stock':

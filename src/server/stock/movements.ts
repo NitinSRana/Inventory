@@ -26,15 +26,6 @@ export type ReceiveInput = Actor & {
   referenceId?: string | null;
 };
 
-export type WasteInput = Actor & {
-  productId: string;
-  locationId?: string;
-  quantity: string;
-  reasonCode: (typeof REASON_CODES)[number];
-  /** Omit to deplete FEFO across batches. */
-  batchId?: string | null;
-};
-
 /** Every tenant has exactly one location today; the schema is ready for more. */
 async function defaultLocationId(tx: Tx): Promise<string> {
   const [location] = await tx
@@ -113,48 +104,6 @@ export async function receiveStock(orgId: string, input: ReceiveInput, tx?: Tx) 
   // opening a second transaction here would take a second connection and could
   // deadlock against the first.
   return tx ? run(tx) : withTenant(orgId, run);
-}
-
-/**
- * Something is binned. Depletes FEFO unless a specific batch is named — the
- * staff member scanning a spoiled item knows which batch it came from, but the
- * common case is "two of these went off" with no batch in hand.
- *
- * One transaction, so the batch read and the ledger writes cannot interleave
- * with another till.
- */
-export async function recordWaste(orgId: string, input: WasteInput) {
-  if (new Decimal(input.quantity).lessThanOrEqualTo(0)) {
-    throw new Error('Waste quantity must be positive');
-  }
-
-  return withTenant(orgId, async (tx) => {
-    const locationId = input.locationId ?? (await defaultLocationId(tx));
-
-    const allocations = input.batchId
-      ? [{ batchId: input.batchId, quantity: input.quantity }]
-      : allocateFefo(await getBatchStock(orgId, input.productId, locationId, tx), input.quantity);
-
-    return tx
-      .insert(stockMovements)
-      .values(
-        allocations.map((a) => ({
-          organizationId: orgId,
-          productId: input.productId,
-          locationId,
-          batchId: a.batchId,
-          // Waste is stored negative; a CHECK constraint enforces it.
-          quantityDelta: new Decimal(a.quantity).negated().toString(),
-          movementType: 'waste' as const,
-          reasonCode: input.reasonCode,
-          referenceType: 'manual' as const,
-          actorId: input.actorId ?? null,
-          note: input.note ?? null,
-          ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
-        })),
-      )
-      .returning();
-  });
 }
 
 /**

@@ -6,9 +6,9 @@ import { before, describe, test } from 'node:test';
 import { createProduct } from '@/server/catalog/products';
 import { checkout } from '@/server/pos/checkout';
 import { createTestOrg, type TestOrg } from '@/server/testing/fixtures';
-import { receiveStock, recordWaste } from '@/server/stock/movements';
+import { receiveStock } from '@/server/stock/movements';
 
-import { dailyRevenue, dailyWaste, topProductsByRevenue, wasteByReason } from './trends';
+import { dailyRevenue, topProductsByRevenue } from './trends';
 
 describe('analytics trends', () => {
   let org: TestOrg;
@@ -28,9 +28,6 @@ describe('analytics trends', () => {
     // Two sales today: bread out-earns milk.
     await checkout(org.orgId, { lines: [{ productId: milk.id, quantity: '3' }], tenderType: 'cash' });
     await checkout(org.orgId, { lines: [{ productId: bread.id, quantity: '5' }], tenderType: 'card' });
-
-    await recordWaste(org.orgId, { productId: bread.id, quantity: '2', reasonCode: 'expired' });
-    await recordWaste(org.orgId, { productId: milk.id, quantity: '1', reasonCode: 'damaged' });
   });
 
   test('a quiet day is a zero, not a missing row', async () => {
@@ -54,28 +51,12 @@ describe('analytics trends', () => {
     assert.equal(today.value, '16.02');
   });
 
-  test('waste comes back positive, though the ledger stores it negative', async () => {
-    const points = await dailyWaste(org.orgId, 30);
-    const today = points[points.length - 1];
-    // 2 x 1.40 + 1 x 0.79 = 2.80 + 0.79
-    assert.equal(today.value, '3.59');
-    assert.ok(!today.value.startsWith('-'), 'a chart bar cannot be negative');
-  });
-
   test('top products rank by revenue, not by units moved', async () => {
     const top = await topProductsByRevenue(org.orgId, 30, 5);
     // Milk sold 3, bread 5 — but bread also earns more, so check the money.
     assert.equal(top[0].label, 'Bauernbrot 750g');
     assert.equal(top[0].value, '12.45');
     assert.equal(top[1].value, '3.57');
-  });
-
-  test('losses are grouped by reason, biggest first', async () => {
-    const rows = await wasteByReason(org.orgId, 30);
-    assert.equal(rows[0].label, 'expired');
-    assert.equal(rows[0].value, '2.80');
-    assert.equal(rows[1].label, 'damaged');
-    assert.equal(rows[1].value, '0.79');
   });
 
   test('another tenant sees none of it', async () => {

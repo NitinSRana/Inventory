@@ -22,11 +22,11 @@ useful thing to know before designing it.
 |---|---|---|
 | Device | Desktop browser | The worker's own phone |
 | Share of hours | Most | Short bursts |
-| Screens | Checkout, reorder, orders, products, suppliers, categories, reports, insights, settings | Receive, count, count review, write off |
+| Screens | Checkout, products, suppliers, categories, reports, insights, settings | Receive, count, count review |
 | Design for | Width — tables, columns, a persistent sidebar | One hand, gloves, bad light, a product in the other hand |
 | Constraints | Readable at a desk | 44px targets, primary action in the bottom third, no modals mid-scan |
 
-Navigation follows the same split: a **sidebar** at ≥768px showing all fifteen
+Navigation follows the same split: a **sidebar** at ≥768px showing all twelve
 destinations, a **bottom tab bar** below that with five.
 
 ---
@@ -36,8 +36,8 @@ destinations, a **bottom tab bar** below that with five.
 Three, nesting. Every screen is gated server-side; hiding a control is
 presentation, never enforcement.
 
-- **staff** — scans, receives, counts, writes off, sells
-- **manager** — the above, plus products, categories, purchase orders, insights
+- **staff** — scans, receives, counts, sells
+- **manager** — the above, plus products, categories, insights
 - **owner** — the above, plus team, VAT and store settings
 
 ---
@@ -54,8 +54,9 @@ product. Uses the urgency ladder (icon + word + colour, never colour alone).
 
 ### Checkout — `/checkout` · staff
 The till. Scan or search into a basket, take cash or card, complete. Every sale
-depletes stock FEFO and feeds the reorder maths. Tender is **recorded, not
-processed** — no card handling.
+depletes stock FEFO. Tender is **recorded, not processed** — no card handling.
+Completing a sale shows a full receipt: lines, VAT broken out by band, sale
+number, tender.
 
 *Notable:* one input resolves two ways — a barcode if it is one, otherwise a
 name search, which is how loose goods (deli, cheese, produce) get sold at all.
@@ -84,31 +85,6 @@ names whose count has it. Re-scanning overwrites, which is how a typo is fixed.
 Variance before committing: shrinkage or found stock, per line expected vs
 counted. **The only screen that writes adjustments to the ledger** — everything
 before it is reversible.
-
-### Write off — `/waste` · staff
-Bin something. Barcode → quantity → one of eight reason codes. Reached from the
-sidebar or More, not the tab bar.
-
-*Why it matters:* unrecorded waste is read as consumption, so the app reorders
-what was thrown away. It is the only stock event with no natural trigger.
-
----
-
-## Buying
-
-### What to order — `/reorder` · manager
-Grouped by supplier: suggested quantity, on hand, consumption rate, confidence.
-Warns below a supplier's minimum order value. One tap creates a draft order.
-Products without enough history say "no rate yet" rather than guessing.
-
-### Purchase orders — `/orders` · staff · **detail** `/orders/[id]`
-List with status (draft / sent / part delivered / complete / cancelled). Detail
-shows received-of-ordered per line, records a partial delivery, and marks sent
-or cancels (manager only). Over-delivery is recorded and flagged, never
-rejected.
-
-*Gap:* **"Mark as sent" sends nothing.** Suppliers have an email address and it
-is never used — the order is retyped by hand into a mail client.
 
 ---
 
@@ -140,6 +116,10 @@ group by problem with line numbers. Column names are flexible (`Outer Barcode`,
 
 ### Suppliers — `/suppliers` · staff · **form** manager
 Name, contact, email, phone, lead time, minimum order value, delivery weekdays.
+Lead time and minimum order value are collected but nothing currently reads
+them — they fed reorder suggestions, which were removed. Kept because a
+supplier record and the catalogue CSV's supplier-match both still need the
+supplier to exist.
 
 ### Categories — `/categories` · manager
 Product grouping with a default count frequency per category.
@@ -149,16 +129,21 @@ Product grouping with a default count frequency per category.
 ## Insight
 
 ### Insights — `/insights` · manager
-Takings per day, write-offs per day, top five products, and where losses come
-from, over 7/30/90 days. Losses are stated as a share of takings.
+Gross margin (from the real batch cost of what was sold, not the product's
+current list cost), takings trend, top five products by revenue, and dead
+stock — on hand, unsold in the period, ranked by what it's worth. Every
+headline carries its change against the previous period of the same length,
+over 7/30/90 days.
 
 *Notable:* server-rendered SVG and CSS bars — no charting library, no client
 JavaScript. Every figure appears as text as well as length. Empty state is
-explicit rather than four blank charts.
+explicit rather than blank charts. Margin is computed from `stock_movements`
+consumption rows joined to the batch that was actually depleted, so a later
+change to a product's list cost never rewrites a past period's margin.
 
 ### Reports — `/reports`, `/reports/[slug]` · staff
-Five: stock on hand, waste by reason, expiry exposure, low stock, sales by
-product. Each with CSV export; three are time-bounded.
+Four: stock on hand, expiry exposure, low stock, sales by product. Each with
+CSV export; two are time-bounded.
 
 *Notable:* rows stay raw so the CSV is re-importable; the screen formats money
 and quantities at the last moment.
@@ -226,15 +211,16 @@ Ranked as they would be picked up.
 
 1. **The till has no undo and no memory.** `voidSale()` unreachable; no sales
    list; a mistake needs SQL, a customer return cannot be traced.
-2. **"Mark as sent" does not send.** The supplier's email is on file and unused.
-3. **The cold start.** A shop arrives with 2,000 SKUs and no prices. CSV import
+2. **The cold start.** A shop arrives with 2,000 SKUs and no prices. CSV import
    helps; where the price data comes from is unanswered.
-4. **Empty, loading and error states** exist everywhere but read as grey
+3. **Empty, loading and error states** exist everywhere but read as grey
    sentences.
-5. **Icons appear only in navigation.**
-6. **Scale-printed barcodes** for weighed goods — deliberately unbuilt, needs a
+4. **Icons appear only in navigation.**
+5. **Scale-printed barcodes** for weighed goods — deliberately unbuilt, needs a
    real scale in a real shop.
 
 Also unbuilt and out of scope for now: real card processing, accounting
 integrations, partial refunds, multi-location transfers, label printing, offline
-mode, supplier portal, returns-to-supplier flow, price-change history.
+mode, supplier portal, returns-to-supplier flow, price-change history, reorder
+suggestions and purchase order management (built, then removed as a deliberate
+product decision — see `CLAUDE.md`).

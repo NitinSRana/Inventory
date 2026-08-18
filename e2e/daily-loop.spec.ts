@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { closeDb, currentOrgId, latestMovement, productByName, stockOnHand } from './helpers';
 
 /**
- * The five things a shop does every day.
+ * The daily loop: receive, count, sell.
  *
  * Each test drives the real UI with role and label selectors, then reads the
  * ledger to prove the click actually landed. A page that says "Delivery
@@ -50,26 +50,6 @@ test.describe('daily loop', () => {
     const movement = await latestMovement(orgId, product.id);
     expect(movement.movement_type).toBe('receipt');
     expect(Number(movement.delta)).toBe(12);
-  });
-
-  test('writing off expired stock removes it, FEFO, with a reason', async ({ page }) => {
-    const before = await stockOnHand(orgId, product.id);
-
-    await page.goto('/en/waste');
-    await page.getByLabel('Barcode').fill(product.gtin);
-    await page.getByRole('button', { name: 'Look up' }).click();
-
-    await page.getByLabel('Quantity to write off').fill('3');
-    await page.getByLabel('Reason').selectOption({ label: 'Damaged' });
-    await page.getByRole('button', { name: 'Write off', exact: true }).click();
-
-    await expect(page.getByRole('status')).toHaveText('Written off.');
-
-    expect(await stockOnHand(orgId, product.id)).toBe(before - 3);
-    const movement = await latestMovement(orgId, product.id);
-    expect(movement.movement_type).toBe('waste');
-    expect(Number(movement.delta)).toBe(-3);
-    expect(movement.reason_code).toBe('damaged');
   });
 
   test('a count posts an adjustment that reconciles the ledger', async ({ page }) => {
@@ -121,23 +101,5 @@ test.describe('daily loop', () => {
     expect(movement.movement_type).toBe('consumption');
     expect(movement.reference_type).toBe('sale');
     expect(Number(movement.delta)).toBe(-2);
-  });
-
-  test('a reorder suggestion becomes a draft purchase order', async ({ page }) => {
-    await page.goto('/en/reorder');
-
-    // The seed builds two count windows precisely so rates exist; if this is
-    // empty the fixture is wrong, not the feature.
-    const createOrder = page.getByRole('button', { name: 'Create draft order' }).first();
-    await expect(createOrder).toBeVisible();
-
-    const supplier = await page.getByRole('heading', { level: 2 }).first().textContent();
-    await createOrder.click();
-
-    await expect(page).toHaveURL(/\/en\/orders\/[0-9a-f-]{36}$/);
-    await expect(page.getByText('Draft')).toBeVisible();
-    await expect(page.getByText(supplier!.trim())).toBeVisible();
-    // Quantities came from the server's own recalculation, never from the page.
-    await expect(page.getByText(/\d+ lines?/)).toBeVisible();
   });
 });
