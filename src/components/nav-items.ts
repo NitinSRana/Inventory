@@ -6,6 +6,7 @@ import {
   Package,
   PackagePlus,
   Percent,
+  Receipt,
   ShoppingCart,
   Store,
   Tag,
@@ -60,6 +61,7 @@ export const SECTIONS = [
   {
     key: 'insight',
     items: [
+      { path: 'sales', key: 'sales', Icon: Receipt, needs: 'staff' },
       { path: 'insights', key: 'insights', Icon: TrendingUp, needs: 'manager' },
       { path: 'reports', key: 'reports', Icon: BarChart3, needs: 'staff' },
     ],

@@ -115,7 +115,17 @@
     },
     "isWeighed": "Sold loose, by weight",
     "isWeighedHint": "Deli, cheese and produce have no barcode on the item. Weigh it at the till and type the weight. Set the unit to kg or g and price per that unit.",
-    "soldByWeight": "Sold by weight"
+    "soldByWeight": "Sold by weight",
+    "correctStock": "Correct stock",
+    "correctStockBody": "For a keying error, not a loss — a delivery counted wrong, or a typo. If stock actually went missing, use a count instead; that's how shrinkage gets found.",
+    "correctQuantity": "Actual quantity ({unit})",
+    "correctReason": "What happened",
+    "correctReasonHint": "Shown in this product's movement history. Be specific enough that it makes sense in six months.",
+    "correctReasonRequired": "Say what happened before saving.",
+    "correctUnchanged": "That's the same as what's already on hand — nothing to correct.",
+    "correctSubmit": "Save correction",
+    "daysOfCover": "{days, plural, =0 {gone today at recent rates} one {about # day left at recent rates} other {about # days left at recent rates}}",
+    "daysOfCoverUnknown": "Not enough count history yet to estimate"
   },
   "home": {
     "signedOut": "Not signed in",
@@ -371,7 +381,8 @@
       "vat": "VAT rates",
       "categories": "Categories",
       "store": "Store",
-      "insights": "Insights"
+      "insights": "Insights",
+      "sales": "Sales"
     }
   },
   "errors": {
@@ -389,7 +400,9 @@
     "count": "Count",
     "more": "More",
     "categories": "Categories",
-    "product": "Product"
+    "product": "Product",
+    "sales": "Sales",
+    "sale": "Sale"
   },
   "firstRun": {
     "title": "Get set up",
@@ -466,7 +479,26 @@
     },
     "subtotal": "Subtotal",
     "saleNotFound": "Can't find that sale",
-    "saleNotFoundBody": "It may have been on a different device or organisation. Nothing was lost — check Reports for the sales list."
+    "saleNotFoundBody": "It may have been on a different device or organisation. Nothing was lost — check Sales for the full list.",
+    "viewInSales": "View in Sales"
+  },
+  "sales": {
+    "title": "Sales",
+    "empty": "No sales yet",
+    "emptyBody": "Completed sales from Checkout show up here.",
+    "tenderTypes": {
+      "cash": "Cash",
+      "card": "Card"
+    },
+    "voided": "Voided",
+    "receiptMeta": "{tender} · {time}",
+    "subtotal": "Subtotal",
+    "total": "Total",
+    "void": "Void sale",
+    "voidTitle": "Void {number}?",
+    "voidBody": "This restores the stock sold on this sale. The sale stays visible, marked voided — nothing is deleted.",
+    "stockRestored": "Stock that will be restored",
+    "confirmVoid": "Confirm void"
   },
   "store": {
     "title": "Store",

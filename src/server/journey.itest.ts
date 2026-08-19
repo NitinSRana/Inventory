@@ -4,7 +4,7 @@ import { describe, test } from 'node:test';
 import { importProductsCsv } from '@/server/catalog/import';
 import { listProducts } from '@/server/catalog/products';
 import { createSupplier } from '@/server/catalog/suppliers';
-import { recalculateConsumptionRates } from '@/server/consumption/calculate';
+import { getDaysOfCover, recalculateConsumptionRates } from '@/server/consumption/calculate';
 import {
   completeCountSession,
   getVarianceReport,
@@ -117,6 +117,11 @@ describe('a store first three weeks', () => {
     // One count is a point, not a rate. Guessing from a single observation is
     // exactly the wrong-number-worse-than-no-number case the spec calls out.
     await recalculateConsumptionRates(org.orgId);
+    assert.equal(
+      await getDaysOfCover(org.orgId, product['Vollmilch 1L'], '40'),
+      null,
+      'a single count cannot bound a window, so days-of-cover is unknown, not a guess',
+    );
   });
 
   test('day 21 — the second count is where consumption finally becomes knowable', async () => {
@@ -145,6 +150,10 @@ describe('a store first three weeks', () => {
     assert.equal(Number(stock.quantity), 8, 'after a count the ledger must equal what was counted');
 
     await recalculateConsumptionRates(org.orgId);
+    // 40 -> 8 over 14 days, no receipts or waste in between: 32 / 14 units a
+    // day, and 8 on hand at that rate is exactly 3.5 days of cover — the
+    // number this session's product page now shows next to "on hand".
+    assert.equal(await getDaysOfCover(org.orgId, product['Vollmilch 1L'], '8'), 3.5);
   });
 
   test('day 24 — a sale is rung up, sold through the till, not typed in', async () => {

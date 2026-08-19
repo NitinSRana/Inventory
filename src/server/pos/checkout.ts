@@ -161,6 +161,9 @@ export async function checkout(
         subtotal: subtotal.toDecimalPlaces(4).toString(),
         vatTotal: vatTotal.toDecimalPlaces(4).toString(),
         total: total.toDecimalPlaces(4).toString(),
+        // Till sales happen the instant they're posted, unlike a synced external
+        // sale where this is backfilled from the provider's own timestamp.
+        occurredAt: new Date(),
       })
       .returning();
 
@@ -185,6 +188,30 @@ export async function checkout(
  * movement") — plus a status update on `sales`, which is a normal table update,
  * not the append-only ledger.
  */
+/**
+ * Recent sales, newest first — what a staff member scans when a customer
+ * says "you overcharged me five minutes ago" and needs to find the sale
+ * before it can be voided.
+ */
+export async function listSales(orgId: string, limit = 50) {
+  return withTenant(orgId, (tx) =>
+    tx
+      .select({
+        id: sales.id,
+        saleNumber: sales.saleNumber,
+        // Falls back to createdAt, which is never null, for any row from
+        // before occurred_at existed.
+        occurredAt: sql<Date>`coalesce(${sales.occurredAt}, ${sales.createdAt})`,
+        tenderType: sales.tenderType,
+        total: sales.total,
+        status: sales.status,
+      })
+      .from(sales)
+      .orderBy(sql`${sales.createdAt} desc`)
+      .limit(limit),
+  );
+}
+
 /**
  * A sale and everything printed on its receipt.
  *

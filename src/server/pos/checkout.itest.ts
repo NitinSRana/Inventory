@@ -8,7 +8,7 @@ import { getBatchStock, getProductStock } from '@/server/stock/levels';
 import { receiveStock } from '@/server/stock/movements';
 import { adminSql, createTestOrg, type TestOrg } from '@/server/testing/fixtures';
 
-import { UnpricedProductError, checkout, voidSale } from './checkout';
+import { UnpricedProductError, checkout, listSales, voidSale } from './checkout';
 
 /**
  * Checkout against a real database: the transaction that ties a sale, its
@@ -192,6 +192,27 @@ describe('checkout', () => {
     const other = await createTestOrg('Checkout Rival');
     await assert.rejects(() =>
       checkout(other.orgId, { lines: [{ productId: milk, quantity: '1' }], tenderType: 'cash' }),
+    );
+  });
+
+  test('listSales finds a sale by number, newest first, scoped to its own tenant', async () => {
+    const item = (
+      await createProduct(org.orgId, { name: 'Listed', gtin: '4001234567976', sellPrice: '1.0000' })
+    ).id;
+    await receiveStock(org.orgId, { productId: item, quantity: '5' });
+    const first = await checkout(org.orgId, { lines: [{ productId: item, quantity: '1' }], tenderType: 'cash' });
+    const second = await checkout(org.orgId, { lines: [{ productId: item, quantity: '1' }], tenderType: 'card' });
+
+    const rival = await createTestOrg('Sales List Rival');
+
+    const rows = await listSales(org.orgId);
+    assert.equal(rows[0].id, second.id, 'newest first');
+    assert.ok(rows.some((r) => r.id === first.id));
+
+    const rivalRows = await listSales(rival.orgId);
+    assert.ok(
+      rivalRows.every((r) => r.id !== first.id && r.id !== second.id),
+      "another tenant sees none of this one's sales",
     );
   });
 });

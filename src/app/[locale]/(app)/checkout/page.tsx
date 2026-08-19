@@ -114,9 +114,17 @@ export default async function CheckoutPage({
           </div>
         </div>
 
-        <Link href={`/${locale}/checkout`} className={buttonVariants({ className: 'h-12 w-fit' })}>
-          {t('newSale')}
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link href={`/${locale}/checkout`} className={buttonVariants({ className: 'h-12 w-fit' })}>
+            {t('newSale')}
+          </Link>
+          <Link
+            href={`/${locale}/sales/${sale.id}`}
+            className={buttonVariants({ variant: 'outline', className: 'h-12 w-fit' })}
+          >
+            {t('viewInSales')}
+          </Link>
+        </div>
       </main>
     );
   }

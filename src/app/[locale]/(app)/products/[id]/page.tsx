@@ -14,6 +14,7 @@ import { trimQuantity } from '@/lib/quantity';
 import { roleAtLeast } from '@/server/auth/roles';
 import { requireOrg } from '@/server/auth/session';
 import { getProduct } from '@/server/catalog/products';
+import { getDaysOfCover } from '@/server/consumption/calculate';
 import { getProductBatches, getProductMovements, getProductStock } from '@/server/stock/levels';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
@@ -55,6 +56,7 @@ export default async function ProductPage({ params }: PageProps<'/[locale]/produ
   const money = (v: string | null) =>
     v === null ? '—' : format.number(Number(v), { style: 'currency', currency: org.currencyCode });
   const onHand = stock.reduce((sum, s) => sum + Number(s.quantity ?? 0), 0);
+  const daysOfCover = await getDaysOfCover(orgId, id, String(onHand));
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-24">
@@ -63,12 +65,20 @@ export default async function ProductPage({ params }: PageProps<'/[locale]/produ
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageTitle caption={product.gtin ?? t('noBarcode')}>{product.name}</PageTitle>
         {canManage && (
-          <Link
-            href={`/${locale}/products/${id}/edit`}
-            className={buttonVariants({ variant: 'outline', className: 'h-11' })}
-          >
-            {t('edit')}
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              href={`/${locale}/products/${id}/correct`}
+              className={buttonVariants({ variant: 'outline', className: 'h-11' })}
+            >
+              {t('correctStock')}
+            </Link>
+            <Link
+              href={`/${locale}/products/${id}/edit`}
+              className={buttonVariants({ variant: 'outline', className: 'h-11' })}
+            >
+              {t('edit')}
+            </Link>
+          </div>
         )}
       </div>
 
@@ -79,6 +89,14 @@ export default async function ProductPage({ params }: PageProps<'/[locale]/produ
           <p className="text-3xl font-semibold tabular-nums">
             {trimQuantity(String(onHand))}{' '}
             <span className="text-muted-foreground text-lg font-normal">{product.unit}</span>
+          </p>
+          {/* One number, not a forecast: how long what's on the shelf lasts at
+              the pace it's actually been selling. Null below two counts rather
+              than a confident guess dressed up as data. */}
+          <p className="text-muted-foreground text-sm">
+            {daysOfCover === null
+              ? t('daysOfCoverUnknown')
+              : t('daysOfCover', { days: Math.round(daysOfCover) })}
           </p>
         </div>
         <div className="flex flex-col gap-0.5">
@@ -156,6 +174,10 @@ export default async function ProductPage({ params }: PageProps<'/[locale]/produ
                           {t(`reasonCodes.${m.reasonCode}`)}
                         </span>
                       )}
+                      {/* The free-text reason a manager typed on a stock
+                          correction — a required reason nobody can ever see
+                          again is not worth requiring. */}
+                      {m.note && <span className="text-muted-foreground">{m.note}</span>}
                     </span>
                   }
                   // Sign is carried by the character as well as the colour, so
