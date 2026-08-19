@@ -14,25 +14,40 @@ type Defaults = {
   unit?: string;
   costPrice?: string | null;
   sellPrice?: string | null;
+  vatBand?: string | null;
   shelfLifeDays?: number | null;
   supplierId?: string | null;
   categoryId?: string | null;
 };
 
+/*
+ * Rate ascending, so a UK grocer sees zero-rated first — it is the right answer
+ * for most of their catalogue. VAT_BANDS' own order is schema order, not an
+ * order anyone would want to read.
+ */
+const BAND_DISPLAY_ORDER = ['zero', 'super_reduced', 'reduced', 'standard'] as const;
+
 export async function ProductForm({
   action,
   suppliers,
   categories,
+  vatBands,
   defaults = {},
   error,
 }: {
   action: (formData: FormData) => Promise<void>;
   suppliers: { id: string; name: string }[];
   categories: { id: string; name: string }[];
+  /** The tenant's own configured bands. Never a hardcoded country rate. */
+  vatBands: { band: string; rate: string }[];
   defaults?: Defaults;
   error?: string;
 }) {
   const t = await getTranslations('products');
+
+  const ratesByBand = new Map(vatBands.map((v) => [v.band, v.rate]));
+  const orderedBands = BAND_DISPLAY_ORDER.filter((b) => ratesByBand.has(b));
+  const percent = (rate: string) => `${Number(rate) * 100}%`;
 
   return (
     <form action={action} className="flex flex-col gap-4 pb-20 sm:pb-0">
@@ -110,7 +125,7 @@ export async function ProductForm({
       </div>
 
       <FieldRow>
-        <Field name="costPrice" label={t('cost')}>
+        <Field name="costPrice" label={t('cost')} hint={t('costHint')}>
           <Input
             id="costPrice"
             name="costPrice"
@@ -119,7 +134,7 @@ export async function ProductForm({
             className="h-12 text-right tabular-nums"
           />
         </Field>
-        <Field name="sellPrice" label={t('price')}>
+        <Field name="sellPrice" label={t('price')} hint={t('priceHint')}>
           <Input
             id="sellPrice"
             name="sellPrice"
@@ -129,6 +144,19 @@ export async function ProductForm({
           />
         </Field>
       </FieldRow>
+
+      {/* Most UK food is zero-rated; confectionery, crisps, soft drinks and hot
+          food are not. A single aisle crosses both, so this cannot be inferred
+          from the country and has to be set per product. */}
+      <Field name="vatBand" label={t('vatBand')} hint={t('vatBandHint')}>
+        <NativeSelect id="vatBand" name="vatBand" defaultValue={defaults.vatBand ?? 'zero'}>
+          {orderedBands.map((b) => (
+            <option key={b} value={b}>
+              {t(`vatBands.${b}`)} — {percent(ratesByBand.get(b)!)}
+            </option>
+          ))}
+        </NativeSelect>
+      </Field>
 
       <Field name="shelfLifeDays" label={t('shelfLife')}>
         <Input
@@ -194,7 +222,10 @@ export function productInputFrom(formData: FormData) {
     unit: (value('unit') ?? 'each') as (typeof UNITS)[number],
     // Money stays a string all the way to the database.
     costPrice: value('costPrice'),
+    // The shelf price, VAT included. The till extracts VAT from it rather than
+    // adding VAT on top — see server/pos/checkout.ts.
     sellPrice: value('sellPrice'),
+    vatBand: (value('vatBand') ?? 'zero') as 'standard' | 'reduced' | 'super_reduced' | 'zero',
     supplierId: value('supplierId'),
     categoryId: value('categoryId'),
     shelfLifeDays: value('shelfLifeDays') ? Number(value('shelfLifeDays')) : null,

@@ -1,6 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 
-import { UNITS, products, suppliers } from '@/db/schema';
+import { UNITS, VAT_BANDS, products, suppliers } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 
 import { normalizeGtin } from './ean';
@@ -126,6 +126,22 @@ export async function importProductsCsv(
         continue;
       }
 
+      /*
+       * VAT band. Omitted means zero-rated, matching the column default and the
+       * fact that most UK food is zero-rated. A wrong 'zero' under-declares on a
+       * minority of lines; a wrong 'standard' overcharges the customer on the
+       * majority — so the quiet default is the forgiving one.
+       */
+      const vatBandRaw = cell('vatBand').toLowerCase().replace(/[\s-]+/g, '_');
+      let vatBand: (typeof VAT_BANDS)[number] = 'zero';
+      if (vatBandRaw) {
+        if (!VAT_BANDS.includes(vatBandRaw as (typeof VAT_BANDS)[number])) {
+          errors.push({ line, column: 'vatBand', message: 'invalidVatBand' });
+          continue;
+        }
+        vatBand = vatBandRaw as (typeof VAT_BANDS)[number];
+      }
+
       // Numerics stay strings all the way to the database. Commas become dots so
       // a German-formatted "1,29" does not silently import as null.
       const numeric = (field: string): string | null => {
@@ -174,6 +190,7 @@ export async function importProductsCsv(
           unit: (unit || 'each') as (typeof UNITS)[number],
           costPrice,
           sellPrice,
+          vatBand,
           minStock,
           shelfLifeDays,
           supplierId,
@@ -234,9 +251,13 @@ export async function importProductsCsv(
  * second row shows a quoted comma, which is the format's one real trap.
  */
 export const TEMPLATE_CSV = [
-  'name,barcode,case_barcode,units_per_case,sku,unit,cost,price,min_stock,shelf_life_days,supplier',
-  'Vollmilch 1L,4001234567891,14001234567898,12,VM1L,l,0.79,1.29,20,10,Molkerei Nord',
-  '"Milch, fettarm 1L",4006381333931,14006381333938,12,MF1L,l,0.75,1.19,20,10,Molkerei Nord',
+  'name,barcode,case_barcode,units_per_case,sku,unit,cost,price,vat_band,min_stock,shelf_life_days,supplier',
+  // Zero-rated: ordinary food, which is most of a shop.
+  'Semi-Skimmed Milk 2L,5000112637922,15000112637929,6,MILK2L,l,0.85,1.45,zero,20,7,Dairy Direct',
+  // Standard-rated: confectionery is the exception that catches people out.
+  'Chocolate Bar 45g,5000159484695,15000159484692,48,CHOC45,each,0.42,0.85,standard,24,180,Sweet Supplies',
+  // A quoted comma, which is the format's one real trap.
+  '"Bread, Wholemeal 800g",5012345678900,15012345678907,10,BRD800,each,0.62,1.25,zero,15,5,Bakery Co',
 ].join('\n');
 
 /** Used by the products page to tell an empty catalogue apart from a filtered one. */

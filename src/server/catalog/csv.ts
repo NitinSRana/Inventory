@@ -101,6 +101,8 @@ const COLUMNS: Record<string, string[]> = {
   unit: ['unit', 'uom', 'einheit'],
   costPrice: ['cost', 'costprice', 'buyprice', 'ek', 'einkaufspreis'],
   sellPrice: ['price', 'sellprice', 'retail', 'vk', 'verkaufspreis'],
+  // 'vatrate' and 'taxcode' are what UK wholesaler exports tend to call it.
+  vatBand: ['vatband', 'vat', 'vatrate', 'vatcode', 'taxcode', 'taxband', 'mwst'],
   minStock: ['min', 'minstock', 'minimum'],
   shelfLifeDays: ['shelflife', 'shelflifedays', 'mhd', 'haltbarkeit'],
   supplier: ['supplier', 'vendor', 'lieferant'],

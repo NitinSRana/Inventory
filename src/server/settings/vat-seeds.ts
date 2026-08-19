@@ -11,6 +11,14 @@
 export type VatBand = 'standard' | 'reduced' | 'super_reduced' | 'zero';
 
 export const COUNTRY_VAT_SEEDS: Record<string, Partial<Record<VatBand, string>>> = {
+  /*
+   * GB is the primary market. UK food VAT is unusually split: most food is
+   * ZERO-rated, but confectionery, crisps, soft drinks, ice cream, hot food and
+   * alcohol are standard-rated. A single corner-shop aisle crosses both bands,
+   * which is why products.vat_band defaults to 'zero' here and every product
+   * needs the band set explicitly rather than inherited from a country.
+   */
+  GB: { standard: '0.2000', reduced: '0.0500', zero: '0.0000' },
   DE: { standard: '0.1900', reduced: '0.0700', zero: '0.0000' },
   AT: { standard: '0.2000', reduced: '0.1000', zero: '0.0000' },
   NL: { standard: '0.2100', reduced: '0.0900', zero: '0.0000' },

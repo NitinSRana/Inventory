@@ -39,6 +39,34 @@ export class InsufficientStockError extends Error {
  * Arithmetic is Decimal throughout: quantities are numeric(14,3) and weighed
  * goods use all three decimals, where float rounding produces phantom stock.
  */
+/**
+ * FEFO allocation that cannot fail.
+ *
+ * Our own till refuses a sale it has no stock for — that is the correct answer
+ * when the customer is still standing there. An external sale is different: it
+ * already happened at somebody else's till, the money is taken, the goods are
+ * gone. Refusing it would leave our ledger claiming stock that is physically
+ * not on the shelf.
+ *
+ * So this takes what it can, earliest expiry first, and reports the rest as
+ * `shortfall`. The caller posts that shortfall as a batch-less movement, which
+ * drives on-hand negative — a true and useful signal that a delivery was never
+ * recorded, rather than a lie in the other direction.
+ */
+export function allocateFefoPartial(
+  batches: BatchStock[],
+  quantity: string,
+): { allocations: Allocation[]; shortfall: string } {
+  const requested = new Decimal(quantity);
+  if (requested.lessThanOrEqualTo(0)) throw new Error('Quantity must be positive');
+
+  const available = batches.reduce((sum, b) => sum.plus(b.quantity), new Decimal(0));
+  const takeable = Decimal.min(requested, Decimal.max(available, new Decimal(0)));
+
+  const allocations = takeable.greaterThan(0) ? allocateFefo(batches, takeable.toString()) : [];
+  return { allocations, shortfall: requested.minus(takeable).toString() };
+}
+
 export function allocateFefo(batches: BatchStock[], quantity: string): Allocation[] {
   const requested = new Decimal(quantity);
   if (requested.lessThanOrEqualTo(0)) throw new Error('Quantity must be positive');

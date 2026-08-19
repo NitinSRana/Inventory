@@ -98,12 +98,24 @@ export async function checkout(
       if (!product.sellPrice) throw new UnpricedProductError(product.name);
 
       const unitPrice = new Decimal(product.sellPrice);
-      const lineSubtotal = unitPrice.times(quantity);
+      /*
+       * sellPrice is the SHELF price: what the customer actually pays, VAT
+       * included. UK and EU consumer retail prices are display-inclusive by
+       * law, so VAT is extracted from the price rather than added on top of it.
+       * Adding it on top would charge a customer £1.44 for a £1.20 chocolate
+       * bar.
+       */
+      const lineTotal = unitPrice.times(quantity);
       const vatRate = new Decimal(rates[product.vatBand as keyof typeof rates] ?? '0');
-      const vatAmount = lineSubtotal.times(vatRate);
-      const lineTotal = lineSubtotal.plus(vatAmount);
+      /*
+       * Derive net first, then take VAT as the remainder. Doing it this way
+       * round guarantees net + vat === lineTotal exactly, so no penny can go
+       * missing to rounding and the receipt always adds up.
+       */
+      const lineNet = lineTotal.dividedBy(vatRate.plus(1)).toDecimalPlaces(4);
+      const vatAmount = lineTotal.minus(lineNet);
 
-      subtotal = subtotal.plus(lineSubtotal);
+      subtotal = subtotal.plus(lineNet);
       vatTotal = vatTotal.plus(vatAmount);
 
       lineValues.push({

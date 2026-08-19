@@ -84,6 +84,12 @@ export default async function ProductPage({ params }: PageProps<'/[locale]/produ
         <div className="flex flex-col gap-0.5">
           <SectionHeading>{t('price')}</SectionHeading>
           <p className="text-3xl font-semibold tabular-nums">{money(product.sellPrice)}</p>
+          {/* The band is shown next to the price because it is only meaningful
+              beside it: the price includes this VAT, and a product silently
+              sitting on the wrong band overcharges the customer at the till. */}
+          <p className="text-muted-foreground text-sm">
+            {t(`vatBands.${product.vatBand}`)} · {t('vatIncluded')}
+          </p>
         </div>
         {canManage && (
           <div className="flex flex-col gap-0.5">

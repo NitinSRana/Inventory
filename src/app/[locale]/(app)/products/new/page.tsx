@@ -7,6 +7,7 @@ import { requireRole } from '@/server/auth/session';
 import { listCategories } from '@/server/catalog/categories';
 import { InvalidBarcodeError, createProduct } from '@/server/catalog/products';
 import { listSuppliers } from '@/server/catalog/suppliers';
+import { getVatRates } from '@/server/settings/vat';
 import { PageTitle } from '@/components/data-list';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
@@ -24,7 +25,11 @@ export default async function NewProductPage({
   const t = await getTranslations('products');
   const tBack = await getTranslations('back');
   const { orgId } = await requireRole(locale, 'manager');
-  const [suppliers, categories] = await Promise.all([listSuppliers(orgId), listCategories(orgId)]);
+  const [suppliers, categories, vatBands] = await Promise.all([
+    listSuppliers(orgId),
+    listCategories(orgId),
+    getVatRates(orgId),
+  ]);
 
   async function create(formData: FormData) {
     'use server';
@@ -51,6 +56,7 @@ export default async function NewProductPage({
         action={create}
         suppliers={suppliers}
         categories={categories}
+        vatBands={vatBands}
         error={typeof error === 'string' ? error : undefined}
       />
     </main>

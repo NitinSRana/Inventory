@@ -8,6 +8,7 @@ import { requireRole } from '@/server/auth/session';
 import { listCategories } from '@/server/catalog/categories';
 import { InvalidBarcodeError, deactivateProduct, getProduct, updateProduct } from '@/server/catalog/products';
 import { listSuppliers } from '@/server/catalog/suppliers';
+import { getVatRates } from '@/server/settings/vat';
 import { PageTitle } from '@/components/data-list';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
@@ -30,7 +31,11 @@ export default async function EditProductPage({
   const product = await getProduct(orgId, id);
   if (!product) notFound();
 
-  const [suppliers, categories] = await Promise.all([listSuppliers(orgId), listCategories(orgId)]);
+  const [suppliers, categories, vatBands] = await Promise.all([
+    listSuppliers(orgId),
+    listCategories(orgId),
+    getVatRates(orgId),
+  ]);
 
   async function save(formData: FormData) {
     'use server';
@@ -65,6 +70,7 @@ export default async function EditProductPage({
         action={save}
         suppliers={suppliers}
         categories={categories}
+        vatBands={vatBands}
         defaults={product}
         error={typeof error === 'string' ? error : undefined}
       />

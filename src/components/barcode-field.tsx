@@ -52,7 +52,26 @@ export function BarcodeField({
       // during server rendering or on a page that never scans.
       const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode');
       const scanner = new Html5Qrcode(regionRef.current!.id, {
-        formatsToSupport: [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8],
+        /*
+         * EAN-13/8 are the retail unit. ITF is the shipping case: a case
+         * barcode is normally GTIN-14 printed as ITF-14, a different symbology
+         * entirely, so without ITF here the camera silently fails on every
+         * delivery even though ean.ts validates GTIN-14 happily.
+         *
+         * UPC-A/E are included because own-brand and imported stock from US
+         * suppliers still carries them.
+         *
+         * The list stays deliberately short. Every extra format is another
+         * chance to mis-decode a blurry barcode in bad light, and a wrong
+         * barcode that happens to match another product is worse than no scan.
+         */
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.ITF,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+        ],
         verbose: false,
       });
       scannerRef.current = scanner;

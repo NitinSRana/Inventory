@@ -158,7 +158,11 @@ export const products = pgTable('products', {
   isWeighed: boolean('is_weighed').notNull().default(false),
   costPrice: numeric('cost_price', { precision: 12, scale: 4 }),
   sellPrice: numeric('sell_price', { precision: 12, scale: 4 }),
-  vatBand: text('vat_band', { enum: VAT_BANDS }).notNull().default('standard'),
+  /*
+   * Defaults to 'zero' because the primary market is the UK, where most food is
+   * zero-rated and standard-rating is the exception. See 0010_uk_vat_defaults.
+   */
+  vatBand: text('vat_band', { enum: VAT_BANDS }).notNull().default('zero'),
   minStock: numeric('min_stock', { precision: 14, scale: 3 }),
   maxStock: numeric('max_stock', { precision: 14, scale: 3 }),
   shelfLifeDays: integer('shelf_life_days'),
@@ -202,7 +206,7 @@ export const MOVEMENT_TYPES = [
   'waste',
   'count_adjustment',
   'manual_adjustment',
-  'consumption', // reserved for a future POS/CSV depletion source
+  'consumption', // a till sale; reference_type 'sale' points at the sales row
 ] as const;
 
 export const REASON_CODES = [
@@ -283,6 +287,7 @@ export const purchaseOrderLines = pgTable('purchase_order_lines', {
 /* -------------------------------------------------------------------------- */
 
 export const SALE_STATUSES = ['completed', 'voided'] as const;
+export const SALE_SOURCES = ['till', 'epos_now'] as const;
 export const TENDER_TYPES = ['cash', 'card'] as const;
 
 export const sales = pgTable('sales', {
@@ -296,6 +301,13 @@ export const sales = pgTable('sales', {
   total: numeric('total', { precision: 12, scale: 4 }).notNull(),
   tenderType: text('tender_type', { enum: TENDER_TYPES }).notNull(),
   soldBy: uuid('sold_by'),
+  /** Where the sale came from. External sales land in this same table. */
+  source: text('source', { enum: SALE_SOURCES }).notNull().default('till'),
+  /** The provider's own transaction id. Null for our own till. Unique per
+   *  (org, source) — that index is the whole idempotency guarantee. */
+  externalRef: text('external_ref'),
+  /** When it happened at the till, which is not when we heard about it. */
+  occurredAt: timestamp('occurred_at', { withTimezone: true }),
   voidedAt: timestamp('voided_at', { withTimezone: true }),
   voidedBy: uuid('voided_by'),
   ...timestamps,
@@ -319,6 +331,59 @@ export const saleLines = pgTable('sale_lines', {
 }, (t) => ({
   saleProduct: uniqueIndex('sale_lines_sale_id_product_id_key').on(t.saleId, t.productId),
   byProduct: index('sale_lines_organization_id_product_id_idx').on(t.organizationId, t.productId),
+}));
+
+/* -------------------------------------------------------------------------- */
+/* External POS                                                                */
+/*                                                                             */
+/* A shop already running an EPOS will never switch to our till, so its sales   */
+/* arrive by sync instead. They land in the `sales` table above, not a parallel */
+/* one — reports and insights should not have to know where a sale came from.   */
+/* -------------------------------------------------------------------------- */
+
+export const POS_PROVIDERS = ['epos_now'] as const;
+export const POS_CONNECTION_STATUSES = ['disconnected', 'connected', 'error'] as const;
+
+export const posConnections = pgTable('pos_connections', {
+  id: id(),
+  organizationId: orgId(),
+  locationId: uuid('location_id').notNull(),
+  provider: text('provider', { enum: POS_PROVIDERS }).notNull(),
+  status: text('status', { enum: POS_CONNECTION_STATUSES }).notNull().default('disconnected'),
+  /** Key into the secret store — never the token itself. */
+  credentialRef: text('credential_ref'),
+  /** High-water mark. Rewound slightly on each sync; duplicates are free
+   *  because the unique index on (org, source, external_ref) discards them. */
+  syncedThrough: timestamp('synced_through', { withTimezone: true }),
+  lastSyncAt: timestamp('last_sync_at', { withTimezone: true }),
+  lastError: text('last_error'),
+  ...timestamps,
+});
+
+/**
+ * A barcode the EPOS sold that we have no product for.
+ *
+ * Kept rather than dropped: an unknown barcode is usually a product that exists
+ * in their till and not in our catalogue, so this is the shop's to-do list for
+ * closing the gap — and early on, a way to build the catalogue at all.
+ */
+export const posUnmatchedLines = pgTable('pos_unmatched_lines', {
+  id: id(),
+  organizationId: orgId(),
+  connectionId: uuid('connection_id'),
+  barcode: text('barcode').notNull(),
+  description: text('description'),
+  /** Running total sold while unmatched — how much drift this represents. */
+  quantity: numeric('quantity', { precision: 14, scale: 3 }).notNull().default('0'),
+  timesSeen: integer('times_seen').notNull().default(1),
+  firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull().defaultNow(),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+  resolvedProductId: uuid('resolved_product_id'),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  ...timestamps,
+}, (t) => ({
+  orgBarcode: uniqueIndex('pos_unmatched_lines_organization_id_barcode_key')
+    .on(t.organizationId, t.barcode),
 }));
 
 /* -------------------------------------------------------------------------- */

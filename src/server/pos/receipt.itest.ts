@@ -57,13 +57,14 @@ describe('the receipt', () => {
     const standard = receipt!.vatBreakdown.find((b) => b.band === 'standard')!;
     const reduced = receipt!.vatBreakdown.find((b) => b.band === 'reduced')!;
 
-    // sellPrice is net; checkout adds VAT on top rather than extracting it.
-    // 2 x 8.00 = 16.00 net, 19% -> 3.04
-    assert.equal(standard.net, '16.00');
-    assert.equal(standard.vat, '3.04');
-    // 10 x 1.19 = 11.90 net, 7% -> 0.833
-    assert.equal(reduced.net, '11.90');
-    assert.equal(reduced.vat, '0.83');
+    // sellPrice is gross (the shelf price); checkout extracts VAT from it
+    // rather than adding it on top.
+    // 2 x 8.00 = 16.00 gross, / 1.19 -> 13.4454 net, 19% -> 2.5546
+    assert.equal(standard.net, '13.45');
+    assert.equal(standard.vat, '2.55');
+    // 10 x 1.19 = 11.90 gross, / 1.07 -> 11.1215 net, 7% -> 0.7785
+    assert.equal(reduced.net, '11.12');
+    assert.equal(reduced.vat, '0.78');
 
     const totalVat = (Number(standard.vat) + Number(reduced.vat)).toFixed(2);
     assert.equal(totalVat, Number(receipt!.sale.vatTotal).toFixed(2), 'bands sum to the recorded VAT total');

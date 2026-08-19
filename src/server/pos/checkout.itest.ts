@@ -50,10 +50,41 @@ describe('checkout', () => {
       tenderType: 'card',
     });
 
-    assert.equal(sale.subtotal, '2.5800'); // 1.29 * 2
-    assert.equal(sale.vatTotal, '0.1806'); // 2.58 * 0.07
-    assert.equal(sale.total, '2.7606');
+    /*
+     * sellPrice is the SHELF price — VAT included. So 1.29 x 2 is what the
+     * customer pays, and VAT is extracted from it rather than added on top.
+     *   gross 2.58, net 2.58 / 1.07 = 2.4112, VAT the remainder.
+     */
+    assert.equal(sale.subtotal, '2.4112');
+    assert.equal(sale.vatTotal, '0.1688');
+    assert.equal(sale.total, '2.5800', 'the customer pays the shelf price, never more');
     assert.match(sale.saleNumber, /^TXN-\d{4}-\d{4}$/);
+  });
+
+  test('net plus VAT always reconstructs the shelf price exactly', async () => {
+    // A rate that does not divide cleanly: 0.99 / 1.07 recurs. Deriving net and
+    // taking VAT as the remainder is what stops a penny going missing here.
+    const odd = (
+      await createProduct(org.orgId, {
+        name: 'Odd Price Item',
+        gtin: '4001234567969',
+        sellPrice: '0.9900',
+        vatBand: 'reduced',
+      })
+    ).id;
+    await receiveStock(org.orgId, { productId: odd, quantity: '10' });
+
+    const sale = await checkout(org.orgId, {
+      lines: [{ productId: odd, quantity: '3' }],
+      tenderType: 'cash',
+    });
+
+    assert.equal(sale.total, '2.9700', '0.99 x 3, to the penny');
+    assert.equal(
+      Number(sale.subtotal) + Number(sale.vatTotal),
+      Number(sale.total),
+      'net + VAT must equal the total exactly, with no rounding drift',
+    );
   });
 
   test('stock depletes by exactly what was sold', async () => {
@@ -162,5 +193,74 @@ describe('checkout', () => {
     await assert.rejects(() =>
       checkout(other.orgId, { lines: [{ productId: milk, quantity: '1' }], tenderType: 'cash' }),
     );
+  });
+});
+
+/**
+ * A UK corner shop, which is the case that matters most.
+ *
+ * UK food VAT is split down the middle of a single aisle: milk is zero-rated,
+ * the chocolate next to it is standard-rated at 20%. The shop owner types shelf
+ * prices, and the customer must pay exactly those prices — VAT is the till's
+ * problem, not theirs.
+ *
+ * This is the test that would have caught the bug where VAT was added on top of
+ * the shelf price, turning a £1.20 chocolate bar into £1.44 at the till.
+ */
+describe('checkout — UK mixed VAT basket', () => {
+  let org: TestOrg;
+  let milk: string;
+  let chocolate: string;
+
+  before(async () => {
+    org = await createTestOrg('UK Corner Shop');
+    await seedVatRatesForCountry(org.orgId, 'GB'); // standard 20%, reduced 5%, zero 0%
+
+    milk = (
+      await createProduct(org.orgId, {
+        name: 'Semi-Skimmed Milk 2L',
+        gtin: '5000112637922',
+        sellPrice: '1.2000',
+        vatBand: 'zero', // most food
+      })
+    ).id;
+    chocolate = (
+      await createProduct(org.orgId, {
+        name: 'Chocolate Bar',
+        gtin: '5000159484695',
+        sellPrice: '1.2000',
+        vatBand: 'standard', // confectionery is the exception
+      })
+    ).id;
+
+    await receiveStock(org.orgId, { productId: milk, quantity: '20' });
+    await receiveStock(org.orgId, { productId: chocolate, quantity: '20' });
+  });
+
+  test('the customer pays the sum of the shelf prices, nothing more', async () => {
+    const sale = await checkout(org.orgId, {
+      lines: [
+        { productId: milk, quantity: '2' }, // 2.40, zero-rated
+        { productId: chocolate, quantity: '1' }, // 1.20, standard-rated
+      ],
+      tenderType: 'cash',
+    });
+
+    assert.equal(sale.total, '3.6000', '1.20 x 2 + 1.20 — exactly what the shelf edge says');
+    // Zero-rated milk contributes no VAT; the chocolate's 1.20 gross is
+    // 1.00 net + 0.20 VAT.
+    assert.equal(sale.vatTotal, '0.2000');
+    assert.equal(sale.subtotal, '3.4000');
+  });
+
+  test('zero-rated lines carry no VAT at all', async () => {
+    const sale = await checkout(org.orgId, {
+      lines: [{ productId: milk, quantity: '3' }],
+      tenderType: 'card',
+    });
+
+    assert.equal(sale.vatTotal, '0.0000');
+    assert.equal(sale.subtotal, sale.total, 'with no VAT, net and gross are the same number');
+    assert.equal(sale.total, '3.6000');
   });
 });

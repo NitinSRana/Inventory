@@ -74,6 +74,15 @@ insert into public.sale_lines (organization_id, sale_id, product_id, quantity, u
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a0000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000003', 1, 1.29, 'reduced', 0.09, 1.38),
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'b0000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000003', 1, 2.10, 'reduced', 0.15, 2.25);
 
+-- One EPOS connection per org, plus one unmatched barcode each, for 0011.
+insert into public.pos_connections (id, organization_id, location_id, provider, status) values
+  ('a0000000-0000-0000-0000-000000000007', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a0000000-0000-0000-0000-000000000001', 'epos_now', 'connected'),
+  ('b0000000-0000-0000-0000-000000000005', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'b0000000-0000-0000-0000-000000000001', 'epos_now', 'connected');
+
+insert into public.pos_unmatched_lines (organization_id, connection_id, barcode, quantity) values
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a0000000-0000-0000-0000-000000000007', '9999999999999', 3),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'b0000000-0000-0000-0000-000000000005', '8888888888888', 2);
+
 -- =============================================================================
 -- Checks
 -- =============================================================================
@@ -249,9 +258,11 @@ set role app_user;
 
 do $t$
 declare
-  n      integer;
-  nm     text;
-  failed boolean;
+  n              integer;
+  nm             text;
+  failed         boolean;
+  conn_id_after  uuid;
+  org_id_after   uuid;
 begin
   raise notice '--- RLS isolation (role=%) ---', current_user;
 
@@ -366,6 +377,76 @@ begin
     raise exception 'FAIL: org A referenced org B''s product from a sale line';
   end if;
   raise notice 'PASS  cross-tenant sale_lines foreign key reference blocked';
+
+  -- pos_connections/pos_unmatched_lines are new in 0011: same three checks.
+  select count(*) into n from public.pos_connections;
+  if n <> 1 then raise exception 'FAIL: org A sees % pos_connections, expected 1', n; end if;
+  select count(*) into n from public.pos_unmatched_lines;
+  if n <> 1 then raise exception 'FAIL: org A sees % pos_unmatched_lines, expected 1', n; end if;
+  raise notice 'PASS  org A sees only its own POS connection and unmatched line';
+
+  failed := false;
+  begin
+    insert into public.pos_connections (organization_id, location_id, provider)
+    values ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'a0000000-0000-0000-0000-000000000001', 'epos_now');
+  exception when others then failed := true;
+  end;
+  if not failed then
+    raise exception 'FAIL: org A planted a pos_connection into org B';
+  end if;
+  raise notice 'PASS  cross-tenant pos_connection INSERT blocked by WITH CHECK';
+
+  failed := false;
+  begin
+    insert into public.pos_unmatched_lines (organization_id, connection_id, barcode)
+    values (
+      'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+      'b0000000-0000-0000-0000-000000000005',  -- org B's connection
+      '7777777777777');
+  exception when others then failed := true;
+  end;
+  if not failed then
+    raise exception 'FAIL: org A referenced org B''s pos_connection from an unmatched line';
+  end if;
+  raise notice 'PASS  cross-tenant pos_unmatched_lines foreign key reference blocked';
+
+  -- The idempotency guarantee a sync retry depends on: a duplicate
+  -- (organization_id, source, external_ref) must be rejected...
+  insert into public.sales (organization_id, location_id, sale_number, source, external_ref, subtotal, vat_total, total, tender_type)
+  values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a0000000-0000-0000-0000-000000000001', 'EPOS-DUP-1', 'epos_now', 'EXT-1', 1, 0, 1, 'card');
+
+  failed := false;
+  begin
+    insert into public.sales (organization_id, location_id, sale_number, source, external_ref, subtotal, vat_total, total, tender_type)
+    values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a0000000-0000-0000-0000-000000000001', 'EPOS-DUP-2', 'epos_now', 'EXT-1', 1, 0, 1, 'card');
+  exception when others then failed := true;
+  end;
+  if not failed then
+    raise exception 'FAIL: a duplicate (org, source, external_ref) was not rejected';
+  end if;
+  raise notice 'PASS  duplicate external_ref rejected by the idempotency index';
+
+  -- ...but the index is partial, so two of our own till sales - which never
+  -- carry an external_ref - must both still be permitted.
+  insert into public.sales (organization_id, location_id, sale_number, subtotal, vat_total, total, tender_type)
+  values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a0000000-0000-0000-0000-000000000001', 'TXN-0002', 1, 0, 1, 'cash');
+  insert into public.sales (organization_id, location_id, sale_number, subtotal, vat_total, total, tender_type)
+  values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a0000000-0000-0000-0000-000000000001', 'TXN-0003', 1, 0, 1, 'cash');
+  raise notice 'PASS  two null-external_ref till sales are both permitted';
+
+  -- Composite ON DELETE SET NULL must clear only connection_id, never the
+  -- organization_id column it shares a constraint with - see 0011's comment
+  -- on why an unqualified SET NULL would instead fail a not-null check.
+  delete from public.pos_connections where id = 'a0000000-0000-0000-0000-000000000007';
+  select connection_id, organization_id into conn_id_after, org_id_after
+    from public.pos_unmatched_lines where barcode = '9999999999999';
+  if conn_id_after is not null then
+    raise exception 'FAIL: pos_unmatched_lines.connection_id survived its connection''s deletion';
+  end if;
+  if org_id_after is distinct from 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa' then
+    raise exception 'FAIL: deleting a pos_connection touched organization_id, not just connection_id';
+  end if;
+  raise notice 'PASS  deleting a pos_connection clears only connection_id, not organization_id';
 
   -- Invitations are tenant data like anything else: org A must not see who org
   -- B is hiring, and must not be able to plant an invitation into org B.
