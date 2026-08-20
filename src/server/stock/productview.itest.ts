@@ -31,7 +31,6 @@ describe('product view queries', () => {
   test('batches come back soonest-expiry-first with nulls last', async () => {
     const rows = await getProductBatches(org.orgId, productId);
     const dates = rows.map((r) => r.expiryDate);
-    console.log('  order:', JSON.stringify(dates));
     assert.equal(dates[dates.length - 1], null, 'undated batch sorts last');
     const dated = dates.filter((d) => d !== null);
     assert.deepEqual(dated, [...dated].sort(), 'dated batches ascend');
@@ -40,7 +39,6 @@ describe('product view queries', () => {
   test('daysRemaining is computed by the database, not the component', async () => {
     const rows = await getProductBatches(org.orgId, productId);
     const dated = rows.filter((r) => r.expiryDate !== null);
-    console.log('  ', dated.map((r) => `${r.expiryDate}=${r.daysRemaining}d`).join(' '));
 
     // Deliberately not asserting an absolute number of days. The expiry dates
     // above are built in JavaScript and current_date comes from Postgres, and
@@ -57,7 +55,6 @@ describe('product view queries', () => {
 
   test('movements read newest-first and carry their reason', async () => {
     const rows = await getProductMovements(org.orgId, productId, 10);
-    console.log('  ', rows.map((r) => `${r.movementType}:${r.quantityDelta}`).join(' '));
     assert.equal(rows.length, 4, 'three receipts and one adjustment');
     const adjustment = rows.find((r) => r.movementType === 'manual_adjustment');
     assert.ok(adjustment, 'the adjustment is visible');

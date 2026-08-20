@@ -9,7 +9,7 @@ colour, contrast, density) that any redesign has to hold. **Read the brief's §4
 before changing anything**; several of those rules come from where the product is
 used and one of them is a legal requirement.
 
-Last updated against commit `3573f13`.
+Last updated against commit `be55e0c`.
 
 ---
 
@@ -26,7 +26,7 @@ useful thing to know before designing it.
 | Design for | Width — tables, columns, a persistent sidebar | One hand, gloves, bad light, a product in the other hand |
 | Constraints | Readable at a desk | 44px targets, primary action in the bottom third, no modals mid-scan |
 
-Navigation follows the same split: a **sidebar** at ≥768px showing all twelve
+Navigation follows the same split: a **sidebar** at ≥768px showing all thirteen
 destinations, a **bottom tab bar** below that with five.
 
 ---
@@ -37,7 +37,7 @@ Three, nesting. Every screen is gated server-side; hiding a control is
 presentation, never enforcement.
 
 - **staff** — scans, receives, counts, sells
-- **manager** — the above, plus products, categories, insights
+- **manager** — the above, plus products, categories, insights, voiding a sale, correcting a keying error on stock
 - **owner** — the above, plus team, VAT and store settings
 
 ---
@@ -52,6 +52,11 @@ and a three-cell jump strip.
 *State:* headline and buckets sit side by side from `md`; rows link to the
 product. Uses the urgency ladder (icon + word + colour, never colour alone).
 
+*Notable:* an expired row's wording depends on the batch's date type — **use
+by** reads "do not sell", **best before** reads "mark down". Same urgency
+tier and colour either way; only the words change, since selling past a
+use-by date is a criminal offence in the UK and past best-before is routine.
+
 ### Checkout — `/checkout` · staff
 The till. Scan or search into a basket, take cash or card, complete. Every sale
 depletes stock FEFO. Tender is **recorded, not processed** — no card handling.
@@ -61,10 +66,20 @@ number, tender.
 *Notable:* one input resolves two ways — a barcode if it is one, otherwise a
 name search, which is how loose goods (deli, cheese, produce) get sold at all.
 Cart state lives in the URL, so a reload cannot lose a basket. Two columns from
-`lg` with the total pinned.
+`lg` with the total pinned. A completed sale's receipt links straight through
+to its entry in Sales, below.
 
-*Gap:* **no way to void a sale**, and no screen lists past sales. `voidSale()`
-exists in the server layer and is reachable from nowhere.
+*Notable — use-by:* a batch past its **use-by** date is refused at checkout,
+not just flagged; FEFO skips it and pulls the next in-date batch instead.
+**Best-before** past date is routine and still sells — that distinction is
+advisory only, surfaced on Today and the product page.
+
+### Sales — `/sales`, `/sales/[id]` · staff · **void** manager
+Recent sales, newest first: number, time, tender, total, status. Opening one
+shows its lines and VAT breakdown exactly as charged. A manager can void a
+completed sale from `/sales/[id]/void`, which names what stock will be
+restored before it commits — the sale stays visible afterward, marked voided,
+never deleted.
 
 ### Receive — `/receive` · staff
 A delivery arrives. Barcode → quantity, expiry, lot, unit cost.
@@ -95,17 +110,26 @@ Search by name or barcode. Dense rows on a phone, table on desktop. 500–2,000
 rows is normal.
 
 ### Product — `/products/[id]` · staff
-Stock on hand, price, the batches behind that number with expiry and lot, and
-the last ten ledger movements. **Cost price is manager-only** — it is the shop's
-buying position.
+Stock on hand, price with its VAT band, days of cover at recent sales rates (or
+"not enough data yet" below two counts), the batches behind that number with
+expiry, lot and use-by/best-before, and the last ten ledger movements. **Cost
+price is manager-only** — it is the shop's buying position.
 
 *Why the movements matter:* the ledger is the source of truth and was invisible
 outside a SQL client. A miscount, a double-logged delivery and a theft look
 identical on a total.
 
+### Correct stock — `/products/[id]/correct` · manager
+For a keying error, not a loss — received 100 cases instead of 10, or a typo.
+New quantity plus a required free-text reason, posted as a compensating
+`manual_adjustment` movement. Deliberately not a write-off: no reason-code
+picker, no path back to anything resembling waste tracking. If stock actually
+went missing, that surfaces through a count instead.
+
 ### Product form — `/products/new`, `/products/[id]/edit` · manager
 Name, unit barcode, case barcode, units per case, sold-loose flag, unit, cost,
-price, shelf life, supplier, category.
+price, VAT band (shown with its real rate), date type (use-by / best-before),
+shelf life, supplier, category.
 
 ### CSV import — `/products/import` · manager
 The onboarding moment. All-or-nothing: one bad row imports nothing, and errors
@@ -209,14 +233,12 @@ at 16% rather than 10%. Measured contrast clears WCAG AA on both.
 
 Ranked as they would be picked up.
 
-1. **The till has no undo and no memory.** `voidSale()` unreachable; no sales
-   list; a mistake needs SQL, a customer return cannot be traced.
-2. **The cold start.** A shop arrives with 2,000 SKUs and no prices. CSV import
+1. **The cold start.** A shop arrives with 2,000 SKUs and no prices. CSV import
    helps; where the price data comes from is unanswered.
-3. **Empty, loading and error states** exist everywhere but read as grey
+2. **Empty, loading and error states** exist everywhere but read as grey
    sentences.
-4. **Icons appear only in navigation.**
-5. **Scale-printed barcodes** for weighed goods — deliberately unbuilt, needs a
+3. **Icons appear only in navigation.**
+4. **Scale-printed barcodes** for weighed goods — deliberately unbuilt, needs a
    real scale in a real shop.
 
 Also unbuilt and out of scope for now: real card processing, accounting

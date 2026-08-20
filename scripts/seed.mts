@@ -84,6 +84,12 @@ const CATALOGUE = [
   ['Mineralwasser 6x1,5L', '4012345679038', '2.4000', '3.49', 'each', 400, 'grosshandel', '20'],
 ] as const;
 
+// Bottled water is standard-rated in Germany, unlike most groceries — real
+// German VAT law, not an arbitrary override, and it's what makes the demo
+// catalogue an actual mixed-VAT basket rather than nineteen products all
+// taxed the same way.
+const STANDARD_RATED = new Set(['Mineralwasser 6x1,5L']);
+
 const products: Record<string, { id: string; cost: string }> = {};
 for (const [name, gtin, cost, sell, unit, shelf, supplier, min] of CATALOGUE) {
   const p = await createProduct(orgId, {
@@ -94,7 +100,7 @@ for (const [name, gtin, cost, sell, unit, shelf, supplier, min] of CATALOGUE) {
     // makes the due-for-count queue mean anything.
     countFrequency: shelf <= 21 ? 'weekly' : 'monthly',
     supplierId: suppliers[supplier as keyof typeof suppliers].id,
-    vatBand: 'reduced',
+    vatBand: STANDARD_RATED.has(name) ? 'standard' : 'reduced',
   });
   products[name] = { id: p.id, cost };
 }

@@ -47,7 +47,7 @@ export default defineConfig({
     { name: 'setup', testMatch: /global\.setup\.ts/ },
     {
       name: 'flows',
-      testMatch: /daily-loop\.spec\.ts/,
+      testMatch: /(daily-loop|checkout-vat)\.spec\.ts/,
       dependencies: ['setup'],
       use: { storageState: STORAGE_STATE },
     },

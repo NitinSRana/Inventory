@@ -11,6 +11,7 @@ import {
 } from '@/db/schema';
 import { withTenant, type Tx } from '@/db/tenant';
 import { normalizeGtin } from '@/server/catalog/ean';
+import { netFromGross } from '@/server/settings/valuation';
 import { getRatesByBand } from '@/server/settings/vat';
 import { allocateFefoPartial } from '@/server/stock/fefo';
 import { getBatchStock } from '@/server/stock/levels';
@@ -257,7 +258,7 @@ async function importOne(
     for (const [productId, line] of lineByProduct) {
       const lineTotal = line.grossTotal.toDecimalPlaces(4);
       const vatRate = new Decimal(rates[line.vatBand as keyof typeof rates] ?? '0');
-      const lineNet = lineTotal.dividedBy(vatRate.plus(1)).toDecimalPlaces(4);
+      const lineNet = new Decimal(netFromGross(lineTotal.toString(), vatRate.toString(), 4));
       const vatAmount = lineTotal.minus(lineNet);
 
       subtotal = subtotal.plus(lineNet);

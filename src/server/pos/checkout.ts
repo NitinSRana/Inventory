@@ -3,6 +3,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import { locations, products, saleLines, sales, stockMovements } from '@/db/schema';
 import { withTenant, type Tx } from '@/db/tenant';
+import { netFromGross } from '@/server/settings/valuation';
 import { getRatesByBand } from '@/server/settings/vat';
 import { allocateFefo } from '@/server/stock/fefo';
 import { getBatchStock } from '@/server/stock/levels';
@@ -118,7 +119,7 @@ export async function checkout(
        * round guarantees net + vat === lineTotal exactly, so no penny can go
        * missing to rounding and the receipt always adds up.
        */
-      const lineNet = lineTotal.dividedBy(vatRate.plus(1)).toDecimalPlaces(4);
+      const lineNet = new Decimal(netFromGross(lineTotal.toString(), vatRate.toString(), 4));
       const vatAmount = lineTotal.minus(lineNet);
 
       subtotal = subtotal.plus(lineNet);
