@@ -64,6 +64,7 @@
     "unit": "Unit",
     "cost": "Cost",
     "costHint": "What you pay the supplier, excluding VAT.",
+    "margin": "{percent}% margin, ex-VAT",
     "price": "Price",
     "priceHint": "The shelf price — what the customer pays, VAT included.",
     "vatIncluded": "VAT included",

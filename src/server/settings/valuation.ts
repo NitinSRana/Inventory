@@ -23,3 +23,21 @@ export function grossValue(net: string, rate: string): string {
 export function netFromGross(gross: string, rate: string, places = 2): string {
   return new Decimal(gross).dividedBy(new Decimal(1).plus(rate)).toFixed(places);
 }
+
+/**
+ * Margin against cost, as a percentage.
+ *
+ * `sellPrice` is gross (VAT included, what the customer pays); `costPrice` is
+ * net (ex-VAT, as invoiced by the supplier). Comparing them directly, as a
+ * naive `(sell - cost) / sell` would, mixes the two and overstates margin by
+ * roughly the VAT rate — net sell price is extracted first via
+ * `netFromGross()` so both sides of the division are net.
+ *
+ * Null when there's nothing to divide by — a free product isn't "infinite
+ * margin", it's a question this formula can't answer.
+ */
+export function marginPercent(sellPriceGross: string, costPriceNet: string, vatRate: string): string | null {
+  const netSell = new Decimal(netFromGross(sellPriceGross, vatRate));
+  if (netSell.lessThanOrEqualTo(0)) return null;
+  return netSell.minus(costPriceNet).dividedBy(netSell).times(100).toFixed(1);
+}

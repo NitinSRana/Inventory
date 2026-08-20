@@ -15,6 +15,8 @@ import { roleAtLeast } from '@/server/auth/roles';
 import { requireOrg } from '@/server/auth/session';
 import { getProduct } from '@/server/catalog/products';
 import { getDaysOfCover } from '@/server/consumption/calculate';
+import { marginPercent as computeMarginPercent } from '@/server/settings/valuation';
+import { getRatesByBand } from '@/server/settings/vat';
 import { getProductBatches, getProductMovements, getProductStock } from '@/server/stock/levels';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
@@ -57,6 +59,16 @@ export default async function ProductPage({ params }: PageProps<'/[locale]/produ
     v === null ? '—' : format.number(Number(v), { style: 'currency', currency: org.currencyCode });
   const onHand = stock.reduce((sum, s) => sum + Number(s.quantity ?? 0), 0);
   const daysOfCover = await getDaysOfCover(orgId, id, String(onHand));
+
+  // Margin against cost — manager-only, alongside the cost figure itself.
+  // See settings/valuation.ts's marginPercent() for why this isn't a naive
+  // (sell - cost) / sell.
+  let marginPercent: string | null = null;
+  if (canManage && product.costPrice && product.sellPrice) {
+    const rates = await getRatesByBand(orgId);
+    const rate = rates[product.vatBand as keyof typeof rates] ?? '0';
+    marginPercent = computeMarginPercent(product.sellPrice, product.costPrice, rate);
+  }
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-24">
@@ -115,6 +127,11 @@ export default async function ProductPage({ params }: PageProps<'/[locale]/produ
             <p className="text-muted-foreground text-3xl font-semibold tabular-nums">
               {money(product.costPrice)}
             </p>
+            {marginPercent !== null && (
+              <p className="text-muted-foreground text-sm">
+                {t('margin', { percent: marginPercent })}
+              </p>
+            )}
           </div>
         )}
       </div>

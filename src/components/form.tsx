@@ -63,7 +63,7 @@ export function NativeSelect({
 }: React.ComponentProps<'select'>) {
   return (
     <select
-      className={`border-input h-12 rounded-lg border bg-transparent px-3 text-sm ${className}`}
+      className={`border-input bg-muted h-12 rounded-lg border px-3 text-sm ${className}`}
       {...props}
     />
   );

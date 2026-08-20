@@ -71,7 +71,12 @@
   --card-foreground: oklch(0.21 0.008 90);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.21 0.008 90);
-  --primary: oklch(0.45 0.09 235);
+  /* A more vivid brand blue (matching the product design's #1a56db) than the
+     muted tone this replaced. Chosen deliberately, not a default: white text
+     on it clears WCAG AA at 6.18:1. It doesn't compete with the urgency
+     system — destructive/warning/success are untouched, and always were the
+     only colours carrying a *meaning* in this product; primary is chrome. */
+  --primary: oklch(0.51 0.21 263);
   --primary-foreground: oklch(0.99 0.002 95);
   --secondary: oklch(0.965 0.003 95);
   --secondary-foreground: oklch(0.21 0.008 90);
@@ -85,7 +90,7 @@
   --warning-foreground: oklch(0.99 0.002 95);
   --border: oklch(0.915 0.004 95);
   --input: oklch(0.915 0.004 95);
-  --ring: oklch(0.45 0.09 235);
+  --ring: oklch(0.51 0.21 263);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -115,7 +120,7 @@
     --card-foreground: oklch(0.965 0.003 250);
     --popover: oklch(0.235 0.008 250);
     --popover-foreground: oklch(0.965 0.003 250);
-    --primary: oklch(0.72 0.11 235);
+    --primary: oklch(0.75 0.14 263);
     --primary-foreground: oklch(0.185 0.008 250);
     --secondary: oklch(0.265 0.008 250);
     --secondary-foreground: oklch(0.965 0.003 250);
@@ -128,7 +133,7 @@
     --warning-foreground: oklch(0.185 0.008 250);
     --border: oklch(0.305 0.01 250);
     --input: oklch(0.305 0.01 250);
-    --ring: oklch(0.72 0.11 235);
+    --ring: oklch(0.75 0.14 263);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
