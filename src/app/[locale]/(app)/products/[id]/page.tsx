@@ -130,7 +130,16 @@ export default async function ProductPage({ params }: PageProps<'/[locale]/produ
               return (
                 <DataRow
                   key={b.batchId}
-                  title={b.expiryDate ?? t('noExpiry')}
+                  title={
+                    <>
+                      {b.expiryDate ?? t('noExpiry')}{' '}
+                      {b.expiryDate && (
+                        <span className="text-muted-foreground text-sm font-normal">
+                          · {t(`dateTypes.${b.dateType}`)}
+                        </span>
+                      )}
+                    </>
+                  }
                   subtitle={
                     days === null ? (
                       b.lotNumber ?? undefined

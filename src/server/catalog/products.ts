@@ -1,6 +1,6 @@
 import { and, asc, eq, ilike, inArray, or, type SQL } from 'drizzle-orm';
 
-import { products, UNITS, type VAT_BANDS, type COUNT_FREQUENCIES } from '@/db/schema';
+import { products, UNITS, type VAT_BANDS, type DATE_TYPES, type COUNT_FREQUENCIES } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 
 import { normalizeGtin } from './ean';
@@ -19,6 +19,7 @@ export type ProductInput = {
   costPrice?: string | null;
   sellPrice?: string | null;
   vatBand?: (typeof VAT_BANDS)[number];
+  dateType?: (typeof DATE_TYPES)[number];
   minStock?: string | null;
   maxStock?: string | null;
   shelfLifeDays?: number | null;

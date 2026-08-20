@@ -74,6 +74,12 @@ export async function checkout(
     const locationId = input.locationId ?? (await defaultLocationId(tx));
     const productIds = [...merged.keys()];
 
+    // Asked of the database, not the Node clock: the expiry dashboard derives
+    // "today" from current_date, and a filter computed in a different
+    // timezone would disagree with what it already calls expired.
+    const todayRows = await tx.execute<{ today: string }>(sql`select current_date::text as today`);
+    const today = todayRows[0]?.today ?? '';
+
     const rows = await tx
       .select({
         id: products.id,
@@ -129,11 +135,16 @@ export async function checkout(
         lineTotal: lineTotal.toDecimalPlaces(4).toString(),
       });
 
-      // FEFO, same as a write-off with no batch specified: oldest expiry first.
-      const allocations = allocateFefo(
-        await getBatchStock(orgId, productId, locationId, tx),
-        quantity.toString(),
+      // A batch past its use-by date cannot be sold — that's a criminal
+      // offence in the UK, not a judgement call the till gets to make.
+      // Best-before past date is routine and stays sellable; FEFO still pulls
+      // it first once excluded batches are out of the running.
+      const sellable = (await getBatchStock(orgId, productId, locationId, tx)).filter(
+        (b) => !(b.dateType === 'use_by' && b.expiryDate !== null && b.expiryDate < today),
       );
+
+      // FEFO, same as a write-off with no batch specified: oldest expiry first.
+      const allocations = allocateFefo(sellable, quantity.toString());
       for (const a of allocations) {
         movementValues.push({
           organizationId: orgId,

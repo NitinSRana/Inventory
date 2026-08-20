@@ -37,6 +37,7 @@ export async function getBatchStock(
         batchId: batches.id,
         expiryDate: batches.expiryDate,
         quantity: stockLevels.quantity,
+        dateType: batches.dateType,
       })
       .from(stockLevels)
       .innerJoin(batches, eq(batches.id, stockLevels.batchId))
@@ -54,6 +55,7 @@ export async function getBatchStock(
     batchId: r.batchId!,
     expiryDate: r.expiryDate,
     quantity: r.quantity ?? '0',
+    dateType: r.dateType,
   }));
 }
 
@@ -71,6 +73,7 @@ export async function getProductBatches(orgId: string, productId: string) {
         batchId: batches.id,
         lotNumber: batches.lotNumber,
         expiryDate: batches.expiryDate,
+        dateType: batches.dateType,
         receivedAt: batches.receivedAt,
         quantity: stockLevels.quantity,
         // Counted by the database, exactly as the expiring_stock view does it.

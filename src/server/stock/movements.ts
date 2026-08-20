@@ -1,7 +1,7 @@
 import Decimal from 'decimal.js';
 import { and, eq, isNull } from 'drizzle-orm';
 
-import { REASON_CODES, batches, locations, stockMovements } from '@/db/schema';
+import { REASON_CODES, type DATE_TYPES, batches, locations, stockMovements } from '@/db/schema';
 import { withTenant, type Tx } from '@/db/tenant';
 
 import { allocateFefo } from './fefo';
@@ -22,6 +22,8 @@ export type ReceiveInput = Actor & {
   expiryDate?: string | null;
   lotNumber?: string | null;
   unitCost?: string | null;
+  /** Copied from the product, never chosen per delivery. */
+  dateType?: (typeof DATE_TYPES)[number];
   referenceType?: 'purchase_order' | 'manual';
   referenceId?: string | null;
 };
@@ -45,7 +47,14 @@ async function defaultLocationId(tx: Tx): Promise<string> {
 async function findOrCreateBatch(
   tx: Tx,
   orgId: string,
-  input: { productId: string; locationId: string; expiryDate?: string | null; lotNumber?: string | null; unitCost?: string | null },
+  input: {
+    productId: string;
+    locationId: string;
+    expiryDate?: string | null;
+    lotNumber?: string | null;
+    unitCost?: string | null;
+    dateType?: (typeof DATE_TYPES)[number];
+  },
 ) {
   const { productId, locationId, expiryDate = null, lotNumber = null } = input;
 
@@ -65,7 +74,15 @@ async function findOrCreateBatch(
 
   const [created] = await tx
     .insert(batches)
-    .values({ organizationId: orgId, productId, locationId, expiryDate, lotNumber, unitCost: input.unitCost ?? null })
+    .values({
+      organizationId: orgId,
+      productId,
+      locationId,
+      expiryDate,
+      lotNumber,
+      unitCost: input.unitCost ?? null,
+      ...(input.dateType ? { dateType: input.dateType } : {}),
+    })
     .returning({ id: batches.id });
   return created.id;
 }

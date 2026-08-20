@@ -133,7 +133,12 @@ export async function ExpiryDashboard({
                             urgency={urgency}
                             label={
                               r.daysRemaining !== null && r.daysRemaining < 0
-                                ? t('expiredDaysAgo', { days: Math.abs(r.daysRemaining) })
+                                ? // Legally distinct: use-by past date cannot be
+                                  // sold at all, best-before is a markdown
+                                  // prompt. Same urgency tier, different words.
+                                  t(r.dateType === 'use_by' ? 'expiredUseBy' : 'expiredBestBefore', {
+                                    days: Math.abs(r.daysRemaining),
+                                  })
                                 : t('daysLeft', { days: r.daysRemaining ?? 0 })
                             }
                           />

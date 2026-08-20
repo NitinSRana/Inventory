@@ -14,6 +14,8 @@ export type BatchStock = {
   expiryDate: string | null;
   /** Drizzle returns numeric as a string; it stays a string. */
   quantity: string;
+  /** Optional: only checkout.ts's use-by filtering reads this. */
+  dateType?: 'use_by' | 'best_before';
 };
 
 export type Allocation = { batchId: string; quantity: string };

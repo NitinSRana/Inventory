@@ -30,6 +30,8 @@
     "nothingExpiring": "Not a single batch in the next 14 days. Keep it that way — count a shelf while you are ahead.",
     "daysLeft": "{days, plural, =0 {Expires today} one {# day left} other {# days left}}",
     "expiredDaysAgo": "{days, plural, one {Expired # day ago} other {Expired # days ago}}",
+    "expiredUseBy": "{days, plural, one {Use by, # day ago — do not sell} other {Use by, # days ago — do not sell}}",
+    "expiredBestBefore": "{days, plural, one {Best before, # day ago — mark down} other {Best before, # days ago — mark down}}",
     "units": "on hand",
     "atRiskLabel": "At risk · next 14 days",
     "batchSummary": "{batches, plural, one {# batch} other {# batches}}{expired, plural, =0 {} other { · # already expired}}",
@@ -72,6 +74,12 @@
       "super_reduced": "Super reduced",
       "reduced": "Reduced",
       "standard": "Standard"
+    },
+    "dateType": "Date type",
+    "dateTypeHint": "Use by is a hard cutoff — the till refuses a sale past it. Best before is routine; the till still allows the sale.",
+    "dateTypes": {
+      "use_by": "Use by",
+      "best_before": "Best before"
     },
     "shelfLife": "Shelf life (days)",
     "supplier": "Supplier",
@@ -461,7 +469,7 @@
     "total": "Total",
     "cash": "Cash",
     "card": "Card",
-    "insufficientStock": "That's more than the stock on hand.",
+    "insufficientStock": "That's more than the sellable stock on hand — some may be past its use-by date.",
     "unpriced": "This product has no sell price set. Add one before selling it.",
     "failed": "Couldn't complete that sale. Try again.",
     "saleComplete": "Sale complete",

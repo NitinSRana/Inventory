@@ -60,23 +60,19 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
     };
 
     const productId = String(formData.get('productId'));
+    // Read once and reused below: the case-size multiplier and the date-type
+    // classification both come from the database, never the form — the same
+    // "not a figure to accept from the page" reasoning applies to both.
+    const fresh = await getProduct(orgId, productId);
 
     // A delivery arrives in cases, so it can be counted in cases. The ledger
     // only ever stores units — the multiplication happens here, once, rather
     // than in someone's head at the back door with a box in the other hand.
-    //
-    // The case size is read back from the database rather than taken from the
-    // form. It is a number that multiplies what lands in an append-only ledger,
-    // and posting one is the only correction available; that is not a figure to
-    // accept from the page just because the page happens to know it.
     // Decimal because units_per_case is numeric too: 0.5 kg tubs, 6 to a tray.
     const typed = String(formData.get('quantity') ?? '').trim();
     let quantity = typed;
-    if (formData.get('entryUnit') === 'case') {
-      const fresh = await getProduct(orgId, productId);
-      if (fresh?.unitsPerCase) {
-        quantity = new Decimal(typed).times(fresh.unitsPerCase).toString();
-      }
+    if (formData.get('entryUnit') === 'case' && fresh?.unitsPerCase) {
+      quantity = new Decimal(typed).times(fresh.unitsPerCase).toString();
     }
 
     try {
@@ -86,6 +82,7 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
         expiryDate: value('expiryDate'),
         lotNumber: value('lotNumber'),
         unitCost: value('unitCost'),
+        dateType: fresh?.dateType,
         actorId: userId,
       });
     } catch {

@@ -15,6 +15,7 @@ type Defaults = {
   costPrice?: string | null;
   sellPrice?: string | null;
   vatBand?: string | null;
+  dateType?: string | null;
   shelfLifeDays?: number | null;
   supplierId?: string | null;
   categoryId?: string | null;
@@ -168,6 +169,16 @@ export async function ProductForm({
         />
       </Field>
 
+      {/* Legally distinct in the UK: selling past use-by is a criminal
+          offence, past best-before is routine and gets marked down. The till
+          refuses a sale on the former; the dashboard flags both differently. */}
+      <Field name="dateType" label={t('dateType')} hint={t('dateTypeHint')}>
+        <NativeSelect id="dateType" name="dateType" defaultValue={defaults.dateType ?? 'use_by'}>
+          <option value="use_by">{t('dateTypes.use_by')}</option>
+          <option value="best_before">{t('dateTypes.best_before')}</option>
+        </NativeSelect>
+      </Field>
+
       <Field name="supplierId" label={t('supplier')}>
         <NativeSelect id="supplierId" name="supplierId" defaultValue={defaults.supplierId ?? ''}>
           <option value="">{t('noSupplier')}</option>
@@ -226,6 +237,7 @@ export function productInputFrom(formData: FormData) {
     // adding VAT on top — see server/pos/checkout.ts.
     sellPrice: value('sellPrice'),
     vatBand: (value('vatBand') ?? 'zero') as 'standard' | 'reduced' | 'super_reduced' | 'zero',
+    dateType: (value('dateType') ?? 'use_by') as 'use_by' | 'best_before',
     supplierId: value('supplierId'),
     categoryId: value('categoryId'),
     shelfLifeDays: value('shelfLifeDays') ? Number(value('shelfLifeDays')) : null,

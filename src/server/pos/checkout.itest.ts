@@ -285,3 +285,84 @@ describe('checkout — UK mixed VAT basket', () => {
     assert.equal(sale.total, '3.6000');
   });
 });
+
+/**
+ * Use-by is a hard cutoff, not a judgement call: selling past it is a
+ * criminal offence in the UK. Best-before past date is routine and stays
+ * sellable — the till only ever refuses on the former.
+ */
+describe('checkout — use-by enforcement', () => {
+  let org: TestOrg;
+
+  before(async () => {
+    org = await createTestOrg('Use By Test');
+    await seedVatRatesForCountry(org.orgId, 'GB');
+  });
+
+  test('a use-by product with only an expired batch refuses the sale', async () => {
+    const chicken = (
+      await createProduct(org.orgId, {
+        name: 'Raw Chicken',
+        gtin: '5000112637939',
+        sellPrice: '4.0000',
+        vatBand: 'zero',
+        dateType: 'use_by',
+      })
+    ).id;
+    await receiveStock(org.orgId, { productId: chicken, quantity: '5', expiryDate: '2020-01-01', dateType: 'use_by' });
+
+    await assert.rejects(
+      () => checkout(org.orgId, { lines: [{ productId: chicken, quantity: '1' }], tenderType: 'card' }),
+      InsufficientStockError,
+      'physically on the shelf is not the same as legally sellable',
+    );
+
+    const [stock] = await getProductStock(org.orgId, chicken);
+    assert.equal(stock.quantity, '5.000', 'a refused sale must leave the expired batch untouched');
+  });
+
+  test('FEFO skips an expired use-by batch and sells the one still in date', async () => {
+    const yoghurt = (
+      await createProduct(org.orgId, {
+        name: 'Yoghurt',
+        gtin: '5000112637946',
+        sellPrice: '1.0000',
+        vatBand: 'zero',
+        dateType: 'use_by',
+      })
+    ).id;
+    await receiveStock(org.orgId, { productId: yoghurt, quantity: '3', expiryDate: '2020-01-01', dateType: 'use_by' });
+    await receiveStock(org.orgId, { productId: yoghurt, quantity: '3', expiryDate: '2030-01-01', dateType: 'use_by' });
+
+    await checkout(org.orgId, { lines: [{ productId: yoghurt, quantity: '2' }], tenderType: 'cash' });
+
+    const expired = await getBatchStock(
+      org.orgId,
+      yoghurt,
+      (await getProductStock(org.orgId, yoghurt))[0].locationId!,
+    );
+    const expiredBatch = expired.find((b) => b.expiryDate === '2020-01-01');
+    const freshBatch = expired.find((b) => b.expiryDate === '2030-01-01');
+    assert.equal(expiredBatch?.quantity, '3.000', 'the expired batch was never touched');
+    assert.equal(freshBatch?.quantity, '1.000', 'depleted from the in-date batch instead');
+  });
+
+  test('a best-before product with only an expired batch still sells fine', async () => {
+    const beans = (
+      await createProduct(org.orgId, {
+        name: 'Tinned Beans',
+        gtin: '5000112637953',
+        sellPrice: '0.6000',
+        vatBand: 'zero',
+        dateType: 'best_before',
+      })
+    ).id;
+    await receiveStock(org.orgId, { productId: beans, quantity: '10', expiryDate: '2020-01-01', dateType: 'best_before' });
+
+    const sale = await checkout(org.orgId, { lines: [{ productId: beans, quantity: '2' }], tenderType: 'cash' });
+    assert.equal(sale.total, '1.2000', 'best-before past its date is still a legal sale');
+
+    const [stock] = await getProductStock(org.orgId, beans);
+    assert.equal(stock.quantity, '8.000');
+  });
+});

@@ -140,6 +140,12 @@ export const suppliers = pgTable('suppliers', {
 
 export const UNITS = ['each', 'kg', 'g', 'l', 'ml'] as const;
 
+/**
+ * Legally distinct in the UK: selling past `use_by` is a criminal offence,
+ * past `best_before` is routine and gets marked down. See 0012_date_type.
+ */
+export const DATE_TYPES = ['use_by', 'best_before'] as const;
+
 export const products = pgTable('products', {
   id: id(),
   organizationId: orgId(),
@@ -163,6 +169,9 @@ export const products = pgTable('products', {
    * zero-rated and standard-rating is the exception. See 0010_uk_vat_defaults.
    */
   vatBand: text('vat_band', { enum: VAT_BANDS }).notNull().default('zero'),
+  /** Steady-state default post-migration; existing rows landed on
+   *  'best_before' instead. See 0012_date_type. */
+  dateType: text('date_type', { enum: DATE_TYPES }).notNull().default('use_by'),
   minStock: numeric('min_stock', { precision: 14, scale: 3 }),
   maxStock: numeric('max_stock', { precision: 14, scale: 3 }),
   shelfLifeDays: integer('shelf_life_days'),
@@ -185,6 +194,8 @@ export const batches = pgTable('batches', {
   locationId: uuid('location_id').notNull().references(() => locations.id, { onDelete: 'cascade' }),
   lotNumber: text('lot_number'),
   expiryDate: date('expiry_date'),
+  /** Copied from the product at receive time — never chosen per delivery. */
+  dateType: text('date_type', { enum: DATE_TYPES }).notNull().default('best_before'),
   receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
   unitCost: numeric('unit_cost', { precision: 12, scale: 4 }),
   ...timestamps,
@@ -483,6 +494,7 @@ export const expiringStock = pgView('expiring_stock', {
   quantity: numeric('quantity', { precision: 14, scale: 3 }),
   unitCost: numeric('unit_cost', { precision: 12, scale: 4 }),
   valueAtRisk: numeric('value_at_risk', { precision: 20, scale: 7 }),
+  dateType: text('date_type', { enum: DATE_TYPES }),
 }).existing();
 
 export const onOrderQuantities = pgView('on_order_quantities', {
