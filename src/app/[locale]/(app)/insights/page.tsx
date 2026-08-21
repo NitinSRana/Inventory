@@ -16,6 +16,7 @@ import {
   deadStock,
   grossMargin,
   topProductsByRevenue,
+  topProductsByStockValue,
   windowFor,
 } from '@/server/analytics/trends';
 
@@ -47,9 +48,10 @@ export default async function InsightsPage({ params, searchParams }: PageProps<'
   const [org] = await withTenant(orgId, (tx) => tx.select().from(organizations));
   const now = windowFor(period);
   const previous = windowFor(period, 1);
-  const [revenue, topProducts, margin, priorMargin, stuck] = await Promise.all([
+  const [revenue, topProducts, topByStock, margin, priorMargin, stuck] = await Promise.all([
     dailyRevenue(orgId, period),
     topProductsByRevenue(orgId, period, 5),
+    topProductsByStockValue(orgId, 5),
     grossMargin(orgId, now),
     grossMargin(orgId, previous),
     deadStock(orgId, now, 8),
@@ -178,33 +180,40 @@ export default async function InsightsPage({ params, searchParams }: PageProps<'
               <RankedBars items={topProducts} format={money} emptyLabel={t('noSales')} />
             </section>
 
-            {/* The other half of "what should I order": what not to. Expiry
-                catches stock about to spoil; this catches stock that will
-                never spoil and will never sell either. */}
+            {/* What sold vs. what's sitting there worth the most — two
+                different questions a top-5-by-revenue list alone can't answer. */}
             <section className="flex flex-col gap-3 rounded-lg border p-4">
-              <SectionHeading>{t('deadStock')}</SectionHeading>
-              <p className="text-muted-foreground text-sm">{t('deadStockHint', { days: period })}</p>
-              {stuck.length === 0 ? (
-                <p className="text-muted-foreground text-sm">{t('noDeadStock')}</p>
-              ) : (
-                <DataList>
-                  {stuck.map((p) => (
-                    <DataRow
-                      key={p.productId}
-                      href={`/${locale}/products/${p.productId}`}
-                      title={p.label}
-                      subtitle={
-                        <>
-                          {trimQuantity(p.quantity)} <span className="opacity-70">{p.unit}</span>
-                        </>
-                      }
-                      value={money(p.value)}
-                    />
-                  ))}
-                </DataList>
-              )}
+              <SectionHeading>{t('topByStockValue')}</SectionHeading>
+              <RankedBars items={topByStock} format={money} emptyLabel={t('noStock')} />
             </section>
           </div>
+
+          {/* The other half of "what should I order": what not to. Expiry
+              catches stock about to spoil; this catches stock that will
+              never spoil and will never sell either. */}
+          <section className="flex flex-col gap-3 rounded-lg border p-4">
+            <SectionHeading>{t('deadStock')}</SectionHeading>
+            <p className="text-muted-foreground text-sm">{t('deadStockHint', { days: period })}</p>
+            {stuck.length === 0 ? (
+              <p className="text-muted-foreground text-sm">{t('noDeadStock')}</p>
+            ) : (
+              <DataList>
+                {stuck.map((p) => (
+                  <DataRow
+                    key={p.productId}
+                    href={`/${locale}/products/${p.productId}`}
+                    title={p.label}
+                    subtitle={
+                      <>
+                        {trimQuantity(p.quantity)} <span className="opacity-70">{p.unit}</span>
+                      </>
+                    }
+                    value={money(p.value)}
+                  />
+                ))}
+              </DataList>
+            )}
+          </section>
         </>
       )}
     </main>

@@ -13,6 +13,11 @@ export type OrganizationInput = {
   countryCode: string;
   currencyCode: string;
   timezone: string;
+  /** Optional contact/display details — no VAT or money logic reads these. */
+  email?: string | null;
+  phone?: string | null;
+  vatNumber?: string | null;
+  address?: string | null;
 };
 
 export async function updateOrganization(orgId: string, input: OrganizationInput) {
@@ -34,7 +39,16 @@ export async function updateOrganization(orgId: string, input: OrganizationInput
   const [org] = await withTenant(orgId, (tx) =>
     tx
       .update(organizations)
-      .set({ name, countryCode, currencyCode, timezone })
+      .set({
+        name,
+        countryCode,
+        currencyCode,
+        timezone,
+        email: input.email?.trim() || null,
+        phone: input.phone?.trim() || null,
+        vatNumber: input.vatNumber?.trim() || null,
+        address: input.address?.trim() || null,
+      })
       .where(eq(organizations.id, orgId))
       .returning(),
   );

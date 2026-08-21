@@ -1,6 +1,6 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 
-import { suppliers } from '@/db/schema';
+import { categories, productStock, products, suppliers } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 
 export type SupplierInput = {
@@ -15,13 +15,24 @@ export type SupplierInput = {
 };
 
 export async function listSuppliers(orgId: string, options: { includeInactive?: boolean } = {}) {
-  return withTenant(orgId, (tx) =>
-    tx
+  return withTenant(orgId, async (tx) => {
+    const rows = await tx
       .select()
       .from(suppliers)
       .where(options.includeInactive ? undefined : eq(suppliers.isActive, true))
-      .orderBy(asc(suppliers.name)),
-  );
+      .orderBy(asc(suppliers.name));
+
+    // A second, grouped query rather than a join: the list is small (dozens
+    // of suppliers, not thousands), and this keeps the row shape identical
+    // to a plain select() instead of fighting Drizzle's join-plus-groupBy typing.
+    const counts = await tx
+      .select({ supplierId: products.supplierId, n: sql<number>`count(*)::int` })
+      .from(products)
+      .groupBy(products.supplierId);
+    const countBySupplier = new Map(counts.map((c) => [c.supplierId, c.n]));
+
+    return rows.map((r) => ({ ...r, productCount: countBySupplier.get(r.id) ?? 0 }));
+  });
 }
 
 export async function createSupplier(orgId: string, input: SupplierInput) {
@@ -68,4 +79,25 @@ export async function updateSupplier(orgId: string, supplierId: string, input: S
       .returning(),
   );
   return supplier ?? null;
+}
+
+/** Products from this supplier, for the supplier detail screen. */
+export async function getSupplierProducts(orgId: string, supplierId: string) {
+  return withTenant(orgId, (tx) =>
+    tx
+      .select({
+        id: products.id,
+        name: products.name,
+        gtin: products.gtin,
+        unit: products.unit,
+        categoryName: categories.name,
+        sellPrice: products.sellPrice,
+        quantity: sql<string>`coalesce(${productStock.quantity}, 0)::text`,
+      })
+      .from(products)
+      .leftJoin(categories, eq(categories.id, products.categoryId))
+      .leftJoin(productStock, eq(productStock.productId, products.id))
+      .where(eq(products.supplierId, supplierId))
+      .orderBy(asc(products.name)),
+  );
 }

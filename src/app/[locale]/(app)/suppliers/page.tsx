@@ -35,7 +35,12 @@ export default async function SuppliersPage({ params }: PageProps<'/[locale]/sup
               href={`/${locale}/suppliers/${s.id}`}
               title={s.name}
               subtitle={s.email ?? undefined}
-              meta={t('leadTimeShort', { days: s.leadTimeDays })}
+              meta={
+                <>
+                  {t('productCountShort', { count: s.productCount })} ·{' '}
+                  {t('leadTimeShort', { days: s.leadTimeDays })}
+                </>
+              }
             />
           ))}
         </DataList>

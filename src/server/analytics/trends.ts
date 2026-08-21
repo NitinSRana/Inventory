@@ -80,6 +80,26 @@ export async function topProductsByRevenue(orgId: string, days = 30, limit = 5) 
   );
 }
 
+/**
+ * What's sitting on the shelf worth the most right now — a different question
+ * from "what sold": a display ranking at shelf price, not a ledger or
+ * accounting figure, so this is deliberately not net-of-VAT the way margin is.
+ */
+export async function topProductsByStockValue(orgId: string, limit = 5) {
+  return withTenant(orgId, (tx) =>
+    tx
+      .select({
+        label: products.name,
+        value: sql<string>`round(sum(${productStock.quantity} * coalesce(${products.sellPrice}, 0)), 2)::text`,
+      })
+      .from(productStock)
+      .innerJoin(products, eq(products.id, productStock.productId))
+      .groupBy(products.id, products.name)
+      .orderBy(desc(sql`sum(${productStock.quantity} * coalesce(${products.sellPrice}, 0))`))
+      .limit(limit),
+  );
+}
+
 export type Margin = {
   /** Gross takings, what a shopkeeper recognises as "what came in". */
   revenue: string;

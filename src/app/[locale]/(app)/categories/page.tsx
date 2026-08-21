@@ -33,7 +33,8 @@ export default async function CategoriesPage({ params }: PageProps<'/[locale]/ca
             <DataRow
               key={c.id}
               href={`/${locale}/categories/${c.id}`}
-              title={c.name}
+              title={c.icon ? `${c.icon} ${c.name}` : c.name}
+              subtitle={c.description ?? undefined}
               meta={t(`frequencies.${c.defaultCountFrequency}`)}
             />
           ))}

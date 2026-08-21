@@ -36,6 +36,11 @@ export const organizations = pgTable('organizations', {
   currencyCode: char('currency_code', { length: 3 }).notNull().default('EUR'),
   timezone: text('timezone').notNull().default('Europe/Berlin'),
   locale: text('locale').notNull().default('en'),
+  /** Optional contact/display details — not touched by any VAT or money logic. */
+  email: text('email'),
+  phone: text('phone'),
+  vatNumber: text('vat_number'),
+  address: text('address'),
   ...timestamps,
 });
 
@@ -112,6 +117,10 @@ export const categories = pgTable('categories', {
   organizationId: orgId(),
   name: text('name').notNull(),
   parentId: uuid('parent_id'),
+  description: text('description'),
+  /** A single emoji. No colour field — see .claude/rules/ui.md: colour in
+   *  this product means expiry urgency and nothing else. */
+  icon: text('icon'),
   defaultCountFrequency: text('default_count_frequency', { enum: COUNT_FREQUENCIES })
     .notNull().default('monthly'),
   ...timestamps,

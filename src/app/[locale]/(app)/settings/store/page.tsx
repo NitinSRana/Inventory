@@ -36,11 +36,19 @@ export default async function StoreSettingsPage({
     'use server';
     const { orgId } = await requireRole(locale, 'owner');
     try {
+      const value = (key: string) => {
+        const v = formData.get(key);
+        return typeof v === 'string' && v.trim() ? v.trim() : null;
+      };
       await updateOrganization(orgId, {
         name: String(formData.get('name') ?? ''),
         countryCode: String(formData.get('countryCode') ?? ''),
         currencyCode: String(formData.get('currencyCode') ?? ''),
         timezone: String(formData.get('timezone') ?? ''),
+        email: value('email'),
+        phone: value('phone'),
+        vatNumber: value('vatNumber'),
+        address: value('address'),
       });
     } catch {
       redirect(`/${locale}/settings/store?error=1`);
@@ -87,6 +95,33 @@ export default async function StoreSettingsPage({
 
         <Field name="timezone" label={t('timezone')} hint={t('timezoneHint')}>
           <Input id="timezone" name="timezone" required defaultValue={org.timezone} className="h-12" />
+        </Field>
+
+        <Field name="email" label={t('email')}>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            defaultValue={org.email ?? ''}
+            className="h-12"
+          />
+        </Field>
+
+        <Field name="phone" label={t('phone')}>
+          <Input id="phone" name="phone" type="tel" defaultValue={org.phone ?? ''} className="h-12" />
+        </Field>
+
+        <Field name="vatNumber" label={t('vatNumber')}>
+          <Input
+            id="vatNumber"
+            name="vatNumber"
+            defaultValue={org.vatNumber ?? ''}
+            className="h-12 font-mono"
+          />
+        </Field>
+
+        <Field name="address" label={t('address')}>
+          <Input id="address" name="address" defaultValue={org.address ?? ''} className="h-12" />
         </Field>
 
         {error && (
