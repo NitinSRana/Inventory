@@ -15,6 +15,8 @@ Two contexts. Every screen belongs to one of them, and which one decides the lay
 
 **The aisle — where the data comes from, on a phone.** Receiving, counting, writing off, scanning. One-handed, possibly gloved, under bad fluorescent light, holding a product in the other hand. If a task takes more than a few taps, staff stop doing it — and the ledger depends on them not stopping.
 
+Back office runs at a deliberately denser scale at `md:` and up — the app's effective root font-size drops to 14px there (`globals.css`), which every rem-based Tailwind utility already in use scales with automatically. This is a display density choice and stops exactly at the aisle/back-office line: aisle screens keep full-size text and the 44px touch-target minimum below regardless of what any desktop-oriented reference design shows, because those are an accessibility requirement (European Accessibility Act), not a style preference. Don't shrink an aisle screen to match a denser reference.
+
 Non-negotiable on the aisle screens:
 
 - **Touch targets: 44px minimum** on any control used while scanning, counting, or receiving.

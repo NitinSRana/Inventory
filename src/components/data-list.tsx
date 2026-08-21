@@ -181,7 +181,7 @@ export function HeadlineFigure({
   return (
     <div className="flex flex-col gap-1 px-4 py-8">
       <p className="text-muted-foreground text-xs font-medium tracking-wider uppercase">{label}</p>
-      <p className={`text-5xl leading-none font-semibold tracking-tight md:text-6xl ${className}`}>
+      <p className={`font-mono text-5xl leading-none font-semibold tracking-tight md:text-6xl ${className}`}>
         {value}
       </p>
       {caption && <p className="text-muted-foreground text-sm">{caption}</p>}

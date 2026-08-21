@@ -97,14 +97,17 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.5rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* A persistent dark-navy rail (matching the product design), not a
+     light/dark-mode-following surface — same reasoning as a lot of SaaS
+     sidebars staying dark regardless of the page theme. */
+  --sidebar: oklch(0.218 0.036 251.3);
+  --sidebar-foreground: oklch(0.929 0.013 255.5);
+  --sidebar-primary: oklch(0.51 0.21 263);
+  --sidebar-primary-foreground: oklch(0.99 0.002 95);
+  --sidebar-accent: oklch(0.279 0.037 260);
+  --sidebar-accent-foreground: oklch(0.929 0.013 255.5);
+  --sidebar-border: oklch(1 0 0 / 6%);
+  --sidebar-ring: oklch(0.51 0.21 263);
   --destructive-subtle: oklch(0.515 0.19 27 / 10%);
   --warning-subtle: oklch(0.545 0.125 62 / 10%);
   --success: oklch(0.46 0.12 155);
@@ -139,17 +142,33 @@
     --chart-3: oklch(0.439 0 0);
     --chart-4: oklch(0.371 0 0);
     --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    /* Same navy rail as light mode — it doesn't follow the page theme. */
+    --sidebar: oklch(0.218 0.036 251.3);
+    --sidebar-foreground: oklch(0.929 0.013 255.5);
+    --sidebar-primary: oklch(0.75 0.14 263);
+    --sidebar-primary-foreground: oklch(0.185 0.008 250);
+    --sidebar-accent: oklch(0.279 0.037 260);
+    --sidebar-accent-foreground: oklch(0.929 0.013 255.5);
+    --sidebar-border: oklch(1 0 0 / 6%);
+    --sidebar-ring: oklch(0.75 0.14 263);
     --destructive-subtle: oklch(0.705 0.155 25 / 16%);
     --warning-subtle: oklch(0.80 0.115 78 / 16%);
     --success: oklch(0.72 0.13 155);
+  }
+}
+
+/*
+ * Back office runs denser than the aisle does. At md and up (the same
+ * breakpoint .claude/rules/ui.md already uses to draw that line), everything
+ * built from rem-based Tailwind spacing/type scales down together — a
+ * percentage, not a fixed px, so a reader's own larger browser default still
+ * wins. Below md this is unset: aisle screens (Checkout, Receive, Count) keep
+ * full-size text and 44px touch targets regardless, because those are an
+ * accessibility requirement, not a density preference.
+ */
+@media (min-width: 768px) {
+  html {
+    font-size: 87.5%;
   }
 }
 

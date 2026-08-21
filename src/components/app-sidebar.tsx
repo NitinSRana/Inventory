@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
-import { SectionHeading } from '@/components/data-list';
 import { PRIMARY, SECTIONS } from '@/components/nav-items';
 import { roleAtLeast } from '@/server/auth/roles';
 
@@ -27,15 +26,21 @@ export function AppSidebar({ locale, role }: { locale: string; role: string }) {
   const base = `/${locale}`;
 
   const linkClass = (active: boolean) =>
-    // min-h-11 keeps a comfortable target on a touch laptop without the 56px a
-    // gloved thumb needs; this surface is never used in the aisle.
-    `flex min-h-11 items-center gap-3 rounded-md px-3 text-sm ${
-      active ? 'bg-muted text-foreground font-medium' : 'text-muted-foreground hover:bg-muted/60'
+    // A pointer, not a gloved thumb: this surface is never used in the aisle,
+    // so it can run at mouse-comfortable height rather than the 44px touch
+    // minimum that rule exists for.
+    `flex min-h-8 items-center gap-3 rounded-md px-3 text-sm ${
+      active
+        ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
+        : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground'
     }`;
 
   return (
-    <aside className="hidden shrink-0 border-r md:block md:w-56 lg:w-64">
-      <nav aria-label={t('primary')} className="sticky top-0 flex flex-col gap-6 p-3">
+    <aside className="bg-sidebar hidden shrink-0 border-r md:block md:w-56 lg:w-64">
+      <nav
+        aria-label={t('primary')}
+        className="sticky top-0 flex flex-col gap-6 p-3"
+      >
         <ul className="flex flex-col gap-1">
           {PRIMARY.map(({ path, key, Icon }) => {
             const href = `${base}${path}`;
@@ -43,7 +48,7 @@ export function AppSidebar({ locale, role }: { locale: string; role: string }) {
             return (
               <li key={key}>
                 <Link href={href} aria-current={active ? 'page' : undefined} className={linkClass(active)}>
-                  <Icon aria-hidden className="size-5 shrink-0" />
+                  <Icon aria-hidden className="size-4 shrink-0" />
                   {t(key)}
                 </Link>
               </li>
@@ -60,7 +65,12 @@ export function AppSidebar({ locale, role }: { locale: string; role: string }) {
 
           return (
             <div key={section.key} className="flex flex-col gap-1">
-              <SectionHeading className="px-3">{tMore(`sections.${section.key}`)}</SectionHeading>
+              {/* Not SectionHeading: its default colour is tuned for a light
+                  card, not this dark rail — a plain heading avoids fighting
+                  that default rather than trying to out-specificity it. */}
+              <h2 className="text-sidebar-foreground/50 px-3 text-xs font-medium tracking-wider uppercase">
+                {tMore(`sections.${section.key}`)}
+              </h2>
               <ul className="flex flex-col gap-1">
                 {visible.map(({ path, key, Icon }) => {
                   const href = `${base}/${path}`;
@@ -72,7 +82,7 @@ export function AppSidebar({ locale, role }: { locale: string; role: string }) {
                         aria-current={active ? 'page' : undefined}
                         className={linkClass(active)}
                       >
-                        <Icon aria-hidden className="size-5 shrink-0" />
+                        <Icon aria-hidden className="size-4 shrink-0" />
                         {tMore(`items.${key}`)}
                       </Link>
                     </li>

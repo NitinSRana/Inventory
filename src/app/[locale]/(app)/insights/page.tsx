@@ -152,7 +152,7 @@ export default async function InsightsPage({ params, searchParams }: PageProps<'
           <section className="flex flex-col gap-2 rounded-lg border p-4">
             <SectionHeading>{t('margin')}</SectionHeading>
             <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-              <p className="text-4xl font-semibold tabular-nums md:text-5xl">
+              <p className="font-mono text-4xl font-semibold tabular-nums md:text-5xl">
                 {money(margin.margin)}
               </p>
               {marginPercent !== null && (
@@ -169,7 +169,7 @@ export default async function InsightsPage({ params, searchParams }: PageProps<'
 
           <section className="flex flex-col gap-2 rounded-lg border p-4">
             <SectionHeading>{t('takings')}</SectionHeading>
-            <p className="text-3xl font-semibold tabular-nums">{money(revenueTotal)}</p>
+            <p className="font-mono text-3xl font-semibold tabular-nums">{money(revenueTotal)}</p>
             {delta(takingsChange, true)}
             <TrendBars points={revenue} format={money} label={t('takingsChart', { days: period })} />
           </section>
