@@ -8,6 +8,7 @@ import { StickyAction } from '@/components/form';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { countProducts } from '@/server/catalog/import';
 import { listProducts } from '@/server/catalog/products';
 import { requireOrg } from '@/server/auth/session';
 
@@ -24,11 +25,16 @@ export default async function ProductsPage({ params, searchParams }: PageProps<'
 
   const t = await getTranslations('products');
   const { orgId } = await requireOrg(locale);
-  const rows = await listProducts(orgId, { search });
+  const [rows, total] = await Promise.all([
+    listProducts(orgId, { search }),
+    countProducts(orgId),
+  ]);
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 pb-24">
-      <PageTitle>{t('title')}</PageTitle>
+      <PageTitle caption={!search && total > 0 ? t('shownOfTotal', { shown: rows.length, total }) : undefined}>
+        {t('title')}
+      </PageTitle>
 
       {/* GET form so the search term lives in the URL, not in component state. */}
       <form role="search" className="flex flex-col gap-2">

@@ -50,6 +50,7 @@
   },
   "products": {
     "title": "Products",
+    "shownOfTotal": "{shown} of {total} products",
     "addTitle": "Add product",
     "searchLabel": "Search by name or barcode",
     "empty": "No products yet",
