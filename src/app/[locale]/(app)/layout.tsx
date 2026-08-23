@@ -29,6 +29,16 @@ export default async function AppLayout({ children, params }: LayoutProps<'/[loc
 
   const [org] = await withTenant(session.orgId, (tx) => tx.select().from(organizations));
 
+  // No display-name field exists on a user — email is all there is to
+  // initial from. "a.b@x.com" -> "AB"; a bare local part still gets one.
+  const initials =
+    session.email
+      .split(/[@.+_-]/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((s) => s[0]?.toUpperCase())
+      .join('') || '?';
+
   async function signOut() {
     'use server';
     const supabase = await createClient();
@@ -48,11 +58,19 @@ export default async function AppLayout({ children, params }: LayoutProps<'/[loc
             <Link href={`/${locale}`} className="truncate font-medium">
               {org.name}
             </Link>
-            <form action={signOut}>
-              <Button type="submit" variant="ghost" className="text-muted-foreground h-11 text-sm">
-                {t('signOut')}
-              </Button>
-            </form>
+            <div className="flex items-center gap-2">
+              <span
+                aria-hidden
+                className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+              >
+                {initials}
+              </span>
+              <form action={signOut}>
+                <Button type="submit" variant="ghost" className="text-muted-foreground h-11 text-sm">
+                  {t('signOut')}
+                </Button>
+              </form>
+            </div>
           </div>
         </header>
 
