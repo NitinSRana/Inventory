@@ -98,6 +98,8 @@
     "noCategory": "No category",
     "edit": "Edit",
     "onHand": "On hand",
+    "details": "Details",
+    "sku": "SKU",
     "batches": "Batches",
     "noExpiry": "No expiry date",
     "noStock": "None on hand",

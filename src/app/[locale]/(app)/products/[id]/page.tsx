@@ -136,6 +136,42 @@ export default async function ProductPage({ params }: PageProps<'/[locale]/produ
         )}
       </div>
 
+      {/* SKU, case barcode, units/case and shelf life all already exist on the
+          product — previously visible only behind Edit. A cashier checking a
+          case barcode before receiving, or anyone reading off a SKU for a
+          phone order, shouldn't need to open the edit form for that. */}
+      {(product.sku || product.caseGtin || product.unitsPerCase || product.shelfLifeDays !== null) && (
+        <section className="flex flex-col gap-2">
+          <SectionHeading>{t('details')}</SectionHeading>
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-lg border p-4 text-sm sm:grid-cols-4">
+            {product.sku && (
+              <div>
+                <dt className="text-muted-foreground text-xs">{t('sku')}</dt>
+                <dd className="font-mono">{product.sku}</dd>
+              </div>
+            )}
+            {product.caseGtin && (
+              <div>
+                <dt className="text-muted-foreground text-xs">{t('caseBarcode')}</dt>
+                <dd className="font-mono">{product.caseGtin}</dd>
+              </div>
+            )}
+            {product.unitsPerCase && (
+              <div>
+                <dt className="text-muted-foreground text-xs">{t('unitsPerCase')}</dt>
+                <dd className="tabular-nums">{trimQuantity(product.unitsPerCase)}</dd>
+              </div>
+            )}
+            {product.shelfLifeDays !== null && (
+              <div>
+                <dt className="text-muted-foreground text-xs">{t('shelfLife')}</dt>
+                <dd className="tabular-nums">{product.shelfLifeDays}</dd>
+              </div>
+            )}
+          </dl>
+        </section>
+      )}
+
       <section className="flex flex-col gap-2">
         <SectionHeading>{t('batches')}</SectionHeading>
         {batches.length === 0 ? (
