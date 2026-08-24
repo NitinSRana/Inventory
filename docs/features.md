@@ -9,7 +9,7 @@ colour, contrast, density) that any redesign has to hold. **Read the brief's §4
 before changing anything**; several of those rules come from where the product is
 used and one of them is a legal requirement.
 
-Last updated against commit `be55e0c`.
+Last updated against commit `b4b5c1b`.
 
 ---
 
@@ -27,7 +27,12 @@ useful thing to know before designing it.
 | Constraints | Readable at a desk | 44px targets, primary action in the bottom third, no modals mid-scan |
 
 Navigation follows the same split: a **sidebar** at ≥768px showing all thirteen
-destinations, a **bottom tab bar** below that with five.
+destinations, a **bottom tab bar** below that with five. The sidebar is a
+persistent dark-navy rail regardless of light/dark theme, compact rows (mouse,
+not thumb — this surface is never used in the aisle). Back office also runs at
+a denser type/spacing scale from `md` up (the app's effective root size drops
+to 14px there); the aisle is exempt and keeps full-size text and 44px touch
+targets no matter what.
 
 ---
 
@@ -45,17 +50,28 @@ presentation, never enforcement.
 ## The daily loop
 
 ### Today — `/` · any signed-in member
-The homepage and the screen that sells the product. Money at risk first, then
-batches worst-first, grouped Expired / ≤3 days / ≤14 days with sticky headers
-and a three-cell jump strip.
+The homepage, now two sections stacked on one page: a general **Overview**
+first, then the **expiry-risk dashboard** that used to be the whole screen.
+Widening it was a deliberate, documented call (`CLAUDE.md`), not scope creep —
+the two sections answer different questions and neither is a step toward
+reorder suggestions, which stay out.
 
-*State:* headline and buckets sit side by side from `md`; rows link to the
-product. Uses the urgency ladder (icon + word + colour, never colour alone).
+**Overview** (manager-only figures noted): inventory value with a real 30-day
+trend from the ledger (manager), a 6-month value trend chart (manager, labelled
+as "priced at today's rates" since no price-history table exists to value it
+historically), average margin (manager, point-in-time only — a trend here would
+be fabricated for the same reason), product/category counts with "added this
+month" (staff), and category mix by on-hand units (staff). No reorder or
+low-stock tile, on principle.
 
-*Notable:* an expired row's wording depends on the batch's date type — **use
-by** reads "do not sell", **best before** reads "mark down". Same urgency
-tier and colour either way; only the words change, since selling past a
-use-by date is a criminal offence in the UK and past best-before is routine.
+**Expiry dashboard**: money at risk first, then batches worst-first, grouped
+Expired / ≤3 days / ≤14 days with sticky headers and a three-cell jump strip.
+Headline and buckets sit side by side from `md`; rows link to the product.
+Uses the urgency ladder (icon + word + colour, never colour alone). An expired
+row's wording depends on the batch's date type — **use by** reads "do not
+sell", **best before** reads "mark down". Same urgency tier and colour either
+way; only the words change, since selling past a use-by date is a criminal
+offence in the UK and past best-before is routine.
 
 ### Checkout — `/checkout` · staff
 The till. Scan or search into a basket, take cash or card, complete. Every sale
@@ -111,9 +127,13 @@ rows is normal.
 
 ### Product — `/products/[id]` · staff
 Stock on hand, price with its VAT band, days of cover at recent sales rates (or
-"not enough data yet" below two counts), the batches behind that number with
-expiry, lot and use-by/best-before, and the last ten ledger movements. **Cost
-price is manager-only** — it is the shop's buying position.
+"not enough data yet" below two counts), a details grid (SKU, case barcode,
+units/case, shelf life — shown whenever any is set, staff-readable, previously
+only visible behind Edit), the batches behind that number with expiry, lot and
+use-by/best-before, and the last ten ledger movements. **Cost price and margin
+are manager-only** — margin is computed net-of-VAT on both sides (never the
+naive gross-sell-minus-net-cost subtraction, which overstates margin by
+roughly the VAT rate).
 
 *Why the movements matter:* the ledger is the source of truth and was invisible
 outside a SQL client. A miscount, a double-logged delivery and a theft look
@@ -138,15 +158,20 @@ group by problem with line numbers. Column names are flexible (`Outer Barcode`,
 
 *This screen decides whether a shop churns in week one.*
 
-### Suppliers — `/suppliers` · staff · **form** manager
+### Suppliers — `/suppliers`, `/suppliers/[id]` · staff · **form** manager
 Name, contact, email, phone, lead time, minimum order value, delivery weekdays.
 Lead time and minimum order value are collected but nothing currently reads
 them — they fed reorder suggestions, which were removed. Kept because a
 supplier record and the catalogue CSV's supplier-match both still need the
-supplier to exist.
+supplier to exist. The list shows a product count per row; the detail screen
+lists the products actually sourced from that supplier.
 
-### Categories — `/categories` · manager
-Product grouping with a default count frequency per category.
+### Categories — `/categories`, `/categories/[id]` · manager
+Name, an optional single-emoji icon, description, and a default count
+frequency. No colour field — colour in this product means expiry urgency and
+nothing else, so a per-category colour was deliberately not built even though
+the design reference has one. The detail screen adds a small rollup (product
+count, total stock, average margin) and the category's own product list.
 
 ---
 
@@ -154,10 +179,11 @@ Product grouping with a default count frequency per category.
 
 ### Insights — `/insights` · manager
 Gross margin (from the real batch cost of what was sold, not the product's
-current list cost), takings trend, top five products by revenue, and dead
-stock — on hand, unsold in the period, ranked by what it's worth. Every
-headline carries its change against the previous period of the same length,
-over 7/30/90 days.
+current list cost), takings trend, top five products by revenue, top five by
+stock value (price × qty on hand — a different question from "what sold"),
+and dead stock — on hand, unsold in the period, ranked by what it's worth.
+Every headline carries its change against the previous period of the same
+length, over 7/30/90 days.
 
 *Notable:* server-rendered SVG and CSS bars — no charting library, no client
 JavaScript. Every figure appears as text as well as length. Empty state is
@@ -184,6 +210,10 @@ and quantities at the last moment.
 | More | `/more` | staff |
 | Sign in | `/sign-in` | — |
 
+**Store info** now also collects email, phone, VAT number and address —
+optional contact fields with no bearing on VAT calculation, alongside the
+original name/country/currency/timezone.
+
 **Team** invites by email with a role. The invitation grants access via a
 database row; the email is only how someone finds out, and the screen says which
 of sent / no provider / failed actually happened.
@@ -191,7 +221,13 @@ of sent / no provider / failed actually happened.
 **Sign in** takes a password, or leaves it blank for a magic link. A refusal
 never reveals whether an account exists.
 
-**VAT** is per-tenant rows, never hardcoded rates.
+**VAT** is per-tenant rows, never hardcoded rates — including in the design
+reference's own "VAT Rates" screen, which was reviewed and rejected: it
+organizes rates *by product category* with a fixed per-country dropdown,
+exactly the hardcoded pattern this app corrected away from.
+
+The header shows the signed-in user's initials in a small avatar (derived
+from their email — no display-name field exists) next to sign out.
 
 ---
 
@@ -201,16 +237,25 @@ Anything redesigned here changes everywhere, which is usually the point.
 
 | Component | Used for |
 |---|---|
-| `data-list` | `DataList` / `DataRow` / `DataGroupHeader` / `PageTitle` / `SectionHeading` / `HeadlineFigure` / skeletons — the list pattern every stock screen uses |
+| `data-list` | `DataList` / `DataRow` / `DataGroupHeader` / `PageTitle` / `SectionHeading` / `HeadlineFigure` / skeletons — the list pattern every stock screen uses. Headline figures render in monospace (Geist Mono). |
 | `expiry-urgency` | The urgency ladder: icon, word and hue, always all three |
-| `charts` | `TrendBars`, `RankedBars` — server-rendered, no dependency |
-| `barcode-field` | Type it or scan it; typing is the primary path |
-| `form` | `Field`, `FieldRow`, `NativeSelect`, `StickyAction` |
-| `app-nav` / `app-sidebar` | The two navigations; destinations live in `nav-items.ts` |
+| `charts` | `TrendBars`, `RankedBars` — server-rendered, no dependency. Now also used by the homepage's Overview section, not just Insights |
+| `barcode-field` | Type it or scan it; typing is the primary path. Case barcodes (ITF-14) and UPC-A/E scan alongside EAN-13/8 |
+| `form` | `Field`, `FieldRow`, `NativeSelect`, `StickyAction` — inputs/selects have a visible muted fill rather than a transparent background |
+| `app-nav` / `app-sidebar` | The two navigations; destinations live in `nav-items.ts`. The desktop sidebar is a dark-navy rail (`bg-sidebar`), independent of the page's own light/dark theme |
+| `overview` | `InventoryOverview` — the homepage's general-health section, separate from `dashboard`'s expiry-risk one |
 | `empty-state`, `first-run`, `back-link` | |
 
 **shadcn primitives installed:** button, input, label, badge, table, skeleton.
 Anything else from shadcn can be added — name it. No second component library.
+Badges render as a small rounded-rect chip (`rounded-md`), not the shadcn
+default full pill, matching the expired-batch chip that predates it. Table
+headers are small and muted rather than full-contrast body text.
+
+**Primary colour** is a deliberately vivid blue (`oklch(0.51 0.21 263)` light /
+`oklch(0.75 0.14 263)` dark, ≈`#1a56db`) rather than the earlier muted tone —
+chrome only; `destructive`/`warning`/`success`, the colours that actually carry
+meaning in this product, are untouched.
 
 **Type scale** (documented at the top of `data-list.tsx`), each stepping up once
 at `md`:
@@ -235,11 +280,15 @@ Ranked as they would be picked up.
 
 1. **The cold start.** A shop arrives with 2,000 SKUs and no prices. CSV import
    helps; where the price data comes from is unanswered.
-2. **Empty, loading and error states** exist everywhere but read as grey
-   sentences.
+2. **Empty, loading and error states.** Products, Reports and Insights now
+   have real skeletons matching their layout; error states elsewhere and every
+   other route's loading state still read as grey sentences.
 3. **Icons appear only in navigation.**
 4. **Scale-printed barcodes** for weighed goods — deliberately unbuilt, needs a
    real scale in a real shop.
+5. **Image upload** — the design reference has a product-photo field; reviewed
+   and deliberately skipped as a real new feature (storage, upload UI) rather
+   than a styling change, not because it's a bad idea.
 
 Also unbuilt and out of scope for now: real card processing, accounting
 integrations, partial refunds, multi-location transfers, label printing, offline
