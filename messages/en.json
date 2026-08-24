@@ -23,6 +23,22 @@
     "stop": "Stop",
     "cameraUnavailable": "Camera unavailable. Type the barcode instead."
   },
+  "overview": {
+    "inventoryValue": "Inventory value",
+    "vsLastMonth": "{percent}% vs last month",
+    "noPriorPeriod": "No prior period to compare against yet",
+    "products": "Products",
+    "productsMeta": "{categories} categories · {added, plural, =0 {none added this month} one {# added this month} other {# added this month}}",
+    "avgMargin": "Avg. margin",
+    "marginMeta": "{count, plural, one {across # SKU} other {across # SKUs}}",
+    "marginUnavailable": "Not enough priced products yet",
+    "valueTrend": "Inventory value trend",
+    "valueTrendHint": "Past quantity held, priced at today's rates — not what it was worth at the time.",
+    "valueTrendLabel": "Inventory value over the last six months, priced at today's rates",
+    "categoryMix": "Category mix",
+    "uncategorized": "Uncategorized",
+    "noStock": "Nothing on the shelf yet."
+  },
   "dashboard": {
     "title": "Expiring soon",
     "atRisk": "at risk",

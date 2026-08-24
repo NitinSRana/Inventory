@@ -8,6 +8,8 @@ Tells a store owner **what's about to expire**, without them counting anything b
 
 If a proposed feature doesn't serve that sentence, push back before building it.
 
+**Widened, deliberately, not silently:** the homepage (`src/app/[locale]/(app)/page.tsx`) now also opens with general inventory-health KPIs — total value, average margin, category mix — above the expiry-risk section that used to be the whole page. Money-sensitive figures there stay manager+, matching cost/margin everywhere else in the app. This still isn't a green light for reorder suggestions or a low-stock alert tile — those remain excluded, see below — the KPI row answers "how healthy is the shop," the expiry section still answers "what needs attention today," and neither one is a step toward reordering.
+
 **Stock changes from three events: receiving, cycle counts, and POS sales.** A real till records sales automatically as a side effect of ringing something up — nobody types in 300-800 transactions a day, the checkout screen does it for them. That was always the constraint; manual entry was never the plan.
 
 There is no standalone write-off screen. A count is how loss gets found: cycle counting is a **shrinkage audit**, the gap between what the ledger says should be on the shelf (given real sales) and what's physically counted, which is theft, spoilage, or a miscount. Posting that gap corrects the ledger without needing anyone to have logged the loss as it happened. For a product with no POS sale history yet (new, or never rung up through the till), consumption falls back to the count-to-count formula:

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Check } from 'lucide-react';
 
 import { ExpiryDashboard } from './dashboard';
+import { InventoryOverview } from './overview';
 import { buttonVariants } from '@/components/ui/button';
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
@@ -77,8 +78,14 @@ export default async function HomePage({ params, searchParams }: PageProps<'/[lo
         </p>
       )}
 
-      <ExpiryDashboard orgId={session.orgId} locale={locale} currency={org.currencyCode} />
+      <InventoryOverview
+        orgId={session.orgId}
+        locale={locale}
+        currency={org.currencyCode}
+        role={session.role}
+      />
 
+      <ExpiryDashboard orgId={session.orgId} locale={locale} currency={org.currencyCode} />
     </main>
   );
 }
