@@ -12,6 +12,7 @@ import Decimal from 'decimal.js';
 import { trimQuantity } from '@/lib/quantity';
 import { requireOrg } from '@/server/auth/session';
 import { normalizeGtin } from '@/server/catalog/ean';
+import { parseGs1 } from '@/server/catalog/gs1';
 import { findProductByBarcode, getProduct } from '@/server/catalog/products';
 import { getProductStock, suggestedExpiryDate } from '@/server/stock/levels';
 import { receiveStock } from '@/server/stock/movements';
@@ -30,21 +31,27 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
   const { orgId } = await requireOrg(locale);
 
   const barcode = typeof gtin === 'string' ? gtin : undefined;
-  const product = barcode ? await findProductByBarcode(orgId, barcode) : null;
+  // A supplier's box label, if that's what was scanned — quantity, lot,
+  // expiry and (rarely, see gs1.ts) weight, not just an identifier. Returns
+  // null for a plain barcode, so `lookupCode` below falls back unchanged.
+  const label = barcode ? parseGs1(barcode) : null;
+  const lookupCode = label?.gtin ?? barcode;
+  const product = lookupCode ? await findProductByBarcode(orgId, lookupCode) : null;
   // What was actually pointed at. Scanning the carton means the delivery is
   // being counted in cartons, so that is the sensible default.
   const scannedTheCase = Boolean(
-    product?.caseGtin && barcode && normalizeGtin(barcode) === product.caseGtin,
+    product?.caseGtin && lookupCode && normalizeGtin(lookupCode) === product.caseGtin,
   );
   const [stock] = product ? await getProductStock(orgId, product.id) : [];
 
-  // Shelf life gives a sensible default expiry, which is the field people are
-  // most likely to skip and most expensive to get wrong. The date comes from the
-  // database so it agrees with the dashboard's current_date.
+  // The label's own expiry wins when there is one — it's what's actually on
+  // this delivery, not a guess from average shelf life. Falls back exactly
+  // as before when the scan was a plain barcode.
   const suggestedExpiry =
-    product?.shelfLifeDays != null
+    label?.expiryDate ??
+    (product?.shelfLifeDays != null
       ? ((await suggestedExpiryDate(orgId, product.shelfLifeDays)) ?? '')
-      : '';
+      : '');
 
   async function lookUp(formData: FormData) {
     'use server';
@@ -146,9 +153,11 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
             name="expiryDate"
             label={t('expiry')}
             hint={
-              product.shelfLifeDays != null
-                ? t('expiryHint', { days: product.shelfLifeDays })
-                : undefined
+              label?.expiryDate
+                ? t('expiryFromLabel')
+                : product.shelfLifeDays != null
+                  ? t('expiryHint', { days: product.shelfLifeDays })
+                  : undefined
             }
           >
             <DateNudgeInput
@@ -171,6 +180,7 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
                   name="quantity"
                   inputMode="decimal"
                   required
+                  defaultValue={label?.quantity ?? ''}
                   className="h-14 text-right text-lg tabular-nums"
                 />
               </Field>
@@ -195,14 +205,39 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
                 name="quantity"
                 inputMode="decimal"
                 required
+                defaultValue={label?.quantity ?? ''}
                 className="h-14 text-right text-lg tabular-nums"
               />
             </Field>
           )}
 
+          {/* Anything else on the label — company-internal AIs (91-99) most
+              often, whose meaning is whichever the supplier decided. Never
+              guessed at or auto-filled (see gs1.ts) — shown raw so a person
+              can read it and type the relevant part into Unit cost below. */}
+          {label && label.extra.length > 0 && (
+            <div className="bg-muted flex flex-col gap-1 rounded-lg p-3 text-sm">
+              <span className="font-medium">{t('alsoOnLabel')}</span>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
+                {label.extra.map((e, i) => (
+                  <div key={i} className="contents">
+                    <dt className="text-muted-foreground font-mono">{e.ai}</dt>
+                    <dd className="font-mono">{e.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+
           <FieldRow>
             <Field name="lotNumber" label={t('lot')}>
-              <Input id="lotNumber" name="lotNumber" autoComplete="off" className="h-12 font-mono" />
+              <Input
+                id="lotNumber"
+                name="lotNumber"
+                autoComplete="off"
+                defaultValue={label?.lotNumber ?? ''}
+                className="h-12 font-mono"
+              />
             </Field>
             <Field
               name="unitCost"

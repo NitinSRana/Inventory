@@ -224,6 +224,8 @@
     "quantity": "Quantity received ({unit})",
     "expiry": "Expiry date",
     "expiryHint": "Suggested from a {days}-day shelf life. Change it if the label differs.",
+    "expiryFromLabel": "Read from the scanned label. Change it if it looks wrong.",
+    "alsoOnLabel": "Also on this label",
     "nudgeMinusDay": "−1 day",
     "nudgePlusDay": "+1 day",
     "nudgePlusWeek": "+1 week",

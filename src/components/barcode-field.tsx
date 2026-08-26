@@ -61,8 +61,14 @@ export function BarcodeField({
          * UPC-A/E are included because own-brand and imported stock from US
          * suppliers still carries them.
          *
-         * The list stays deliberately short. Every extra format is another
-         * chance to mis-decode a blurry barcode in bad light, and a wrong
+         * QR and DataMatrix are here for a supplier's GS1-encoded box label —
+         * quantity, lot, expiry, not just an identifier — decoded by
+         * `parseGs1` on the Receive screen. This field itself stays dumb:
+         * whatever the camera decodes goes straight into the input, same as
+         * any other format.
+         *
+         * The list stays deliberately short beyond that. Every extra format is
+         * another chance to mis-decode a blurry code in bad light, and a wrong
          * barcode that happens to match another product is worse than no scan.
          */
         formatsToSupport: [
@@ -71,6 +77,8 @@ export function BarcodeField({
           Html5QrcodeSupportedFormats.ITF,
           Html5QrcodeSupportedFormats.UPC_A,
           Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.QR_CODE,
+          Html5QrcodeSupportedFormats.DATA_MATRIX,
         ],
         verbose: false,
       });
