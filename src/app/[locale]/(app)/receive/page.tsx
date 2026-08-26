@@ -180,7 +180,12 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
                   name="quantity"
                   inputMode="decimal"
                   required
-                  defaultValue={label?.quantity ?? ''}
+                  // The label's AI 37 counts items inside the one case just
+                  // scanned — a units figure, not a case count. Applying it
+                  // here when entryUnit defaults to "case" would multiply it
+                  // by unitsPerCase again and silently over-receive, so it
+                  // only pre-fills when the default entry mode is units.
+                  defaultValue={!scannedTheCase ? (label?.quantity ?? '') : ''}
                   className="h-14 text-right text-lg tabular-nums"
                 />
               </Field>
