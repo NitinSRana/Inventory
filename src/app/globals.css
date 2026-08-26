@@ -76,7 +76,10 @@
      on it clears WCAG AA at 6.18:1. It doesn't compete with the urgency
      system — destructive/warning/success are untouched, and always were the
      only colours carrying a *meaning* in this product; primary is chrome. */
-  --primary: oklch(0.51 0.21 263);
+  /* From design_handoff_inventory/README.md §1 — calmer, higher-contrast
+     (8.4:1) than the earlier vivid blue; less saturated so it doesn't
+     compete with the urgency ladder at a glance. */
+  --primary: oklch(0.45 0.09 235);
   --primary-foreground: oklch(0.99 0.002 95);
   --secondary: oklch(0.965 0.003 95);
   --secondary-foreground: oklch(0.21 0.008 90);
@@ -90,7 +93,7 @@
   --warning-foreground: oklch(0.99 0.002 95);
   --border: oklch(0.915 0.004 95);
   --input: oklch(0.915 0.004 95);
-  --ring: oklch(0.51 0.21 263);
+  --ring: oklch(0.45 0.09 235);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -102,12 +105,12 @@
      sidebars staying dark regardless of the page theme. */
   --sidebar: oklch(0.218 0.036 251.3);
   --sidebar-foreground: oklch(0.929 0.013 255.5);
-  --sidebar-primary: oklch(0.51 0.21 263);
+  --sidebar-primary: oklch(0.45 0.09 235);
   --sidebar-primary-foreground: oklch(0.99 0.002 95);
   --sidebar-accent: oklch(0.279 0.037 260);
   --sidebar-accent-foreground: oklch(0.929 0.013 255.5);
   --sidebar-border: oklch(1 0 0 / 6%);
-  --sidebar-ring: oklch(0.51 0.21 263);
+  --sidebar-ring: oklch(0.45 0.09 235);
   --destructive-subtle: oklch(0.515 0.19 27 / 10%);
   --warning-subtle: oklch(0.545 0.125 62 / 10%);
   --success: oklch(0.46 0.12 155);
@@ -123,7 +126,7 @@
     --card-foreground: oklch(0.965 0.003 250);
     --popover: oklch(0.235 0.008 250);
     --popover-foreground: oklch(0.965 0.003 250);
-    --primary: oklch(0.75 0.14 263);
+    --primary: oklch(0.72 0.11 235);
     --primary-foreground: oklch(0.185 0.008 250);
     --secondary: oklch(0.265 0.008 250);
     --secondary-foreground: oklch(0.965 0.003 250);
@@ -136,7 +139,7 @@
     --warning-foreground: oklch(0.185 0.008 250);
     --border: oklch(0.305 0.01 250);
     --input: oklch(0.305 0.01 250);
-    --ring: oklch(0.75 0.14 263);
+    --ring: oklch(0.72 0.11 235);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
@@ -145,12 +148,12 @@
     /* Same navy rail as light mode — it doesn't follow the page theme. */
     --sidebar: oklch(0.218 0.036 251.3);
     --sidebar-foreground: oklch(0.929 0.013 255.5);
-    --sidebar-primary: oklch(0.75 0.14 263);
+    --sidebar-primary: oklch(0.72 0.11 235);
     --sidebar-primary-foreground: oklch(0.185 0.008 250);
     --sidebar-accent: oklch(0.279 0.037 260);
     --sidebar-accent-foreground: oklch(0.929 0.013 255.5);
     --sidebar-border: oklch(1 0 0 / 6%);
-    --sidebar-ring: oklch(0.75 0.14 263);
+    --sidebar-ring: oklch(0.72 0.11 235);
     --destructive-subtle: oklch(0.705 0.155 25 / 16%);
     --warning-subtle: oklch(0.80 0.115 78 / 16%);
     --success: oklch(0.72 0.13 155);

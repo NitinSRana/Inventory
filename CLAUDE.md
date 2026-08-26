@@ -74,6 +74,38 @@ Domain logic lives in `src/server/*`, not in components or route handlers. Serve
 - **No hardcoded VAT rates or country logic.** VAT is per-tenant rows in `vat_rates`.
 - **No user-facing string literals in components.** Everything through `next-intl`, even though English is the only locale at launch.
 
+## Design system
+
+Source: `design_handoff_inventory/README.md` (handoff package, not checked into
+this repo — kept alongside it during implementation). Copied here per that
+document's own instruction, so type sizes and colours don't drift as sizing
+decisions get made screen by screen. Tokens live in `src/app/globals.css`;
+this is the vocabulary for using them, not a duplicate source of truth.
+
+**Colour has exactly two meanings.** Warm hue = state of the world (expiry
+urgency: `destructive` / `warning` / `muted-foreground` / plain). Cool hue =
+your move (`primary` — button, focus ring, active tab, link). They never
+overlap. A headline figure like "at risk this month: €604" is a fact, not an
+alarm — it stays `foreground`, not `destructive`. `warning` may also flag
+money-at-risk outside expiry (a supplier minimum-order gap, an
+over-delivery) — always as a tinted row with an icon and a sentence, never as
+a hue on a group header.
+
+**Type scale** — five roles, never more than three visible in one row:
+
+| Role | Tailwind | Where |
+|---|---|---|
+| display | `text-5xl font-semibold tracking-tight tabular-nums` | Exactly one per screen — money at risk, net variance, import row count |
+| h1 | `text-2xl font-semibold tracking-tight` | Screen title |
+| h2 | `text-lg font-medium` | Block title with its own body |
+| body | `text-base font-medium` (mobile) / `text-sm` (desktop table) | The identifying line of a row — 16px on phone is non-negotiable |
+| caption | `text-sm text-muted-foreground` | The row's second line |
+| label | `text-xs font-medium uppercase tracking-wider` | Sticky group headers only — never a field label above a mobile input |
+
+Number rules: number before label (`12 expiring`, not `Expiring: 12`); unit
+de-emphasised (`<span className="opacity-70">kg</span>`); money through
+`Intl.NumberFormat`; three decimals for weighed goods (`4.5 kg`, `0.750 l`).
+
 ## Commands
 
 ```bash

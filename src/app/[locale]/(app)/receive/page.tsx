@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { BarcodeField } from '@/components/barcode-field';
+import { DateNudgeInput } from '@/components/date-nudge-field';
 import { Field, FieldRow, NativeSelect, StickyAction } from '@/components/form';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -137,52 +138,10 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
             </span>
           </div>
 
-          {/* The one number typed while holding the box: taller than the rest.
-              A product that comes in cases can be counted in cases — the boxes
-              are what is stacked at the door, and the multiplication is the
-              app's job. Defaults to cases when the case barcode was the thing
-              scanned, because that is what the scanner was pointed at. */}
-          {product.unitsPerCase ? (
-            <>
-              <FieldRow>
-                <Field name="quantity" label={t('quantityReceived')}>
-                  <Input
-                    id="quantity"
-                    name="quantity"
-                    inputMode="decimal"
-                    required
-                    autoFocus
-                    className="h-14 text-right text-lg tabular-nums"
-                  />
-                </Field>
-                <Field name="entryUnit" label={t('countedIn')}>
-                  <NativeSelect
-                    id="entryUnit"
-                    name="entryUnit"
-                    defaultValue={scannedTheCase ? 'case' : 'unit'}
-                    className="h-14"
-                  >
-                    <option value="unit">{t('inUnits', { unit: product.unit })}</option>
-                    <option value="case">
-                      {t('inCases', { perCase: trimQuantity(product.unitsPerCase) })}
-                    </option>
-                  </NativeSelect>
-                </Field>
-              </FieldRow>
-            </>
-          ) : (
-            <Field name="quantity" label={t('quantity', { unit: product.unit })}>
-              <Input
-                id="quantity"
-                name="quantity"
-                inputMode="decimal"
-                required
-                autoFocus
-                className="h-14 text-right text-lg tabular-nums"
-              />
-            </Field>
-          )}
-
+          {/* Expiry first: the field most likely to get skipped and the most
+              expensive to get wrong, so it gets the arriving focus ring and
+              a box in the other hand doesn't have to fight the date picker
+              for a one-day correction. */}
           <Field
             name="expiryDate"
             label={t('expiry')}
@@ -192,16 +151,54 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
                 : undefined
             }
           >
-            {/* Native date input: the OS picker beats any calendar widget on a
-                phone, and it is one less thing to ship. */}
-            <Input
+            <DateNudgeInput
               id="expiryDate"
               name="expiryDate"
-              type="date"
               defaultValue={suggestedExpiry}
-              className="h-12"
+              labels={{ minusDay: t('nudgeMinusDay'), plusDay: t('nudgePlusDay'), plusWeek: t('nudgePlusWeek') }}
             />
           </Field>
+
+          {/* A product that comes in cases can be counted in cases — the boxes
+              are what is stacked at the door, and the multiplication is the
+              app's job. Defaults to cases when the case barcode was the thing
+              scanned, because that is what the scanner was pointed at. */}
+          {product.unitsPerCase ? (
+            <FieldRow>
+              <Field name="quantity" label={t('quantityReceived')}>
+                <Input
+                  id="quantity"
+                  name="quantity"
+                  inputMode="decimal"
+                  required
+                  className="h-14 text-right text-lg tabular-nums"
+                />
+              </Field>
+              <Field name="entryUnit" label={t('countedIn')}>
+                <NativeSelect
+                  id="entryUnit"
+                  name="entryUnit"
+                  defaultValue={scannedTheCase ? 'case' : 'unit'}
+                  className="h-14"
+                >
+                  <option value="unit">{t('inUnits', { unit: product.unit })}</option>
+                  <option value="case">
+                    {t('inCases', { perCase: trimQuantity(product.unitsPerCase) })}
+                  </option>
+                </NativeSelect>
+              </Field>
+            </FieldRow>
+          ) : (
+            <Field name="quantity" label={t('quantity', { unit: product.unit })}>
+              <Input
+                id="quantity"
+                name="quantity"
+                inputMode="decimal"
+                required
+                className="h-14 text-right text-lg tabular-nums"
+              />
+            </Field>
+          )}
 
           <FieldRow>
             <Field name="lotNumber" label={t('lot')}>

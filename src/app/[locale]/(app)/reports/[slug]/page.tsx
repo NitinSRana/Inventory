@@ -2,9 +2,10 @@ import { getFormatter, getTranslations, setRequestLocale } from 'next-intl/serve
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { FileX2 } from 'lucide-react';
+import Decimal from 'decimal.js';
 
 import { BackLink } from '@/components/back-link';
-import { PageTitle } from '@/components/data-list';
+import { HeadlineFigure, PageTitle } from '@/components/data-list';
 import { EmptyState } from '@/components/empty-state';
 import { buttonVariants } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -22,6 +23,18 @@ export const dynamic = 'force-dynamic';
 const PERIODS = [7, 30, 90] as const;
 /** Only these two are time-bounded; stock and low-stock are point-in-time. */
 const TIME_BOUNDED: ReportSlug[] = ['expiry', 'sales'];
+
+/** Which column each report's headline figure sums. Low-stock has no money
+ * figure to lead with — the count of lines under minimum is the headline. */
+const MONEY_COLUMN: Partial<Record<ReportSlug, string>> = {
+  stock: 'value',
+  expiry: 'valueAtRisk',
+  sales: 'grossRevenue',
+};
+
+function sumColumn(rows: Record<string, string>[], key: string): string {
+  return rows.reduce((sum, r) => sum.plus(r[key] || '0'), new Decimal(0)).toFixed(2);
+}
 
 export default async function ReportPage({ params, searchParams }: PageProps<'/[locale]/reports/[slug]'>) {
   const { locale, slug } = await params;
@@ -53,12 +66,25 @@ export default async function ReportPage({ params, searchParams }: PageProps<'/[
   const exportHref =
     `/${locale}/reports/${reportSlug}/export` + (showPeriod ? `?days=${period}` : '');
 
+  const moneyColumn = MONEY_COLUMN[reportSlug];
+  const headlineValue = moneyColumn
+    ? format.number(Number(sumColumn(report.rows, moneyColumn)), { style: 'currency', currency: org.currencyCode })
+    : report.rows.length;
+
   return (
     <main className="flex flex-1 flex-col gap-4 p-4">
       <BackLink href={`/${locale}/reports`} label={tBack('reports')} />
       <PageTitle caption={<span className="tabular-nums">{t('rowCount', { count: report.rows.length })}</span>}>
         {t(`names.${reportSlug}`)}
       </PageTitle>
+
+      {report.rows.length > 0 && (
+        <HeadlineFigure
+          label={t(`headline.${reportSlug}`)}
+          value={headlineValue}
+          caption={t(`headlineCaption.${reportSlug}`, { count: report.rows.length, days: period })}
+        />
+      )}
 
       {showPeriod && (
         <nav aria-label={t('periodLabel')} className="flex gap-2">

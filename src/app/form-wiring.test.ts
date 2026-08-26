@@ -41,8 +41,10 @@ function declaredNames(src: string) {
     const m = tag.match(NAME);
     if (m) names.add(m[1] ?? m[2]);
   }
-  // BarcodeField names its own control; the page never declares it.
+  // BarcodeField and DateNudgeInput name their own control; the page never
+  // declares it.
   if (src.includes('<BarcodeField')) names.add('gtin');
+  if (src.includes('<DateNudgeInput')) names.add('expiryDate');
   return names;
 }
 

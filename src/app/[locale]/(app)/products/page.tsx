@@ -1,8 +1,9 @@
+import { Fragment } from 'react';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
 import { PackageOpen, SearchX } from 'lucide-react';
 
-import { DataList, DataRow, PageTitle } from '@/components/data-list';
+import { DataGroupHeader, DataList, DataRow, PageTitle } from '@/components/data-list';
 import { EmptyState } from '@/components/empty-state';
 import { StickyAction } from '@/components/form';
 import { buttonVariants } from '@/components/ui/button';
@@ -71,19 +72,32 @@ export default async function ProductsPage({ params, searchParams }: PageProps<'
         />
       ) : (
         <>
-          {/* Divided rows on a phone, table on desktop — never a table that scrolls sideways. */}
+          {/* Divided rows on a phone, table on desktop — never a table that scrolls sideways.
+              Sticky letter headers, since rows already arrive name-sorted: a 1,994-row
+              catalogue is only navigable without a visible scrollbar if the reader always
+              knows which letter they're in. */}
           <div className="sm:hidden">
             <DataList>
-              {rows.map((p) => (
-                <DataRow
-                  key={p.id}
-                  href={`/${locale}/products/${p.id}`}
-                  title={p.name}
-                  subtitle={<span className="font-mono">{p.gtin ?? t('noBarcode')}</span>}
-                  value={p.sellPrice ?? '—'}
-                  meta={p.unit}
-                />
-              ))}
+              {(() => {
+                let lastLetter = '';
+                return rows.map((p) => {
+                  const letter = /[a-z]/i.test(p.name[0] ?? '') ? p.name[0].toUpperCase() : '#';
+                  const isNewGroup = letter !== lastLetter;
+                  lastLetter = letter;
+                  return (
+                    <Fragment key={p.id}>
+                      {isNewGroup && <DataGroupHeader>{letter}</DataGroupHeader>}
+                      <DataRow
+                        href={`/${locale}/products/${p.id}`}
+                        title={p.name}
+                        subtitle={<span className="font-mono">{p.gtin ?? t('noBarcode')}</span>}
+                        value={p.sellPrice ?? '—'}
+                        meta={p.unit}
+                      />
+                    </Fragment>
+                  );
+                });
+              })()}
             </DataList>
           </div>
 

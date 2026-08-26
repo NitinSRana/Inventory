@@ -82,4 +82,62 @@ export async function getDueForCount(orgId: string, limit = 100): Promise<DuePro
     .filter((p) => p.daysOverdue >= 0);
 }
 
+export type DueCategory = {
+  id: string;
+  name: string;
+  daysOverdue: number;
+  productCount: number;
+};
+
+/**
+ * Categories with at least one overdue product, worst-first — lets staff jump
+ * straight into "count the dairy shelf" instead of typing a section name.
+ *
+ * A category's urgency is its worst product, not an average: one badly
+ * drifted line is the whole reason to walk over there.
+ */
+export async function getDueCategories(orgId: string): Promise<DueCategory[]> {
+  const rows = await withTenant(orgId, (tx) =>
+    tx.execute<{
+      category_id: string;
+      category_name: string;
+      frequency: string;
+      last_counted_at: string | null;
+    }>(sql`
+      select
+        c.id as category_id,
+        c.name as category_name,
+        coalesce(p.count_frequency, c.default_count_frequency, ${DEFAULT_FREQUENCY}) as frequency,
+        lc.last_counted_at
+      from products p
+      join categories c on c.id = p.category_id
+      left join lateral (
+        select max(cl.counted_at) as last_counted_at
+        from count_lines cl
+        join count_sessions cs on cs.id = cl.count_session_id
+        where cl.product_id = p.id and cs.status = 'completed'
+      ) lc on true
+      where p.is_active
+    `),
+  );
+
+  const now = new Date();
+  const byCategory = new Map<string, { name: string; worst: number; count: number }>();
+  for (const r of rows) {
+    const overdue = daysOverdue(r.last_counted_at ? new Date(r.last_counted_at) : null, r.frequency, now);
+    if (overdue < 0) continue;
+    const existing = byCategory.get(r.category_id);
+    if (existing) {
+      existing.worst = Math.max(existing.worst, overdue);
+      existing.count += 1;
+    } else {
+      byCategory.set(r.category_id, { name: r.category_name, worst: overdue, count: 1 });
+    }
+  }
+
+  return Array.from(byCategory.entries())
+    .map(([id, v]) => ({ id, name: v.name, daysOverdue: v.worst, productCount: v.count }))
+    .sort((a, b) => b.daysOverdue - a.daysOverdue);
+}
+
 export { DEFAULT_FREQUENCY, daysOverdue, intervalDays } from './schedule';

@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { before, describe, test } from 'node:test';
 
+import { createCategory } from '@/server/catalog/categories';
 import { createProduct } from '@/server/catalog/products';
-import { getDueForCount } from '@/server/counting/due';
+import { getDueCategories, getDueForCount } from '@/server/counting/due';
 import {
   ProductAlreadyCountedError,
   completeCountSession,
@@ -113,10 +114,31 @@ describe('cycle counting', () => {
     assert.equal(due.some((d) => d.id === butter), false);
   });
 
+  test('due categories rank by their worst product, not an average', async () => {
+    const dairy = await createCategory(org.orgId, { name: 'Dairy', defaultCountFrequency: 'weekly' });
+    const dry = await createCategory(org.orgId, { name: 'Dry goods', defaultCountFrequency: 'weekly' });
+    await createProduct(org.orgId, { name: 'Cheese', gtin: '5012345678900', categoryId: dairy.id });
+    await createProduct(org.orgId, { name: 'Yoghurt', gtin: '5012345678917', categoryId: dairy.id });
+    // Freshly counted today, on a weekly schedule: not overdue, so this category
+    // must not appear even though it has an overdue sibling category.
+    const rice = await createProduct(org.orgId, { name: 'Rice', gtin: '5012345678924', categoryId: dry.id });
+    await receiveStock(org.orgId, { productId: rice.id, quantity: '5' });
+    const session = await startCountSession(org.orgId, { name: 'Dry goods check' });
+    await recordCount(org.orgId, { countSessionId: session.id, productId: rice.id, countedQuantity: '5' });
+    await completeCountSession(org.orgId, session.id);
+
+    const dueCategories = await getDueCategories(org.orgId);
+    const dairyRow = dueCategories.find((c) => c.id === dairy.id);
+    assert.ok(dairyRow, 'never-counted products make their category due');
+    assert.equal(dairyRow!.productCount, 2);
+    assert.equal(dueCategories.some((c) => c.id === dry.id), false, 'just-counted category is not due');
+  });
+
   test('another tenant sees none of it', async () => {
     const other = await createTestOrg('Counting Rival');
     assert.equal(await getOpenSession(other.orgId), null);
     assert.deepEqual(await getDueForCount(other.orgId), []);
+    assert.deepEqual(await getDueCategories(other.orgId), []);
   });
 
   describe('two people counting at once', () => {

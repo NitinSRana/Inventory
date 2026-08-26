@@ -1,7 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Check } from 'lucide-react';
+import { Check, ChevronRight } from 'lucide-react';
 
 import { DataList, DataRow, PageTitle } from '@/components/data-list';
 import { BarcodeField } from '@/components/barcode-field';
@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { trimQuantity } from '@/lib/quantity';
 import { requireOrg } from '@/server/auth/session';
 import { findProductByBarcode } from '@/server/catalog/products';
-import { getDueForCount } from '@/server/counting/due';
+import { getDueCategories, getDueForCount } from '@/server/counting/due';
 import {
   ProductAlreadyCountedError,
   getOpenSession,
@@ -45,19 +45,65 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
     redirect(`/${locale}/count`);
   }
 
+  async function startSection(formData: FormData) {
+    'use server';
+    const { orgId, userId } = await requireOrg(locale);
+    const scopeId = String(formData.get('scopeId'));
+    const name = String(formData.get('name'));
+    await startCountSession(orgId, { name, scopeType: 'category', scopeId, startedBy: userId });
+    redirect(`/${locale}/count`);
+  }
+
   if (!session) {
     // What's overdue, so the queue decides where to walk rather than habit.
-    const due = await getDueForCount(orgId, 20);
+    const [due, dueCategories] = await Promise.all([
+      getDueForCount(orgId, 20),
+      getDueCategories(orgId),
+    ]);
 
     return (
       <main className="flex flex-1 flex-col gap-6 p-4">
         <PageTitle caption={t('noSession')}>{t('title')}</PageTitle>
 
+        {dueCategories.length > 0 && (
+          <section className="flex flex-col gap-2">
+            <h2 className="text-sm font-medium">{t('dueSections', { count: dueCategories.length })}</h2>
+            <div className="overflow-hidden rounded-lg border">
+              <ul className="divide-border divide-y">
+                {dueCategories.map((c) => (
+                  <li key={c.id}>
+                    <form action={startSection}>
+                      <input type="hidden" name="scopeId" value={c.id} />
+                      <input type="hidden" name="name" value={c.name} />
+                      <button
+                        type="submit"
+                        className="grid min-h-16 w-full grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 text-left"
+                      >
+                        <span className="flex min-w-0 flex-col gap-0.5">
+                          <span className="truncate text-base font-medium">{c.name}</span>
+                          <span
+                            className={
+                              c.daysOverdue > 0 ? 'text-warning text-sm font-medium' : 'text-muted-foreground text-sm'
+                            }
+                          >
+                            {t('sectionOverdue', { days: c.daysOverdue })}
+                          </span>
+                        </span>
+                        <ChevronRight aria-hidden className="text-muted-foreground size-4 shrink-0" />
+                      </button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        )}
+
         <form action={start} className="flex flex-col gap-4">
           <Field name="name" label={t('sectionLabel')}>
             <Input id="name" name="name" placeholder={t('sectionPlaceholder')} className="h-12" />
           </Field>
-          <Button type="submit" className="h-12 w-fit">
+          <Button type="submit" variant={dueCategories.length > 0 ? 'outline' : 'default'} className="h-12 w-fit">
             {t('start')}
           </Button>
         </form>
