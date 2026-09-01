@@ -15,6 +15,16 @@ import { rateLimited } from '@/db/tenant';
 export type Limit = { limit: number; windowSeconds: number };
 
 /**
+ * What a check concluded.
+ *
+ * `limited` and `unavailable` both refuse the attempt, and the difference is
+ * the whole point: one is the person's own doing and clears by waiting, the
+ * other is ours and never clears on its own. Collapsing them into one boolean
+ * is what made a broken database password look like a rate limit.
+ */
+export type RateLimitResult = 'ok' | 'limited' | 'unavailable';
+
+/**
  * Two buckets per sign-in attempt, deliberately.
  *
  * The per-address bucket protects the owner of that mailbox. The per-client one
@@ -52,20 +62,35 @@ const UNDEFINED_OBJECT = ['42P01', '42883'];
  * the throttle existed, with Supabase's own per-project limit still underneath,
  * and says so on the way past.
  */
-export async function checkRateLimit(bucket: string, { limit, windowSeconds }: Limit) {
+export async function checkRateLimit(
+  bucket: string,
+  { limit, windowSeconds }: Limit,
+): Promise<RateLimitResult> {
   try {
     const rows = await rateLimited(
       sql`select app.check_rate_limit(${bucket}, ${limit}, make_interval(secs => ${windowSeconds})) as allowed`,
     );
-    return rows[0]?.allowed === true;
+    return rows[0]?.allowed === true ? 'ok' : 'limited';
   } catch (e) {
     if (UNDEFINED_OBJECT.includes(pgCode(e))) {
       console.error(
         'Rate limiting is NOT ACTIVE: app.check_rate_limit is missing. Apply migration 0006.',
       );
-      return true;
+      return 'ok';
     }
-    return false;
+    /*
+     * Still refuses the attempt — but says which of the two things happened,
+     * and logs why.
+     *
+     * Reporting a failed check as "too many attempts" sends someone away to
+     * wait out a limit they never reached, and no amount of waiting fixes it.
+     * A stale `app_runtime` password put every sign-in in exactly that state:
+     * every query failed, every attempt read as throttled, and the table the
+     * limit is counted from stayed empty the whole time — which is precisely
+     * the evidence that would have identified it, had anything said so.
+     */
+    console.error(`Rate limit check failed for ${bucket}; refusing the attempt:`, e);
+    return 'unavailable';
   }
 }
 

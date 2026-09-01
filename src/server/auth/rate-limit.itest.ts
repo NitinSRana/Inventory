@@ -16,26 +16,26 @@ describe('rate limiting', () => {
     const bucket = `test:${crypto.randomUUID()}`;
     const results = [];
     for (let i = 0; i < 5; i++) results.push(await checkRateLimit(bucket, short));
-    assert.deepEqual(results, [true, true, true, false, false]);
+    assert.deepEqual(results, ['ok', 'ok', 'ok', 'limited', 'limited']);
   });
 
   test('buckets are independent, so one address cannot lock out another', async () => {
     const a = `test:${crypto.randomUUID()}`;
     const b = `test:${crypto.randomUUID()}`;
     for (let i = 0; i < 4; i++) await checkRateLimit(a, short);
-    assert.equal(await checkRateLimit(a, short), false);
-    assert.equal(await checkRateLimit(b, short), true, 'b must be unaffected by a being throttled');
+    assert.equal(await checkRateLimit(a, short), 'limited');
+    assert.equal(await checkRateLimit(b, short), 'ok', 'b must be unaffected by a being throttled');
   });
 
   test('attempts outside the window do not count', async () => {
     const bucket = `test:${crypto.randomUUID()}`;
     for (let i = 0; i < 3; i++) await checkRateLimit(bucket, short);
-    assert.equal(await checkRateLimit(bucket, short), false);
+    assert.equal(await checkRateLimit(bucket, short), 'limited');
 
     // Age the recorded attempts past the window.
     await adminSql`update app.rate_limits set occurred_at = now() - interval '10 minutes'
                    where bucket = ${bucket}`;
-    assert.equal(await checkRateLimit(bucket, short), true);
+    assert.equal(await checkRateLimit(bucket, short), 'ok');
   });
 
   test('the stored bucket holds no email address', async () => {
@@ -68,10 +68,10 @@ describe('rate limiting', () => {
       await adminSql`alter function app.check_rate_limit_hidden(text, integer, interval) rename to check_rate_limit`;
     });
 
-    assert.equal(await checkRateLimit(`test:${crypto.randomUUID()}`, short), true);
+    assert.equal(await checkRateLimit(`test:${crypto.randomUUID()}`, short), 'ok');
   });
 
-  test('any other failure still refuses', async (t) => {
+  test('any other failure refuses, but as unavailable rather than a limit', async (t) => {
     // A throttle that stops working under load is not a throttle, so anything
     // other than "not installed" fails closed. The real function is moved aside
     // rather than replaced, so the original definition comes back untouched.
@@ -83,6 +83,9 @@ describe('rate limiting', () => {
       await adminSql`alter function app.check_rate_limit_hidden(text, integer, interval) rename to check_rate_limit`;
     });
 
-    assert.equal(await checkRateLimit(`test:${crypto.randomUUID()}`, short), false);
+    // Not 'limited': a stale database password once made every sign-in read as
+    // "too many attempts", so the two stay tellable apart. Waiting fixes one of
+    // them and does nothing at all for the other.
+    assert.equal(await checkRateLimit(`test:${crypto.randomUUID()}`, short), 'unavailable');
   });
 });

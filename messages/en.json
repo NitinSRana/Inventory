@@ -15,7 +15,8 @@
     "sentHint": "Accounts are created by invitation, so nothing arrives for an address that hasn't been added yet.",
     "error": "That didn't work. Check the address and try again.",
     "passwordError": "Wrong email or password.",
-    "throttled": "Too many attempts. Wait a few minutes and try again."
+    "throttled": "Too many attempts. Wait a few minutes and try again.",
+    "unavailable": "We couldn't check that just now — this one is on us, not you. Try again in a moment, and tell us if it keeps happening."
   },
   "scan": {
     "barcodeLabel": "Barcode",

@@ -39,11 +39,14 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
       `http://${h.get('host') ?? 'localhost:3000'}`;
 
     const client = h.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    const [emailOk, clientOk] = await Promise.all([
+    const checks = await Promise.all([
       checkRateLimit(await hashedBucket('signin-email', email), SIGN_IN_PER_EMAIL),
       checkRateLimit(await hashedBucket('signin-client', client), SIGN_IN_PER_CLIENT),
     ]);
-    if (!emailOk || !clientOk) redirect(`/${locale}/sign-in?error=throttled`);
+    // Both refuse, but a check that could not run is our fault and does not
+    // clear by waiting — telling someone to wait is a dead end there.
+    if (checks.includes('unavailable')) redirect(`/${locale}/sign-in?error=unavailable`);
+    if (checks.includes('limited')) redirect(`/${locale}/sign-in?error=throttled`);
 
     const supabase = await createClient();
     const { error } = await supabase.auth.signInWithOtp({
@@ -67,11 +70,12 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
 
     const h = await headers();
     const client = h.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    const [emailOk, clientOk] = await Promise.all([
+    const checks = await Promise.all([
       checkRateLimit(await hashedBucket('signin-password-email', email), SIGN_IN_PASSWORD_PER_EMAIL),
       checkRateLimit(await hashedBucket('signin-password-client', client), SIGN_IN_PASSWORD_PER_CLIENT),
     ]);
-    if (!emailOk || !clientOk) redirect(`/${locale}/sign-in?error=throttled`);
+    if (checks.includes('unavailable')) redirect(`/${locale}/sign-in?error=unavailable`);
+    if (checks.includes('limited')) redirect(`/${locale}/sign-in?error=throttled`);
 
     const supabase = await createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -127,9 +131,11 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
               <p role="alert" className="text-destructive text-sm">
                 {error === 'throttled'
                   ? t('throttled')
-                  : error === 'password'
-                    ? t('passwordError')
-                    : t('error')}
+                  : error === 'unavailable'
+                    ? t('unavailable')
+                    : error === 'password'
+                      ? t('passwordError')
+                      : t('error')}
               </p>
             )}
 
