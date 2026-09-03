@@ -38,7 +38,7 @@ export default async function ProductsPage({ params, searchParams }: PageProps<'
       </PageTitle>
 
       {/* GET form so the search term lives in the URL, not in component state. */}
-      <form role="search" className="flex flex-col gap-2">
+      <form role="search" className="flex flex-col gap-2 md:max-w-lg">
         <label htmlFor="q" className="sr-only">
           {t('searchLabel')}
         </label>

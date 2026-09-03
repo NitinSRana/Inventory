@@ -32,7 +32,12 @@ export function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2">
+    // Capped at desktop widths, full width on a phone. A form is a reading
+    // measure, not a table: a 13-character barcode field stretched across the
+    // 896px content column reads as a rendering fault, and .claude/rules/ui.md
+    // calls that out directly. The cap starts at md, so aisle screens keep
+    // their full-width 44px targets untouched.
+    <div className="flex flex-col gap-2 md:max-w-lg">
       <Label htmlFor={name}>{label}</Label>
       {children}
       {hint && <p className="text-muted-foreground text-xs">{hint}</p>}
@@ -46,11 +51,18 @@ export function Field({
 }
 
 /**
- * Two fields side by side. A grid rather than flex so the columns stay equal
- * when one label wraps to two lines and the other does not.
+ * Two fields side by side — but only once there is room for two.
+ *
+ * A grid rather than flex so the columns stay equal when one label wraps to two
+ * lines and the other does not.
+ *
+ * Stacked below `sm`, and that is not cosmetic: two inputs sharing a 375px row
+ * leave about 170px each, on screens like Receive that are used one-handed and
+ * gloved in a cold aisle. `.claude/rules/ui.md` sets a 44px minimum there for
+ * accessibility reasons (the European Accessibility Act), not stylistic ones.
  */
 export function FieldRow({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-2 gap-3">{children}</div>;
+  return <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:max-w-lg">{children}</div>;
 }
 
 /**

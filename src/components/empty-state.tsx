@@ -25,7 +25,10 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-start gap-3 rounded-lg border border-dashed px-4 py-12">
+    // Capped, or an empty screen becomes a 896px-wide dashed rectangle holding
+    // a 24px icon and two short lines — which reads as something broken rather
+    // than as "nothing here yet". Full width on a phone, where it already fits.
+    <div className="flex flex-col items-start gap-3 rounded-lg border border-dashed px-4 py-12 md:max-w-lg md:py-8">
       <Icon aria-hidden className="text-muted-foreground size-6" strokeWidth={1.5} />
       <div className="flex flex-col gap-1">
         <p className="font-medium">{title}</p>

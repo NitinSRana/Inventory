@@ -103,7 +103,10 @@ export function BarcodeField({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    // Same desktop cap as Field, which this deliberately does not use: it owns
+    // its own label and scan button. A barcode is 8-14 characters; the input
+    // has no business being 896px wide on a till screen.
+    <div className="flex flex-col gap-2 md:max-w-lg">
       <Label htmlFor={name}>{t('barcodeLabel')}</Label>
       <div className="flex gap-2">
         <Input
