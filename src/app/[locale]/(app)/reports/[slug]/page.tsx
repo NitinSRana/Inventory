@@ -112,7 +112,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<'/[
               table. One bordered container with dividers rather than a card per
               row: cards spend roughly 24px of gutter and shadow each and buy
               nothing, which is the same call every other list in the app makes. */}
-          <div className="overflow-hidden rounded-lg border sm:hidden">
+          <div className="overflow-hidden rounded-lg border md:hidden">
             <ul className="divide-border divide-y">
               {report.rows.map((row, i) => (
                 <li key={i} className="flex flex-col gap-1 px-4 py-3">
@@ -132,7 +132,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<'/[
             </ul>
           </div>
 
-          <div className="hidden overflow-x-auto sm:block">
+          <div className="hidden overflow-x-auto md:block">
             <Table>
               <TableHeader>
                 <TableRow>

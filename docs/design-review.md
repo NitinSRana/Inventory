@@ -3,8 +3,7 @@
 A screen-by-screen audit at desktop width, prompted by "why is there too much
 white space" on `/checkout`. Each item names the file and the shape of the fix.
 
-**Status:** P0 items 1–3 and P1 items 4–5 are done (`3624d92` and its follow-up).
-Item 6 needs a decision rather than a default; the three P2 items are open.
+**Status:** items 1–6 are done. The three P2 items are open.
 
 **How to use this file:** paste one heading plus its **Fix** block into a fresh
 session and say "do this one." Same discipline as `docs/backlog.md`.
@@ -115,7 +114,7 @@ staff keeps one 896px tile, and both stack on a phone.
 
 ---
 
-### 6. Only one screen has a desktop table
+### 6. Only one screen has a desktop table — FIXED
 
 **Where.** `products/page.tsx:104` is the only `hidden sm:table`. Sales,
 Suppliers, Categories, the Reports index and the dashboard batch list all render
@@ -127,10 +126,19 @@ so the eye has to travel the width of the screen to pair two facts that belong
 together. `.claude/rules/ui.md` asks for *"tables on desktop, stacked cards on
 mobile"*; today it is stacked cards everywhere.
 
-**Fix.** Two options, and this is the one worth a decision rather than a default:
-either cap `DataList` width on desktop (cheap, keeps one markup), or add `md:`
-table variants per screen (more work, matches the stated rule and reads better
-for Sales and Suppliers). Products already shows what the second looks like.
+**Fix, as shipped.** The second option — `md:` table variants for Sales,
+Suppliers and Categories, following the pattern Products already had. The rule
+asks for tables on desktop, and capping would have left the columns unaligned.
+
+**Deliberately left as lists:** the expiry dashboard (the handoff designs it as
+grouped rows under sticky headers, and it is the screen that sells the product),
+the checkout cart, the count screens, and the Reports *index* — that last one is
+a four-item navigation menu, not data.
+
+**Breakpoint aligned while here.** Products and Reports switched at `sm`, but the
+bottom tab bar hides at `md` — between 640 and 767px they put a desktop table on
+screen beside the phone nav. All list screens now switch at `md`, so the split is
+one line: below it, phone shell and stacked rows; above it, sidebar and tables.
 
 ---
 

@@ -340,6 +340,7 @@
     "minOrder": "Minimum order",
     "deliveryDays": "Delivery days",
     "leadTimeShort": "{days, plural, one {# day} other {# days}}",
+    "productCount": "Products",
     "productCountShort": "{count, plural, one {# product} other {# products}}",
     "productsFromSupplier": "Products from this supplier",
     "save": "Save",
@@ -543,6 +544,9 @@
     "title": "Sales",
     "empty": "No sales yet",
     "emptyBody": "Completed sales from Checkout show up here.",
+    "saleNumber": "Sale",
+    "date": "When",
+    "tender": "Paid by",
     "tenderTypes": {
       "cash": "Cash",
       "card": "Card"

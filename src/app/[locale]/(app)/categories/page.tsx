@@ -6,6 +6,7 @@ import { DataList, DataRow, PageTitle } from '@/components/data-list';
 import { EmptyState } from '@/components/empty-state';
 import { StickyAction } from '@/components/form';
 import { buttonVariants } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { requireRole } from '@/server/auth/session';
 import { listCategories } from '@/server/catalog/categories';
 
@@ -28,17 +29,46 @@ export default async function CategoriesPage({ params }: PageProps<'/[locale]/ca
       {categories.length === 0 ? (
         <EmptyState icon={Tag} title={t('empty')} body={t('emptyBody')} />
       ) : (
-        <DataList>
-          {categories.map((c) => (
-            <DataRow
-              key={c.id}
-              href={`/${locale}/categories/${c.id}`}
-              title={c.icon ? `${c.icon} ${c.name}` : c.name}
-              subtitle={c.description ?? undefined}
-              meta={t(`frequencies.${c.defaultCountFrequency}`)}
-            />
-          ))}
-        </DataList>
+        <>
+          <div className="md:hidden">
+            <DataList>
+              {categories.map((c) => (
+                <DataRow
+                  key={c.id}
+                  href={`/${locale}/categories/${c.id}`}
+                  title={c.icon ? `${c.icon} ${c.name}` : c.name}
+                  subtitle={c.description ?? undefined}
+                  meta={t(`frequencies.${c.defaultCountFrequency}`)}
+                />
+              ))}
+            </DataList>
+          </div>
+
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('name')}</TableHead>
+                  <TableHead>{t('description')}</TableHead>
+                  <TableHead>{t('countFrequency')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {categories.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell>
+                      <Link href={`/${locale}/categories/${c.id}`} className="hover:underline">
+                        {c.icon ? `${c.icon} ${c.name}` : c.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{c.description ?? '—'}</TableCell>
+                    <TableCell>{t(`frequencies.${c.defaultCountFrequency}`)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
 
       {/* Primary action in the bottom third, thumb-reachable. */}

@@ -76,7 +76,7 @@ export default async function ProductsPage({ params, searchParams }: PageProps<'
               Sticky letter headers, since rows already arrive name-sorted: a 1,994-row
               catalogue is only navigable without a visible scrollbar if the reader always
               knows which letter they're in. */}
-          <div className="sm:hidden">
+          <div className="md:hidden">
             <DataList>
               {(() => {
                 let lastLetter = '';
@@ -101,7 +101,9 @@ export default async function ProductsPage({ params, searchParams }: PageProps<'
             </DataList>
           </div>
 
-          <Table className="hidden sm:table">
+          {/* md, not sm: the bottom tab bar hides at md, so switching earlier
+              put a desktop table on screen next to the phone nav. */}
+          <Table className="hidden md:table">
             <TableHeader>
               <TableRow>
                 <TableHead>{t('name')}</TableHead>
