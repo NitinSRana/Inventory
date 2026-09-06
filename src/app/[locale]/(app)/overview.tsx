@@ -60,7 +60,13 @@ export async function InventoryOverview({
 
   return (
     <section className="flex flex-col gap-6">
-      <div className="flex flex-wrap gap-6">
+      {/* A grid rather than flex-wrap: content-sized tiles left-aligned leave
+          the right half of a desktop row empty, and the figures sit at ragged
+          intervals when one is much longer than the next. Three columns only
+          when all three render — Inventory value and Avg margin are manager+,
+          so a staff member sees Products alone, and one tile squeezed into a
+          third of the row is worse than the full-width one it has today. */}
+      <div className={`grid gap-6 ${canManage ? 'sm:grid-cols-3' : ''}`}>
         {summary && (
           <div className="flex flex-col gap-0.5">
             <SectionHeading>{t('inventoryValue')}</SectionHeading>

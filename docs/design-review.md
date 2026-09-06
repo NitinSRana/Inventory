@@ -1,8 +1,10 @@
 # Design review — desktop layout audit
 
 A screen-by-screen audit at desktop width, prompted by "why is there too much
-white space" on `/checkout`. Nothing here has been changed yet. Pick the items
-worth fixing; each one names the file and the shape of the fix.
+white space" on `/checkout`. Each item names the file and the shape of the fix.
+
+**Status:** P0 items 1–3 and P1 items 4–5 are done (`3624d92` and its follow-up).
+Item 6 needs a decision rather than a default; the three P2 items are open.
 
 **How to use this file:** paste one heading plus its **Fix** block into a fresh
 session and say "do this one." Same discipline as `docs/backlog.md`.
@@ -97,7 +99,7 @@ this document.
 
 ## P1 — desktop density
 
-### 5. The Today KPI row leaves the right half empty
+### 5. The Today KPI row leaves the right half empty — FIXED (3624d92 follow-up)
 
 **Where.** `src/app/[locale]/(app)/overview.tsx:63` — `flex flex-wrap gap-6`.
 
@@ -105,9 +107,11 @@ this document.
 margin) sit left-aligned, so on a wide screen roughly half the row is empty while
 the figures crowd the left edge. Visible in the current Today screenshot.
 
-**Fix.** `grid grid-cols-3` (or `grid-cols-1 sm:grid-cols-3`), so the three
-figures distribute across the row and each gets a consistent column. This also
-fixes their ragged alignment when one value is much longer than the others.
+**Fix, as shipped.** `grid gap-6 sm:grid-cols-3`, but only when all three tiles
+render. Inventory value and Avg margin are manager+, so a staff member sees
+Products alone — and a lone tile squeezed into a third of the row is worse than
+the full-width one it had. Verified at 896px: manager gets three 285px columns,
+staff keeps one 896px tile, and both stack on a phone.
 
 ---
 
