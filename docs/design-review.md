@@ -3,7 +3,8 @@
 A screen-by-screen audit at desktop width, prompted by "why is there too much
 white space" on `/checkout`. Each item names the file and the shape of the fix.
 
-**Status:** items 1–6 are done. The three P2 items are open.
+**Status:** closed. Items 1–8 are done; item 9 was withdrawn after measuring —
+the spacing it complained about already matches the handoff spec.
 
 **How to use this file:** paste one heading plus its **Fix** block into a fresh
 session and say "do this one." Same discipline as `docs/backlog.md`.
@@ -142,26 +143,35 @@ one line: below it, phone shell and stacked rows; above it, sidebar and tables.
 
 ---
 
-## P2 — polish, once the above land
+## P2 — polish
 
-### 7. Sparse charts render mostly-empty plots
+### 7. Sparse charts render mostly-empty plots — FIXED
 
-`TrendBars` with one populated month out of six draws a single bar against five
-empty slots (visible on Today now). Consider not rendering a trend until at least
-two points carry data — an empty chart makes a new shop look broken rather than
-new.
+`TrendBars` with one populated month out of six drew a single bar against five
+empty slots.
 
-### 8. A single-category mix bar says nothing
+**Fix, as shipped.** The suppression lives in `overview.tsx`, not in
+`TrendBars` — and that distinction is the point. Drawing a zero as a real
+column is *correct* for a revenue series, where a closed Sunday is a fact worth
+seeing; the component's own comment says so. In a six-month value trend the
+zeros mean "before this shop had stock", so one bar against five empty ones
+reads as a collapse rather than as a new shop. Only the caller knows which of
+the two it is holding, so only the caller can decide. Renders once two months
+carry stock.
 
-`Category mix` at "Uncategorized 100.0%" is a full-width bar carrying no
-information. Hide the block below two categories.
+### 8. A single-category mix bar says nothing — FIXED
 
-### 9. Uniform vertical gaps flatten the hierarchy
+"Uncategorized 100.0%" was a full-width bar carrying nothing the product count
+above did not already say. Now renders at two categories or more.
 
-Nearly every screen is `flex flex-col gap-6`. The design handoff's §3 argues the
-opposite — dense rows with one generous "chapter" break — and notes that
-uniformity, not density, is what reads cheap. Worth a pass once widths are fixed,
-since capping widths will change how the rhythm looks anyway.
+### 9. Uniform vertical gaps flatten the hierarchy — NO CHANGE NEEDED
+
+**Withdrawn.** This item was written from an impression rather than a
+measurement, and the measurement disagrees. The spacing is not uniform, and what
+is there already matches the handoff's §3 table exactly: `py-8` on the one
+headline block (`HeadlineFigure`), `gap-6` between blocks (its most common use,
+23 occurrences), `px-4 py-3` inside rows (`DataRow`), and `gap-2`/`gap-3` within
+a row. There is nothing to fix here.
 
 ---
 

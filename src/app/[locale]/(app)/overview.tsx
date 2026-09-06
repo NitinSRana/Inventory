@@ -1,5 +1,6 @@
 import { getFormatter, getTranslations } from 'next-intl/server';
 import { ArrowDown, ArrowUp } from 'lucide-react';
+import Decimal from 'decimal.js';
 
 import { RankedBars, TrendBars } from '@/components/charts';
 import { SectionHeading } from '@/components/data-list';
@@ -46,6 +47,11 @@ export async function InventoryOverview({
   ]);
 
   const money = (v: string) => format.number(Number(v), { style: 'currency', currency });
+
+  // Decimal rather than Number: these are numeric strings off the ledger, and
+  // the project's rule against float arithmetic on money holds even when the
+  // result only decides whether a chart renders.
+  const monthsWithStock = trend?.filter((p) => new Decimal(p.value).greaterThan(0)).length ?? 0;
 
   const delta = (percent: string | null) => {
     if (percent === null) return null;
@@ -100,7 +106,14 @@ export async function InventoryOverview({
         )}
       </div>
 
-      {trend && (
+      {/* Two points before this is a trend at all.
+          The zero months are not "the stock was worth nothing" — they are
+          months before this shop had any, and TrendBars is right to draw a
+          zero as a real column (a closed Sunday in a revenue series is a
+          fact worth seeing). Here it would be a lie: one bar against five
+          empty ones reads as a collapse rather than as a new shop, and the
+          caller is the only one that knows the difference. */}
+      {trend && monthsWithStock >= 2 && (
         <section className="flex flex-col gap-2 rounded-lg border p-4">
           <SectionHeading>{t('valueTrend')}</SectionHeading>
           {/* No price-history table exists, so each point is *today's*
@@ -112,7 +125,10 @@ export async function InventoryOverview({
         </section>
       )}
 
-      {mix.length > 0 && (
+      {/* A mix of one is not a mix: a lone "Uncategorized 100.0%" bar is a
+          full-width row carrying no information a reader did not already
+          have from the product count above. */}
+      {mix.length >= 2 && (
         <section className="flex flex-col gap-3 rounded-lg border p-4">
           <SectionHeading>{t('categoryMix')}</SectionHeading>
           <RankedBars items={mix} format={(v) => `${v}%`} emptyLabel={t('noStock')} />
