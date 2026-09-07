@@ -54,7 +54,7 @@ export default async function AppLayout({ children, params }: LayoutProps<'/[loc
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="bg-background sticky top-0 z-40 border-b">
-          <div className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-3 px-4">
+          <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-3 px-4">
             <Link href={`/${locale}`} className="truncate font-medium">
               {org.name}
             </Link>
@@ -74,11 +74,16 @@ export default async function AppLayout({ children, params }: LayoutProps<'/[loc
           </div>
         </header>
 
-        {/* max-w-5xl rather than 3xl: the old cap made a 1920px monitor render a
-            phone column. Still capped, because a table stretched edge to edge on
-            an ultrawide is no more readable than one crushed into 320px.
+        {/* The page fills the monitor; the *controls* inside it are what get
+            capped (Field/FieldRow/BarcodeField cap at md:max-w-lg, EmptyState
+            likewise). Those are two different jobs and they were being confused:
+            capping the page to hold a form to a readable measure left a 1920px
+            screen showing an 896px column with 370px of dead space either side,
+            which is the "why is there so much white space" this is answering.
+            Still capped at all, because a table stretched across an ultrawide is
+            no more readable than one crushed into 320px.
             pb-20 clears the fixed bottom bar on mobile; there is none above md. */}
-        <div className="mx-auto w-full max-w-5xl flex-1 pb-20 md:pb-0">{children}</div>
+        <div className="mx-auto w-full max-w-7xl flex-1 pb-20 md:pb-0">{children}</div>
       </div>
 
       <AppNav locale={locale} />

@@ -52,6 +52,8 @@ export async function InventoryOverview({
   // the project's rule against float arithmetic on money holds even when the
   // result only decides whether a chart renders.
   const monthsWithStock = trend?.filter((p) => new Decimal(p.value).greaterThan(0)).length ?? 0;
+  const showTrend = Boolean(trend) && monthsWithStock >= 2;
+  const showMix = mix.length >= 2;
 
   const delta = (percent: string | null) => {
     if (percent === null) return null;
@@ -106,6 +108,10 @@ export async function InventoryOverview({
         )}
       </div>
 
+      {/* Side by side once there is width for both, so a wide monitor shows two
+          panels rather than one stretched one above another gap. Full width
+          when only one of them has anything to say. */}
+      <div className={`grid gap-6 ${showTrend && showMix ? 'lg:grid-cols-2' : ''}`}>
       {/* Two points before this is a trend at all.
           The zero months are not "the stock was worth nothing" — they are
           months before this shop had any, and TrendBars is right to draw a
@@ -113,7 +119,9 @@ export async function InventoryOverview({
           fact worth seeing). Here it would be a lie: one bar against five
           empty ones reads as a collapse rather than as a new shop, and the
           caller is the only one that knows the difference. */}
-      {trend && monthsWithStock >= 2 && (
+      {/* `trend &&` repeated rather than relying on showTrend: the boolean
+          loses the null-narrowing TrendBars needs. */}
+      {trend && showTrend && (
         <section className="flex flex-col gap-2 rounded-lg border p-4">
           <SectionHeading>{t('valueTrend')}</SectionHeading>
           {/* No price-history table exists, so each point is *today's*
@@ -128,12 +136,13 @@ export async function InventoryOverview({
       {/* A mix of one is not a mix: a lone "Uncategorized 100.0%" bar is a
           full-width row carrying no information a reader did not already
           have from the product count above. */}
-      {mix.length >= 2 && (
+      {showMix && (
         <section className="flex flex-col gap-3 rounded-lg border p-4">
           <SectionHeading>{t('categoryMix')}</SectionHeading>
           <RankedBars items={mix} format={(v) => `${v}%`} emptyLabel={t('noStock')} />
         </section>
       )}
+      </div>
     </section>
   );
 }
