@@ -80,13 +80,35 @@ export function BarcodeField({
           Html5QrcodeSupportedFormats.QR_CODE,
           Html5QrcodeSupportedFormats.DATA_MATRIX,
         ],
+        /*
+         * Hand 1D barcodes to the browser's own BarcodeDetector where it
+         * exists (Chrome and Android do; Safari does not). The library's
+         * fallback is a JavaScript port of ZXing, which reads QR codes well
+         * and EAN-13 off a curved crisp packet poorly — and a till that fails
+         * to read a barcode is a till nobody uses. Falls back automatically.
+         */
+        useBarCodeDetectorIfSupported: true,
         verbose: false,
       });
       scannerRef.current = scanner;
 
       await scanner.start(
         { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 260, height: 140 } },
+        {
+          fps: 10,
+          /*
+           * A barcode is only decoded when it fits *entirely* inside this box,
+           * and the fixed 260×140 it used to be is narrower than an EAN-13 held
+           * at arm's length — so the scanner would sit there reading nothing,
+           * which is exactly the "it doesn't even scan" report. Size it to the
+           * viewfinder instead, wide and short: the shape of the thing being
+           * read, rather than the square a QR code wants.
+           */
+          qrbox: (viewfinderWidth: number, viewfinderHeight: number) => ({
+            width: Math.floor(viewfinderWidth * 0.92),
+            height: Math.floor(Math.min(viewfinderHeight * 0.6, 220)),
+          }),
+        },
         (decoded) => {
           if (inputRef.current) inputRef.current.value = decoded;
           void stop();
