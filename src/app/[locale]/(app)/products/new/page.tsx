@@ -21,7 +21,7 @@ export default async function NewProductPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const { error } = await searchParams;
+  const { error, gtin } = await searchParams;
   const t = await getTranslations('products');
   const tBack = await getTranslations('back');
   const { orgId } = await requireRole(locale, 'manager');
@@ -48,6 +48,19 @@ export default async function NewProductPage({
     redirect(`/${locale}/products`);
   }
 
+  /*
+   * Arriving from a scan that matched nothing — Receive and Checkout both link
+   * here with the code they just read. Retyping thirteen digits that the phone
+   * has already decoded, while holding the box, is exactly the friction that
+   * stops a catalogue ever getting filled in.
+   *
+   * A GTIN-14 is a shipping carton, not a retail unit, so it goes to the case
+   * field: putting it in `gtin` would make the till think a case of 24 is one
+   * sellable item.
+   */
+  const scanned = typeof gtin === 'string' ? gtin.trim() : '';
+  const prefill = scanned.length === 14 ? { caseGtin: scanned } : { gtin: scanned || null };
+
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-24">
       <BackLink href={`/${locale}/products`} label={tBack('products')} />
@@ -57,6 +70,7 @@ export default async function NewProductPage({
         suppliers={suppliers}
         categories={categories}
         vatBands={vatBands}
+        defaults={prefill}
         error={typeof error === 'string' ? error : undefined}
       />
     </main>

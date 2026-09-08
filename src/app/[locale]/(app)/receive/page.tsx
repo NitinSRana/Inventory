@@ -123,8 +123,10 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
           <p role="alert" className="text-sm">
             {t('notFound', { barcode })}
           </p>
+          {/* Carry the scanned code into the form — it is the whole reason
+              this link is being offered. */}
           <Link
-            href={`/${locale}/products/new`}
+            href={`/${locale}/products/new?gtin=${encodeURIComponent(barcode)}`}
             className={buttonVariants({ variant: 'outline', className: 'h-11' })}
           >
             {t('addProduct')}

@@ -15,6 +15,7 @@ import { withTenant } from '@/db/tenant';
 import { addToCart, encodeCart, parseCart, removeFromCart } from '@/lib/cart';
 import { trimQuantity } from '@/lib/quantity';
 import { requireOrg } from '@/server/auth/session';
+import { normalizeGtin } from '@/server/catalog/ean';
 import {
   findProductByBarcode,
   getProduct,
@@ -163,6 +164,10 @@ export default async function CheckoutPage({
   const matches =
     !scanned && query ? await listProducts(orgId, { search: query, limit: 8 }) : null;
 
+  // Only a real barcode is worth carrying into the product form; a name that
+  // matched nothing is not one.
+  const scannedCode = query && normalizeGtin(query) ? query : '';
+
   const [scannedStock] = scanned ? await getProductStock(orgId, scanned.id) : [];
 
   async function addLine(formData: FormData) {
@@ -282,8 +287,12 @@ export default async function CheckoutPage({
                 <p role="alert" className="text-sm">
                   {t('notFound', { barcode: String(query) })}
                 </p>
+                {/* Same as Receive: hand the form what was just scanned. This
+                    one field takes a barcode *or* a name, so prefill only when
+                    it really is a barcode — "choco" typed into the product's
+                    barcode field would be worse than an empty one. */}
                 <Link
-                  href={`/${locale}/products/new`}
+                  href={`/${locale}/products/new${scannedCode ? `?gtin=${encodeURIComponent(scannedCode)}` : ''}`}
                   className={buttonVariants({ variant: 'outline', className: 'h-11' })}
                 >
                   {t('addProduct')}
