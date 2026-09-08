@@ -78,7 +78,7 @@ export default async function CorrectStockPage({
       <PageTitle>{t('correctStock')}</PageTitle>
       <p className="text-muted-foreground text-sm">{t('correctStockBody')}</p>
 
-      <form action={save} className="flex flex-col gap-4 pb-20 sm:pb-0">
+      <form action={save} className="flex flex-col gap-4 pb-32 md:pb-0">
         <Field name="quantity" label={t('correctQuantity', { unit: product.unit })}>
           <Input
             id="quantity"

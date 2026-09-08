@@ -67,7 +67,7 @@ export default async function StoreSettingsPage({
         </p>
       )}
 
-      <form action={save} className="flex flex-col gap-4 pb-20 sm:pb-0">
+      <form action={save} className="flex flex-col gap-4 pb-32 md:pb-0">
         <Field name="name" label={t('name')}>
           <Input id="name" name="name" required defaultValue={org.name} className="h-12" />
         </Field>

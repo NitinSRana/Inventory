@@ -50,8 +50,12 @@ export async function ProductForm({
   const orderedBands = BAND_DISPLAY_ORDER.filter((b) => ratesByBand.has(b));
   const percent = (rate: string) => `${Number(rate) * 100}%`;
 
+  // pb-32 clears the sticky Save button, which sits 80px up and is 48px tall —
+  // pb-20 left the last field underneath it. md, not sm: the button only stops
+  // being fixed at md, so dropping the padding at sm removed the clearance
+  // while the button was still floating.
   return (
-    <form action={action} className="flex flex-col gap-4 pb-20 sm:pb-0">
+    <form action={action} className="flex flex-col gap-4 pb-32 md:pb-0">
       <Field name="name" label={t('name')}>
         <Input id="name" name="name" required defaultValue={defaults.name} className="h-12" />
       </Field>

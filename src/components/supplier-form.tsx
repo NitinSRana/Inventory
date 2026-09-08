@@ -30,7 +30,7 @@ export async function SupplierForm({
   const selected = new Set(defaults.deliveryWeekdays ?? []);
 
   return (
-    <form action={action} className="flex flex-col gap-4 pb-20 sm:pb-0">
+    <form action={action} className="flex flex-col gap-4 pb-32 md:pb-0">
       <Field name="name" label={t('name')}>
         <Input id="name" name="name" required defaultValue={defaults.name} className="h-12" />
       </Field>
