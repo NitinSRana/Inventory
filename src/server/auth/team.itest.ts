@@ -10,6 +10,7 @@ import {
   listPendingInvitations,
   removeMember,
   revokeInvitation,
+  setMemberDisplayName,
 } from '@/server/auth/team';
 import { adminSql, createTestOrg, type TestOrg } from '@/server/testing/fixtures';
 
@@ -113,5 +114,25 @@ describe('the last owner', () => {
     const after = await listMembers(org.orgId);
     assert.equal(after.filter((m) => m.role === 'owner').length, 1);
     assert.equal(after.find((m) => m.userId === org.userId)!.role, 'manager');
+  });
+
+  test('a member can be given a name, and a blank one clears it', async () => {
+    const [member] = await listMembers(org.orgId);
+
+    await setMemberDisplayName(org.orgId, member.id, '  Anna  ');
+    assert.equal((await listMembers(org.orgId)).find((m) => m.id === member.id)!.displayName, 'Anna');
+
+    // Blank stores null, not '', so every reader tests one thing.
+    await setMemberDisplayName(org.orgId, member.id, '   ');
+    assert.equal((await listMembers(org.orgId)).find((m) => m.id === member.id)!.displayName, null);
+  });
+
+  test('another tenant cannot rename a member of this one', async () => {
+    const [member] = await listMembers(org.orgId);
+    await setMemberDisplayName(org.orgId, member.id, 'Anna');
+
+    const other = await createTestOrg('Rename Rival');
+    assert.equal(await setMemberDisplayName(other.orgId, member.id, 'Mallory'), null);
+    assert.equal((await listMembers(org.orgId)).find((m) => m.id === member.id)!.displayName, 'Anna');
   });
 });

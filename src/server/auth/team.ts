@@ -28,6 +28,7 @@ export async function listMembers(orgId: string) {
         id: organizationMembers.id,
         userId: organizationMembers.userId,
         role: organizationMembers.role,
+        displayName: organizationMembers.displayName,
         joinedAt: organizationMembers.createdAt,
       })
       .from(organizationMembers)
@@ -130,6 +131,24 @@ export async function changeMemberRole(orgId: string, memberId: string, role: Ro
     tx
       .update(organizationMembers)
       .set({ role })
+      .where(eq(organizationMembers.id, memberId))
+      .returning(),
+  );
+  return member ?? null;
+}
+
+/**
+ * What to call someone on screen.
+ *
+ * Blank clears it rather than storing an empty string, so every reader can test
+ * one thing — null — instead of two.
+ */
+export async function setMemberDisplayName(orgId: string, memberId: string, name: string) {
+  const trimmed = name.trim();
+  const [member] = await withTenant(orgId, (tx) =>
+    tx
+      .update(organizationMembers)
+      .set({ displayName: trimmed || null })
       .where(eq(organizationMembers.id, memberId))
       .returning(),
   );

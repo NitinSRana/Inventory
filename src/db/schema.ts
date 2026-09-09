@@ -53,6 +53,8 @@ export const organizationMembers = pgTable('organization_members', {
   organizationId: orgId(),
   userId: uuid('user_id').notNull(),
   role: text('role', { enum: ['owner', 'manager', 'staff'] }).notNull(),
+  /** What to call this person on screen. Null falls back to the user id. */
+  displayName: text('display_name'),
   ...timestamps,
 }, (t) => ({
   orgUser: uniqueIndex('organization_members_organization_id_user_id_key')

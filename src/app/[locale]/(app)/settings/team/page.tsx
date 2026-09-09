@@ -21,6 +21,7 @@ import {
   listPendingInvitations,
   removeMember,
   revokeInvitation,
+  setMemberDisplayName,
 } from '@/server/auth/team';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
@@ -88,11 +89,18 @@ export default async function TeamPage({ params, searchParams }: PageProps<'/[lo
     redirect(`/${locale}/settings/team`);
   }
 
-  async function setRole(formData: FormData) {
+  /**
+   * One Save per member, covering both things about them that are editable.
+   * The name goes first because it can never fail — a rejected role change must
+   * not silently discard a name the owner just typed.
+   */
+  async function saveMember(formData: FormData) {
     'use server';
     const { orgId } = await requireRole(locale, 'owner');
+    const memberId = String(formData.get('memberId'));
+    await setMemberDisplayName(orgId, memberId, String(formData.get('displayName') ?? ''));
     try {
-      await changeMemberRole(orgId, String(formData.get('memberId')), String(formData.get('role')) as Role);
+      await changeMemberRole(orgId, memberId, String(formData.get('role')) as Role);
     } catch (e) {
       redirect(`/${locale}/settings/team?error=${e instanceof LastOwnerError ? 'lastOwner' : 'unknown'}`);
     }
@@ -147,15 +155,29 @@ export default async function TeamPage({ params, searchParams }: PageProps<'/[lo
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-medium">{t('membersTitle', { count: members.length })}</h2>
+        <p className="text-muted-foreground text-sm">{t('membersHint')}</p>
         <ul className="flex flex-col gap-2">
           {members.map((m) => (
             <li key={m.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
-              <span className="font-mono text-xs">
+              {/* The user id stays visible as the caption: it is what tells two
+                  people called Anna apart, and the only thing that is certainly
+                  there before anyone has typed a name. */}
+              <span className="text-muted-foreground font-mono text-xs">
                 {m.userId === userId ? t('you') : m.userId.slice(0, 8)}
               </span>
-              <div className="flex items-center gap-2">
-                <form action={setRole} className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <form action={saveMember} className="flex flex-wrap items-center gap-2">
                   <input type="hidden" name="memberId" value={m.id} />
+                  <label htmlFor={`name-${m.id}`} className="sr-only">
+                    {t('nameLabel')}
+                  </label>
+                  <Input
+                    id={`name-${m.id}`}
+                    name="displayName"
+                    defaultValue={m.displayName ?? ''}
+                    placeholder={t('namePlaceholder')}
+                    className="h-11 w-40"
+                  />
                   <label htmlFor={`role-${m.id}`} className="sr-only">
                     {t('roleLabel')}
                   </label>
