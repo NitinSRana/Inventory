@@ -8,7 +8,14 @@ import { getBatchStock, getProductStock } from '@/server/stock/levels';
 import { receiveStock } from '@/server/stock/movements';
 import { adminSql, createTestOrg, type TestOrg } from '@/server/testing/fixtures';
 
-import { UnpricedProductError, checkout, listSales, voidSale } from './checkout';
+import {
+  UnpricedProductError,
+  VoidReasonRequiredError,
+  checkout,
+  listSales,
+  voidNeedsReason,
+  voidSale,
+} from './checkout';
 
 /**
  * Checkout against a real database: the transaction that ties a sale, its
@@ -264,7 +271,8 @@ describe('checkout', () => {
       assert.ok(cash.every((r) => r.tenderType === 'cash'));
       assert.ok(cash.some((r) => r.id === onTheFirst));
 
-      await voidSale(shop.orgId, onTheFirst);
+      // Backdated in the setup above, so it needs a reason like any real one.
+      await voidSale(shop.orgId, onTheFirst, { reason: 'Keyed against the wrong day' });
       const voided = await listSales(shop.orgId, { status: 'voided' });
       assert.deepEqual(
         voided.map((r) => r.id),
@@ -436,5 +444,74 @@ describe('checkout — use-by enforcement', () => {
 
     const [stock] = await getProductStock(org.orgId, beans);
     assert.equal(stock.quantity, '8.000');
+  });
+});
+
+describe('voiding an older sale', () => {
+  let org: TestOrg;
+  let soap: string;
+
+  before(async () => {
+    org = await createTestOrg('Void Window');
+    await seedVatRatesForCountry(org.orgId, 'DE');
+    soap = (
+      await createProduct(org.orgId, {
+        name: 'Seife',
+        gtin: '4001234567914',
+        sellPrice: '1.9900',
+        vatBand: 'standard',
+      })
+    ).id;
+    await receiveStock(org.orgId, { productId: soap, quantity: '50' });
+  });
+
+  const backdate = async (saleId: string) =>
+    adminSql`update sales set occurred_at = now() - interval '3 days' where id = ${saleId}`;
+
+  test("today's mis-ring is ordinary till work and needs no explanation", async () => {
+    const sale = await checkout(org.orgId, {
+      lines: [{ productId: soap, quantity: '1' }],
+      tenderType: 'cash',
+    });
+    assert.equal(await voidNeedsReason(org.orgId, sale.id), false);
+    const voided = await voidSale(org.orgId, sale.id);
+    assert.equal(voided.status, 'voided');
+  });
+
+  test('a sale from a closed day will not be voided silently', async () => {
+    const sale = await checkout(org.orgId, {
+      lines: [{ productId: soap, quantity: '1' }],
+      tenderType: 'cash',
+    });
+    await backdate(sale.id);
+
+    assert.equal(await voidNeedsReason(org.orgId, sale.id), true);
+    // In the domain, not on the page: a bookmarked URL reaches this too.
+    await assert.rejects(() => voidSale(org.orgId, sale.id), VoidReasonRequiredError);
+    await assert.rejects(
+      () => voidSale(org.orgId, sale.id, { reason: '   ' }),
+      VoidReasonRequiredError,
+      'whitespace is not a reason',
+    );
+
+    const [still] = await adminSql`select status from sales where id = ${sale.id}`;
+    assert.equal(still.status, 'completed', 'the refused void changed nothing');
+  });
+
+  test('the reason is carried onto the correction, not just checked', async () => {
+    const sale = await checkout(org.orgId, {
+      lines: [{ productId: soap, quantity: '2' }],
+      tenderType: 'card',
+    });
+    await backdate(sale.id);
+
+    await voidSale(org.orgId, sale.id, { reason: 'Rung up twice at close' });
+
+    // Which is what puts it in the corrections report with nothing else written.
+    const [movement] = await adminSql`
+      select note from stock_movements
+      where reference_id = ${sale.id} and movement_type = 'manual_adjustment' limit 1`;
+    assert.match(movement.note, /Rung up twice at close$/);
+    assert.match(movement.note, new RegExp(`^Reverses sale ${sale.saleNumber}: `));
   });
 });

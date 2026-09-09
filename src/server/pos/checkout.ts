@@ -5,6 +5,7 @@ import {
   SALE_STATUSES,
   TENDER_TYPES,
   locations,
+  organizations,
   products,
   saleLines,
   sales,
@@ -334,11 +335,69 @@ export async function getSale(orgId: string, saleId: string) {
   });
 }
 
-export async function voidSale(orgId: string, saleId: string, actorId?: string | null) {
+/** A void of an older sale went through with nothing on the record. */
+export class VoidReasonRequiredError extends Error {
+  constructor() {
+    super('Voiding a sale from a previous day needs a written reason');
+    this.name = 'VoidReasonRequiredError';
+  }
+}
+
+/**
+ * Was this sale rung up today, in the shop's own timezone?
+ *
+ * Asked of Postgres inside the transaction, never of the Node clock: a server
+ * in another region would put a 23:40 sale on the wrong side of midnight and
+ * demand a reason for voiding something that happened twenty minutes ago.
+ *
+ * ponytail: calendar day, not trading day. A shop that closes at 01:00 will see
+ * the small hours count as a new day. Add a per-org day-start offset if a real
+ * one asks.
+ */
+async function ringUpDayIsToday(tx: Tx, saleId: string) {
+  const rows = await tx.execute<{ same: boolean }>(sql`
+    select (${SALE_OCCURRED} at time zone ${organizations.timezone})::date
+         = (now() at time zone ${organizations.timezone})::date as same
+    from ${sales} join ${organizations} on ${organizations.id} = ${sales.organizationId}
+    where ${sales.id} = ${saleId}`);
+  return rows[0]?.same ?? false;
+}
+
+/** Whether the void screen has to ask for a reason before it will submit. */
+export async function voidNeedsReason(orgId: string, saleId: string) {
+  return withTenant(orgId, async (tx) => !(await ringUpDayIsToday(tx, saleId)));
+}
+
+/**
+ * Reverses a sale in full.
+ *
+ * Voiding stays manager-only at every entry point. What is new is that a sale
+ * from a previous day needs a written reason: today's mis-ring is ordinary
+ * till work, but reaching back into a closed day moves money that has already
+ * been counted and, once the VAT report exists, already declared. A hard
+ * refusal was the other option and is worse — it removes the only fix for a
+ * mis-rung sale and leaves its VAT on the books.
+ *
+ * The reason rides into the compensating movement's note, so it turns up in
+ * the corrections report without anything else being written.
+ */
+export async function voidSale(
+  orgId: string,
+  saleId: string,
+  options: { actorId?: string | null; reason?: string | null } = {},
+) {
+  const { actorId = null, reason = null } = options;
   return withTenant(orgId, async (tx) => {
     const [sale] = await tx.select().from(sales).where(eq(sales.id, saleId)).limit(1);
     if (!sale) throw new Error('Sale not found');
     if (sale.status === 'voided') throw new Error('Sale is already voided');
+
+    // In the domain, not on the page: a page-only guard is one a bookmarked
+    // URL walks straight past.
+    const trimmedReason = reason?.trim() || null;
+    if (!trimmedReason && !(await ringUpDayIsToday(tx, saleId))) {
+      throw new VoidReasonRequiredError();
+    }
 
     const originalMovements = await tx
       .select()
@@ -359,15 +418,17 @@ export async function voidSale(orgId: string, saleId: string, actorId?: string |
           reasonCode: 'correction' as const,
           referenceType: 'sale' as const,
           referenceId: saleId,
-          actorId: actorId ?? null,
-          note: `Reverses sale ${sale.saleNumber}`,
+          actorId,
+          note: trimmedReason
+            ? `Reverses sale ${sale.saleNumber}: ${trimmedReason}`
+            : `Reverses sale ${sale.saleNumber}`,
         })),
       );
     }
 
     const [voided] = await tx
       .update(sales)
-      .set({ status: 'voided', voidedAt: new Date(), voidedBy: actorId ?? null })
+      .set({ status: 'voided', voidedAt: new Date(), voidedBy: actorId })
       .where(eq(sales.id, saleId))
       .returning();
 

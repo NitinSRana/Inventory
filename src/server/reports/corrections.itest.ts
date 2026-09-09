@@ -54,7 +54,7 @@ describe('corrections report', () => {
       lines: [{ productId: milk, quantity: '2' }],
       tenderType: 'cash',
     });
-    await voidSale(org.orgId, sale.id, org.userId);
+    await voidSale(org.orgId, sale.id, { actorId: org.userId });
 
     const report = await buildReport(org.orgId, 'corrections', 30);
     const row = report.rows.find((r) => r.saleNumber === sale.saleNumber);

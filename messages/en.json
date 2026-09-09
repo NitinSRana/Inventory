@@ -638,7 +638,10 @@
     "voidTitle": "Void {number}?",
     "voidBody": "This restores the stock sold on this sale. The sale stays visible, marked voided — nothing is deleted.",
     "stockRestored": "Stock that will be restored",
-    "confirmVoid": "Confirm void"
+    "confirmVoid": "Confirm void",
+    "voidReasonLabel": "Why is this being voided?",
+    "voidReasonHint": "This sale is from an earlier day, so its takings have already been counted. The reason is kept with the correction.",
+    "voidReasonRequired": "Give a reason before voiding a sale from an earlier day."
   },
   "store": {
     "title": "Store",
