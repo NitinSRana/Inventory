@@ -1,6 +1,15 @@
 import { and, asc, desc, eq, gte, isNotNull, lt, sql } from 'drizzle-orm';
 
-import { expiringStock, productStock, products, saleLines, sales, suppliers } from '@/db/schema';
+import {
+  expiringStock,
+  organizationMembers,
+  productStock,
+  products,
+  saleLines,
+  sales,
+  stockMovements,
+  suppliers,
+} from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 
 import { SALE_OCCURRED } from '@/server/pos/checkout';
@@ -15,7 +24,14 @@ import type { Report } from './csv';
  * and four exporters — is the same information written many times over.
  */
 
-export const REPORT_SLUGS = ['stock', 'expiry', 'low-stock', 'sales', 'vat'] as const;
+export const REPORT_SLUGS = [
+  'stock',
+  'expiry',
+  'low-stock',
+  'sales',
+  'vat',
+  'corrections',
+] as const;
 export type ReportSlug = (typeof REPORT_SLUGS)[number];
 
 /** Stock on hand and what it is worth. */
@@ -249,6 +265,72 @@ async function vatByBand(orgId: string, days: number): Promise<Report> {
   };
 }
 
+/**
+ * Every hand-made change to the ledger, and who made it.
+ *
+ * One query, no union: `voidSale` already posts its reversals as
+ * `manual_adjustment` rows carrying `reference_type = 'sale'`, so corrections
+ * and voids are the same shape in the same table and only the reference tells
+ * them apart. That is also why this is a report rather than a screen — the
+ * period picker and the CSV export come free, and an auditor asking "what did
+ * you change last quarter" wants a file.
+ */
+async function corrections(orgId: string, days: number): Promise<Report> {
+  const since = new Date(Date.now() - days * 864e5);
+  const rows = await withTenant(orgId, (tx) =>
+    tx
+      .select({
+        occurredAt: stockMovements.occurredAt,
+        productName: products.name,
+        quantityDelta: stockMovements.quantityDelta,
+        unit: products.unit,
+        // Written by whoever made the correction, and the whole reason a
+        // required reason is worth requiring.
+        note: stockMovements.note,
+        saleNumber: sales.saleNumber,
+        actorName: organizationMembers.displayName,
+        actorId: stockMovements.actorId,
+      })
+      .from(stockMovements)
+      .innerJoin(products, eq(products.id, stockMovements.productId))
+      // Only some corrections reverse a sale, and a member may have been
+      // removed since — both joins have to be left joins or those rows vanish
+      // from the audit log, which is the one place they must not.
+      .leftJoin(sales, eq(sales.id, stockMovements.referenceId))
+      .leftJoin(organizationMembers, eq(organizationMembers.userId, stockMovements.actorId))
+      .where(
+        and(
+          eq(stockMovements.movementType, 'manual_adjustment'),
+          gte(stockMovements.occurredAt, since),
+        ),
+      )
+      .orderBy(desc(stockMovements.occurredAt), desc(stockMovements.id)),
+  );
+
+  return {
+    columns: [
+      { key: 'occurredAt', label: 'when' },
+      { key: 'productName', label: 'product' },
+      { key: 'quantityDelta', label: 'change', numeric: true, format: 'quantity' },
+      { key: 'unit', label: 'unit' },
+      { key: 'saleNumber', label: 'sale' },
+      { key: 'actor', label: 'who' },
+      { key: 'note', label: 'reason' },
+    ],
+    rows: rows.map((r) => ({
+      occurredAt: r.occurredAt.toISOString().slice(0, 10),
+      productName: r.productName,
+      quantityDelta: r.quantityDelta,
+      unit: r.unit,
+      saleNumber: r.saleNumber ?? '',
+      // The name if there is one, the id if there is not, and blank for a
+      // movement nobody was recorded against — never a made-up person.
+      actor: r.actorName ?? (r.actorId ? r.actorId.slice(0, 8) : ''),
+      note: r.note ?? '',
+    })),
+  };
+}
+
 export function buildReport(orgId: string, slug: ReportSlug, days: number): Promise<Report> {
   switch (slug) {
     case 'stock':
@@ -261,6 +343,8 @@ export function buildReport(orgId: string, slug: ReportSlug, days: number): Prom
       return salesByProduct(orgId, days);
     case 'vat':
       return vatByBand(orgId, days);
+    case 'corrections':
+      return corrections(orgId, days);
   }
 }
 

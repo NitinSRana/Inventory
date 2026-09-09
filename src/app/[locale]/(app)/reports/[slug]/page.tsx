@@ -22,7 +22,7 @@ export const dynamic = 'force-dynamic';
 
 const PERIODS = [7, 30, 90] as const;
 /** Only these two are time-bounded; stock and low-stock are point-in-time. */
-const TIME_BOUNDED: ReportSlug[] = ['expiry', 'sales', 'vat'];
+const TIME_BOUNDED: ReportSlug[] = ['expiry', 'sales', 'vat', 'corrections'];
 
 /** Which column each report's headline figure sums. Low-stock has no money
  * figure to lead with — the count of lines under minimum is the headline. */

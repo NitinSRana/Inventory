@@ -330,28 +330,32 @@
       "expiry": "Value at risk",
       "low-stock": "Below minimum",
       "sales": "Revenue",
-      "vat": "VAT collected"
+      "vat": "VAT collected",
+      "corrections": "Corrections made"
     },
     "headlineCaption": {
       "stock": "{count, plural, one {# product} other {# products}}",
       "expiry": "{count, plural, one {# batch} other {# batches}}",
       "low-stock": "products under their minimum",
       "sales": "{count, plural, one {# product sold} other {# products sold}}, last {days} days",
-      "vat": "over a rolling {days} days — a VAT return covers a calendar quarter, so check the dates before you file"
+      "vat": "over a rolling {days} days — a VAT return covers a calendar quarter, so check the dates before you file",
+      "corrections": "in the last {days} days, including voided sales"
     },
     "names": {
       "stock": "Stock on hand",
       "expiry": "Expiry exposure",
       "low-stock": "Low stock",
       "sales": "Sales",
-      "vat": "VAT collected"
+      "vat": "VAT collected",
+      "corrections": "Corrections"
     },
     "blurbs": {
       "stock": "Everything you hold and what it is worth.",
       "expiry": "Money sitting in stock that is about to stop being sellable.",
       "low-stock": "Products under their minimum, with the supplier to call.",
       "sales": "What sold, by product, and what it brought in.",
-      "vat": "What was charged in each VAT band, for filling in a return."
+      "vat": "What was charged in each VAT band, for filling in a return.",
+      "corrections": "Every hand-made change to the ledger, and who made it."
     },
     "columns": {
       "product": "Product",
@@ -373,7 +377,12 @@
       "vatBand": "Band",
       "lines": "Lines",
       "net": "Net",
-      "effectiveRate": "Rate %"
+      "effectiveRate": "Rate %",
+      "when": "When",
+      "change": "Change",
+      "sale": "Sale",
+      "who": "Who",
+      "reason": "Reason"
     }
   },
   "suppliers": {
