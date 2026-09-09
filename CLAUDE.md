@@ -127,6 +127,15 @@ Several are planned for later. The schema already accommodates them — that's w
 
 **Removed, not merely never built:** reorder suggestions, purchase orders, and the write-off screen were implemented, then pulled as a deliberate product decision. `stock_movements.reference_type` still allows `'purchase_order'`, `on_order_quantities` and the `waste` movement type still exist in the schema, and existing tenant data may still carry rows using them — none of that was touched. What's gone is the app-layer code that created new ones: `src/server/purchasing/*`, `recordWaste`, and the three routes. Don't rebuild any of this without confirming the decision has actually reversed.
 
+**Where the line sits now.** Low stock is *shown*, grouped by supplier — the
+`low-stock` report leads with the supplier column, and a supplier's own page
+flags which of its products are under their minimum. That is a read of
+`products.min_stock` against `product_stock` and nothing more. It stays a read:
+no suggested order quantities, no order to place, no pack-size rounding, no
+lead-time maths. "Which of the things Bookers brings are running out" is a
+question a shopkeeper answers with a phone call; the moment the app answers it
+with a number, it is doing reordering again.
+
 Reconsidered once already, against the design at `https://raven-perm-38237201.figma.site/` — that design's nav includes all three, but it's a generic multi-vertical retail template (coffee, electronics, apparel), not built for this product. Confirmed the removal stands: no write-off screen, no reorder suggestions, no purchase orders. Write-off in particular isn't a staging decision — it's the product's core thesis, stated at the top of this file: loss surfaces through a count (a shrinkage audit), never through someone logging it in the moment.
 
 **Correcting a keying error is not the same decision as removing write-off.** `/products/[id]/correct` (manager-only) posts a compensating `manual_adjustment` movement via `adjustStock()` when someone received 100 cases instead of 10, or fat-fingered a count. The write-off removal was about *loss* — that should surface through a count, not be logged by whoever noticed it. This is about *typos* — the ledger being wrong through no fault of the shop's actual stock. There is no reason-code picker and no path from here back to anything resembling waste tracking; the reason is a required sentence, not a category.

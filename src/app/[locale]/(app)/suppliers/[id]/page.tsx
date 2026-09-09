@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 
 import { SupplierForm, supplierInputFrom } from '@/components/supplier-form';
 import { BackLink } from '@/components/back-link';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
@@ -42,6 +43,7 @@ export default async function EditSupplierPage({
   ]);
   const money = (v: string | null) =>
     v === null ? '—' : format.number(Number(v), { style: 'currency', currency: org.currencyCode });
+  const short = products.filter((p) => p.belowMinimum);
 
   async function save(formData: FormData) {
     'use server';
@@ -75,13 +77,32 @@ export default async function EditSupplierPage({
       {products.length > 0 && (
         <section className="flex flex-col gap-3">
           <SectionHeading>{t('productsFromSupplier')}</SectionHeading>
+          {/* A sentence, not a hue on the heading: the reason to open a
+              supplier is usually that you are about to phone them, and this is
+              the line that says what to ask for. */}
+          {short.length > 0 && (
+            <p className="text-muted-foreground text-sm tabular-nums">
+              {t('belowMinimumCount', { count: short.length })}
+            </p>
+          )}
           <DataList>
             {products.map((p) => (
               <DataRow
                 key={p.id}
                 href={`/${locale}/products/${p.id}`}
                 title={p.name}
-                subtitle={p.categoryName ?? undefined}
+                subtitle={
+                  p.belowMinimum ? (
+                    // Labelled as well as coloured — this app's whole signal is
+                    // red/green and a good share of staff cannot tell them apart.
+                    <span className="flex flex-wrap items-center gap-2">
+                      <Badge variant="destructive">{t('belowMinimum')}</Badge>
+                      {p.categoryName}
+                    </span>
+                  ) : (
+                    (p.categoryName ?? undefined)
+                  )
+                }
                 value={money(p.sellPrice)}
                 meta={
                   <>

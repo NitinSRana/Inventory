@@ -414,7 +414,9 @@
       "5": "Fri",
       "6": "Sat",
       "7": "Sun"
-    }
+    },
+    "belowMinimum": "Below minimum",
+    "belowMinimumCount": "{count, plural, one {# product is} other {# products are}} below their minimum."
   },
   "vat": {
     "title": "VAT rates",

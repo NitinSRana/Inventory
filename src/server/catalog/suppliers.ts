@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 
 import { categories, productStock, products, suppliers } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
@@ -93,11 +93,29 @@ export async function getSupplierProducts(orgId: string, supplierId: string) {
         categoryName: categories.name,
         sellPrice: products.sellPrice,
         quantity: sql<string>`coalesce(${productStock.quantity}, 0)::text`,
+        minStock: products.minStock,
+        /*
+         * The one question this page could not answer: of the things this
+         * supplier brings, which are running out. Computed in SQL because it is
+         * also what the rows are sorted by, and a flag derived in the render
+         * cannot sort the query that produced it.
+         *
+         * This is a read, and stays one. No suggested quantities, no order to
+         * place — see CLAUDE.md on where that line sits.
+         */
+        belowMinimum: sql<boolean>`${products.minStock} is not null
+          and coalesce(${productStock.quantity}, 0) < ${products.minStock}`,
       })
       .from(products)
       .leftJoin(categories, eq(categories.id, products.categoryId))
       .leftJoin(productStock, eq(productStock.productId, products.id))
       .where(eq(products.supplierId, supplierId))
-      .orderBy(asc(products.name)),
+      // Short first, then alphabetical: the reason someone opens a supplier is
+      // usually that they are about to phone them.
+      .orderBy(
+        desc(sql`${products.minStock} is not null
+          and coalesce(${productStock.quantity}, 0) < ${products.minStock}`),
+        asc(products.name),
+      ),
   );
 }

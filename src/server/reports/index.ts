@@ -129,17 +129,20 @@ async function lowStock(orgId: string): Promise<Report> {
       .where(
         and(eq(products.isActive, true), isNotNull(products.minStock), lt(onHand, products.minStock)),
       )
-      .orderBy(asc(products.name)),
+      // Grouped by supplier, because that is how the list gets acted on: one
+      // phone call covers everything that comes from one place. Products with
+      // no supplier sort last — they are the ones nobody can be called about.
+      .orderBy(sql`${suppliers.name} asc nulls last`, asc(products.name)),
   );
 
   return {
     columns: [
+      { key: 'supplierName', label: 'supplier' },
       { key: 'name', label: 'product' },
       { key: 'gtin', label: 'barcode' },
       { key: 'quantity', label: 'onHand', numeric: true, format: 'quantity' },
       { key: 'minStock', label: 'minimum', numeric: true, format: 'quantity' },
       { key: 'unit', label: 'unit' },
-      { key: 'supplierName', label: 'supplier' },
     ],
     rows: rows.map((r) => ({
       name: r.name,
