@@ -15,7 +15,11 @@ import type { Column } from './csv';
 export function formatCell(
   column: Column,
   raw: string | undefined,
-  fmt: { money: (value: number) => string; quantity: (value: string) => string },
+  fmt: {
+    money: (value: number) => string;
+    quantity: (value: string) => string;
+    vatBand: (band: string) => string;
+  },
 ): string {
   // An em dash, not an empty cell: a blank reads as "the page failed to render
   // this", where the dash reads as "there is nothing here", which is the truth.
@@ -27,5 +31,7 @@ export function formatCell(
     return Number.isFinite(n) ? fmt.money(n) : raw;
   }
   if (column.format === 'quantity') return fmt.quantity(raw);
+  // The CSV keeps 'super_reduced'; the screen says what that means.
+  if (column.format === 'vatBand') return fmt.vatBand(raw);
   return raw;
 }

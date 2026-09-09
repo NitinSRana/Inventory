@@ -22,7 +22,7 @@ export const dynamic = 'force-dynamic';
 
 const PERIODS = [7, 30, 90] as const;
 /** Only these two are time-bounded; stock and low-stock are point-in-time. */
-const TIME_BOUNDED: ReportSlug[] = ['expiry', 'sales'];
+const TIME_BOUNDED: ReportSlug[] = ['expiry', 'sales', 'vat'];
 
 /** Which column each report's headline figure sums. Low-stock has no money
  * figure to lead with — the count of lines under minimum is the headline. */
@@ -30,6 +30,7 @@ const MONEY_COLUMN: Partial<Record<ReportSlug, string>> = {
   stock: 'value',
   expiry: 'valueAtRisk',
   sales: 'grossRevenue',
+  vat: 'vat',
 };
 
 function sumColumn(rows: Record<string, string>[], key: string): string {
@@ -48,6 +49,8 @@ export default async function ReportPage({ params, searchParams }: PageProps<'/[
 
   const t = await getTranslations('reports');
   const tBack = await getTranslations('back');
+  // Band names are already worded once, on the product screen.
+  const tProducts = await getTranslations('products');
   const format = await getFormatter();
   const { orgId } = await requireOrg(locale);
   const report = await buildReport(orgId, reportSlug, period);
@@ -60,6 +63,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<'/[
     formatCell(column, raw, {
       money: (v) => format.number(v, { style: 'currency', currency: org.currencyCode }),
       quantity: trimQuantity,
+      vatBand: (band) => tProducts(`vatBands.${band}`),
     });
 
   const showPeriod = TIME_BOUNDED.includes(reportSlug);

@@ -329,25 +329,29 @@
       "stock": "Total stock value",
       "expiry": "Value at risk",
       "low-stock": "Below minimum",
-      "sales": "Revenue"
+      "sales": "Revenue",
+      "vat": "VAT collected"
     },
     "headlineCaption": {
       "stock": "{count, plural, one {# product} other {# products}}",
       "expiry": "{count, plural, one {# batch} other {# batches}}",
       "low-stock": "products under their minimum",
-      "sales": "{count, plural, one {# product sold} other {# products sold}}, last {days} days"
+      "sales": "{count, plural, one {# product sold} other {# products sold}}, last {days} days",
+      "vat": "over a rolling {days} days — a VAT return covers a calendar quarter, so check the dates before you file"
     },
     "names": {
       "stock": "Stock on hand",
       "expiry": "Expiry exposure",
       "low-stock": "Low stock",
-      "sales": "Sales"
+      "sales": "Sales",
+      "vat": "VAT collected"
     },
     "blurbs": {
       "stock": "Everything you hold and what it is worth.",
       "expiry": "Money sitting in stock that is about to stop being sellable.",
       "low-stock": "Products under their minimum, with the supplier to call.",
-      "sales": "What sold, by product, and what it brought in."
+      "sales": "What sold, by product, and what it brought in.",
+      "vat": "What was charged in each VAT band, for filling in a return."
     },
     "columns": {
       "product": "Product",
@@ -365,7 +369,11 @@
       "supplier": "Supplier",
       "grossValue": "Incl. VAT",
       "vat": "VAT",
-      "grossRevenue": "Revenue"
+      "grossRevenue": "Revenue",
+      "vatBand": "Band",
+      "lines": "Lines",
+      "net": "Net",
+      "effectiveRate": "Rate %"
     }
   },
   "suppliers": {

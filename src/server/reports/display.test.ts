@@ -11,11 +11,13 @@ import type { Column } from './csv.ts';
 const fmt = {
   money: (v: number) => `EUR ${v.toFixed(2)}`,
   quantity: (v: string) => (v.includes('.') ? v.replace(/\.?0+$/, '') : v),
+  vatBand: (b: string) => ({ zero: 'Zero-rated', super_reduced: 'Super reduced' })[b] ?? b,
 };
 
 const money: Column = { key: 'value', label: 'value', numeric: true, format: 'money' };
 const qty: Column = { key: 'quantity', label: 'quantity', numeric: true, format: 'quantity' };
 const plain: Column = { key: 'name', label: 'product' };
+const band: Column = { key: 'vatBand', label: 'vatBand', format: 'vatBand' };
 
 test('money columns are formatted, not shown as raw numerics', () => {
   // The whole point: the row carries 123.4500 so the CSV stays re-importable.
@@ -47,4 +49,11 @@ test('zero is a real figure and survives', () => {
 
 test('a non-numeric value in a money column is shown, not rendered as NaN', () => {
   assert.equal(formatCell(money, 'n/a', fmt), 'n/a');
+});
+
+test('a VAT band is named on screen and left as its code in the file', () => {
+  // The CSV keeps 'super_reduced' so it stays machine-readable; nobody filling
+  // in a return should have to translate it in their head.
+  assert.equal(formatCell(band, 'super_reduced', fmt), 'Super reduced');
+  assert.equal(formatCell(band, 'zero', fmt), 'Zero-rated');
 });

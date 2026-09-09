@@ -3,6 +3,7 @@ import { and, asc, desc, eq, gte, isNotNull, lt, sql } from 'drizzle-orm';
 import { expiringStock, productStock, products, saleLines, sales, suppliers } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 
+import { SALE_OCCURRED } from '@/server/pos/checkout';
 import { getRatesByBand } from '@/server/settings/vat';
 import { grossValue } from '@/server/settings/valuation';
 
@@ -14,7 +15,7 @@ import type { Report } from './csv';
  * and four exporters — is the same information written many times over.
  */
 
-export const REPORT_SLUGS = ['stock', 'expiry', 'low-stock', 'sales'] as const;
+export const REPORT_SLUGS = ['stock', 'expiry', 'low-stock', 'sales', 'vat'] as const;
 export type ReportSlug = (typeof REPORT_SLUGS)[number];
 
 /** Stock on hand and what it is worth. */
@@ -177,6 +178,77 @@ async function salesByProduct(orgId: string, days: number): Promise<Report> {
   };
 }
 
+/**
+ * VAT collected, by band — the numbers a return is filled in from.
+ *
+ * Every figure is summed from what was stored on the line at the moment of
+ * sale. Nothing here reads `vat_rates`: a shop that corrects a band's rate
+ * today must not see last quarter's takings silently restated, and a period
+ * spanning a rate change must show what was actually charged on both sides
+ * of it.
+ *
+ * VAT is the stored remainder, so net is `gross - vat` rather than anything
+ * recomputed — `net + vat` reconstructs the gross the customer paid, to the
+ * penny, which is the only property a return cares about.
+ */
+async function vatByBand(orgId: string, days: number): Promise<Report> {
+  const since = new Date(Date.now() - days * 864e5);
+  const rows = await withTenant(orgId, (tx) =>
+    tx
+      .select({
+        vatBand: saleLines.vatBand,
+        lines: sql<number>`count(*)::int`,
+        net: sql<string>`round(sum(${saleLines.lineTotal} - ${saleLines.vatAmount}), 2)::text`,
+        vat: sql<string>`round(sum(${saleLines.vatAmount}), 2)::text`,
+        // Built from the two rounded halves rather than rounded separately, so
+        // net + VAT reconstructs the gross on screen to the penny. Rounding
+        // three exact sums independently can leave the row a cent short of
+        // itself, on a page someone copies figures off into a return.
+        gross: sql<string>`(round(sum(${saleLines.lineTotal} - ${saleLines.vatAmount}), 2)
+          + round(sum(${saleLines.vatAmount}), 2))::text`,
+        // Derived, not stored, and deliberately shown: it is the only honest
+        // rate available, and it reads as a blended figure exactly when it is
+        // one — a period in which a band's rate moved.
+        effectiveRate: sql<string>`case
+          when sum(${saleLines.lineTotal} - ${saleLines.vatAmount}) = 0 then ''
+          else round(100 * sum(${saleLines.vatAmount}) / sum(${saleLines.lineTotal} - ${saleLines.vatAmount}), 1)::text
+        end`,
+      })
+      .from(saleLines)
+      .innerJoin(sales, eq(sales.id, saleLines.saleId))
+      // Voided sales keep their lines. Counting them would over-declare.
+      // The bound value is an ISO string with an explicit cast: a raw SQL
+      // expression carries no column type for the driver to map a Date through.
+      .where(
+        and(
+          eq(sales.status, 'completed'),
+          sql`${SALE_OCCURRED} >= ${since.toISOString()}::timestamptz`,
+        ),
+      )
+      .groupBy(saleLines.vatBand)
+      .orderBy(desc(sql`sum(${saleLines.vatAmount})`)),
+  );
+
+  return {
+    columns: [
+      { key: 'vatBand', label: 'vatBand', format: 'vatBand' },
+      { key: 'lines', label: 'lines', numeric: true },
+      { key: 'net', label: 'net', numeric: true, format: 'money' },
+      { key: 'vat', label: 'vat', numeric: true, format: 'money' },
+      { key: 'gross', label: 'grossRevenue', numeric: true, format: 'money' },
+      { key: 'effectiveRate', label: 'effectiveRate', numeric: true },
+    ],
+    rows: rows.map((r) => ({
+      vatBand: r.vatBand,
+      lines: String(r.lines),
+      net: r.net,
+      vat: r.vat,
+      gross: r.gross,
+      effectiveRate: r.effectiveRate,
+    })),
+  };
+}
+
 export function buildReport(orgId: string, slug: ReportSlug, days: number): Promise<Report> {
   switch (slug) {
     case 'stock':
@@ -187,6 +259,8 @@ export function buildReport(orgId: string, slug: ReportSlug, days: number): Prom
       return lowStock(orgId);
     case 'sales':
       return salesByProduct(orgId, days);
+    case 'vat':
+      return vatByBand(orgId, days);
   }
 }
 

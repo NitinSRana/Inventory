@@ -14,7 +14,7 @@ export type Column = {
    * currency symbol in a spreadsheet column is a broken import. The screen
    * formats at the last moment; the file does not.
    */
-  format?: 'money' | 'quantity';
+  format?: 'money' | 'quantity' | 'vatBand';
 };
 export type Report = { columns: Column[]; rows: Record<string, string>[] };
 
