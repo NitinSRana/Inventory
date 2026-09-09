@@ -8,9 +8,10 @@ import { DataList, DataRow, PageTitle, SectionHeading } from '@/components/data-
 import { EmptyState } from '@/components/empty-state';
 import { UrgencyBadge, urgencyOf } from '@/components/expiry-urgency';
 import { buttonVariants } from '@/components/ui/button';
-import { organizations } from '@/db/schema';
+import { MOVEMENT_TYPES, organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 import { trimQuantity } from '@/lib/quantity';
+import { LIST_LIMITS, limitFrom, pick } from '@/lib/search-params';
 import { roleAtLeast } from '@/server/auth/roles';
 import { requireOrg } from '@/server/auth/session';
 import { getProduct } from '@/server/catalog/products';
@@ -34,7 +35,10 @@ export const dynamic = 'force-dynamic';
  * Cost price is the exception: it is the shop's buying position and its margin,
  * so it is shown to manager and above. Sell price is on the shelf edge already.
  */
-export default async function ProductPage({ params }: PageProps<'/[locale]/products/[id]'>) {
+export default async function ProductPage({
+  params,
+  searchParams,
+}: PageProps<'/[locale]/products/[id]'>) {
   const { locale, id } = await params;
   setRequestLocale(locale);
 
@@ -44,6 +48,12 @@ export default async function ProductPage({ params }: PageProps<'/[locale]/produ
   const { orgId, role } = await requireOrg(locale);
   const canManage = roleAtLeast(role, 'manager');
 
+  // Namespaced `mv`: this is a detail page carrying several sections, and a
+  // bare `type` or `limit` would collide the moment a second one grows a filter.
+  const sp = await searchParams;
+  const movementType = pick(sp.mv, MOVEMENT_TYPES);
+  const movementLimit = limitFrom(sp.mvLimit);
+
   // RLS scopes this, so another tenant's id is indistinguishable from a missing one.
   const product = await getProduct(orgId, id);
   if (!product) notFound();
@@ -52,8 +62,19 @@ export default async function ProductPage({ params }: PageProps<'/[locale]/produ
   const [stock, batches, movements] = await Promise.all([
     getProductStock(orgId, id),
     getProductBatches(orgId, id),
-    getProductMovements(orgId, id, 10),
+    getProductMovements(orgId, id, { limit: movementLimit, type: movementType }),
   ]);
+
+  const movementHref = (next: { mv?: string; mvLimit?: number }) => {
+    const q = new URLSearchParams();
+    const mv = next.mv ?? movementType;
+    const lim = next.mvLimit ?? movementLimit;
+    if (mv) q.set('mv', mv);
+    if (lim !== LIST_LIMITS[0]) q.set('mvLimit', String(lim));
+    const qs = q.toString();
+    return `/${locale}/products/${id}${qs ? `?${qs}` : ''}#movements`;
+  };
+  const nextMovementLimit = LIST_LIMITS[LIST_LIMITS.indexOf(movementLimit) + 1];
 
   const money = (v: string | null) =>
     v === null ? '—' : format.number(Number(v), { style: 'currency', currency: org.currencyCode });
@@ -216,10 +237,42 @@ export default async function ProductPage({ params }: PageProps<'/[locale]/produ
         )}
       </section>
 
-      <section className="flex flex-col gap-2">
+      <section id="movements" className="flex flex-col gap-2 scroll-mt-16">
         <SectionHeading>{t('recentMovements')}</SectionHeading>
+
+        {/* Links, not a form: one filter with five values reads better as a row
+            of choices than as a select plus an Apply button, and each one is a
+            shareable URL. */}
+        <nav aria-label={t('movementFilterLabel')} className="flex flex-wrap gap-2">
+          <Link
+            href={movementHref({ mv: '' })}
+            aria-current={movementType ? undefined : 'page'}
+            className={buttonVariants({
+              variant: movementType ? 'outline' : 'default',
+              className: 'h-11',
+            })}
+          >
+            {t('allMovements')}
+          </Link>
+          {MOVEMENT_TYPES.map((mt) => (
+            <Link
+              key={mt}
+              href={movementHref({ mv: mt })}
+              aria-current={movementType === mt ? 'page' : undefined}
+              className={buttonVariants({
+                variant: movementType === mt ? 'default' : 'outline',
+                className: 'h-11',
+              })}
+            >
+              {t(`movementTypes.${mt}`)}
+            </Link>
+          ))}
+        </nav>
+
         {movements.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t('noMovements')}</p>
+          <p className="text-muted-foreground text-sm">
+            {movementType ? t('noMovementsOfType') : t('noMovements')}
+          </p>
         ) : (
           <DataList>
             {movements.map((m) => {
@@ -250,6 +303,16 @@ export default async function ProductPage({ params }: PageProps<'/[locale]/produ
               );
             })}
           </DataList>
+        )}
+
+        {/* Raise the ceiling rather than page — see the sales list. */}
+        {movements.length === movementLimit && nextMovementLimit && (
+          <Link
+            href={movementHref({ mvLimit: nextMovementLimit })}
+            className={buttonVariants({ variant: 'outline', className: 'h-11 w-fit' })}
+          >
+            {t('showMore', { count: nextMovementLimit })}
+          </Link>
         )}
       </section>
     </main>

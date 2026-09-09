@@ -1,6 +1,13 @@
 import { and, asc, desc, eq, gt, isNotNull, lte, sql } from 'drizzle-orm';
 
-import { batches, expiringStock, productStock, stockLevels, stockMovements } from '@/db/schema';
+import {
+  MOVEMENT_TYPES,
+  batches,
+  expiringStock,
+  productStock,
+  stockLevels,
+  stockMovements,
+} from '@/db/schema';
 import { withTenant, type Tx } from '@/db/tenant';
 
 import type { BatchStock } from './fefo';
@@ -98,7 +105,22 @@ export async function getProductBatches(orgId: string, productId: string) {
  * none showed how it got there. A miscount, a delivery logged twice and a theft
  * all look identical on a stock figure alone.
  */
-export async function getProductMovements(orgId: string, productId: string, limit = 20) {
+export async function getProductMovements(
+  orgId: string,
+  productId: string,
+  options: { limit?: number; type?: (typeof MOVEMENT_TYPES)[number] } = {},
+) {
+  const { limit = 20, type } = options;
+
+  /*
+   * The type filter is what keeps this readable on a fast mover. Milk sells
+   * hundreds of times a week, so within a month the two receipts someone is
+   * actually looking for sit under a wall of identical consumption rows —
+   * and "why does this say 6?" is the question the ledger exists to answer.
+   */
+  const where = [eq(stockMovements.productId, productId)];
+  if (type) where.push(eq(stockMovements.movementType, type));
+
   return withTenant(orgId, (tx) =>
     tx
       .select({
@@ -110,7 +132,7 @@ export async function getProductMovements(orgId: string, productId: string, limi
         note: stockMovements.note,
       })
       .from(stockMovements)
-      .where(eq(stockMovements.productId, productId))
+      .where(and(...where))
       .orderBy(desc(stockMovements.occurredAt), desc(stockMovements.id))
       .limit(limit),
   );

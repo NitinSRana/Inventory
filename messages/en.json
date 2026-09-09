@@ -137,6 +137,9 @@
     "expiredDaysAgo": "{days, plural, one {expired # day ago} other {expired # days ago}}",
     "recentMovements": "Recent movements",
     "noMovements": "Nothing has moved this product yet.",
+    "noMovementsOfType": "Nothing of this kind has moved this product.",
+    "movementFilterLabel": "Filter movements",
+    "allMovements": "All",
     "movementTypes": {
       "receipt": "Received",
       "waste": "Written off",

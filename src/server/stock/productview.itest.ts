@@ -54,7 +54,7 @@ describe('product view queries', () => {
   });
 
   test('movements read newest-first and carry their reason', async () => {
-    const rows = await getProductMovements(org.orgId, productId, 10);
+    const rows = await getProductMovements(org.orgId, productId, { limit: 10 });
     assert.equal(rows.length, 4, 'three receipts and one adjustment');
     const adjustment = rows.find((r) => r.movementType === 'manual_adjustment');
     assert.ok(adjustment, 'the adjustment is visible');
@@ -63,7 +63,18 @@ describe('product view queries', () => {
   });
 
   test('the limit is respected, so a busy product cannot flood the screen', async () => {
-    const rows = await getProductMovements(org.orgId, productId, 2);
+    const rows = await getProductMovements(org.orgId, productId, { limit: 2 });
     assert.equal(rows.length, 2);
+  });
+
+  test('the type filter narrows to one kind of movement', async () => {
+    // The point of the filter on a fast mover: the two receipts someone came
+    // for, without the wall of consumption rows they sit under.
+    const receipts = await getProductMovements(org.orgId, productId, { type: 'receipt' });
+    assert.equal(receipts.length, 3);
+    assert.ok(receipts.every((r) => r.movementType === 'receipt'));
+
+    const none = await getProductMovements(org.orgId, productId, { type: 'count_adjustment' });
+    assert.deepEqual(none, [], 'a type with no rows is empty, not unfiltered');
   });
 });
