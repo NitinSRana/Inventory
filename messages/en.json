@@ -547,6 +547,21 @@
     "saleNumber": "Sale",
     "date": "When",
     "tender": "Paid by",
+    "from": "From",
+    "to": "To",
+    "status": "Status",
+    "anyTender": "Cash or card",
+    "anyStatus": "All sales",
+    "statuses": {
+      "completed": "Completed",
+      "voided": "Voided"
+    },
+    "applyFilters": "Apply",
+    "clearFilters": "Clear",
+    "noMatches": "No sales match those filters",
+    "noMatchesBody": "Try a wider date range, or clear the filters to see everything.",
+    "showing": "{count, plural, one {# sale} other {# sales}}",
+    "showMore": "Show up to {count}",
     "tenderTypes": {
       "cash": "Cash",
       "card": "Card"

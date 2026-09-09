@@ -215,6 +215,78 @@ describe('checkout', () => {
       "another tenant sees none of this one's sales",
     );
   });
+
+  describe('listSales filters', () => {
+    let shop: TestOrg;
+    let widget: string;
+    let onTheFirst: string;
+    let onTheTenth: string;
+
+    before(async () => {
+      shop = await createTestOrg('Sales Filters');
+      widget = (
+        await createProduct(shop.orgId, { name: 'Widget', gtin: '5012345678931', sellPrice: '2.0000' })
+      ).id;
+      await receiveStock(shop.orgId, { productId: widget, quantity: '100' });
+
+      const sell = async (tenderType: 'cash' | 'card') =>
+        checkout(shop.orgId, { lines: [{ productId: widget, quantity: '1' }], tenderType });
+
+      onTheFirst = (await sell('cash')).id;
+      onTheTenth = (await sell('card')).id;
+
+      // Backdate them. occurred_at is the till's own time — the whole point of
+      // filtering on it rather than on when the row was written.
+      await adminSql`update sales set occurred_at = '2026-03-01T09:00:00Z' where id = ${onTheFirst}`;
+      await adminSql`update sales set occurred_at = '2026-03-10T09:00:00Z' where id = ${onTheTenth}`;
+    });
+
+    test('a date range filters on when the sale happened, not when it was recorded', async () => {
+      // Both rows were *created* seconds ago; only occurred_at differs. Filtering
+      // on created_at would return both, which is the bug this guards.
+      const march = await listSales(shop.orgId, { from: '2026-03-01', to: '2026-03-05' });
+      const ids = march.map((r) => r.id);
+      assert.ok(ids.includes(onTheFirst));
+      assert.equal(ids.includes(onTheTenth), false, 'the 10th is outside 1-5 March');
+    });
+
+    test('the closing day is inside the range, not cut off at its midnight', async () => {
+      // A shopkeeper asking for "1st to 10th" means the whole of the 10th.
+      const inclusive = await listSales(shop.orgId, { from: '2026-03-10', to: '2026-03-10' });
+      assert.deepEqual(
+        inclusive.map((r) => r.id),
+        [onTheTenth],
+      );
+    });
+
+    test('tender and status narrow the list', async () => {
+      const cash = await listSales(shop.orgId, { tenderType: 'cash' });
+      assert.ok(cash.every((r) => r.tenderType === 'cash'));
+      assert.ok(cash.some((r) => r.id === onTheFirst));
+
+      await voidSale(shop.orgId, onTheFirst);
+      const voided = await listSales(shop.orgId, { status: 'voided' });
+      assert.deepEqual(
+        voided.map((r) => r.id),
+        [onTheFirst],
+      );
+    });
+
+    test('search matches the sale number', async () => {
+      const [any] = await listSales(shop.orgId, { limit: 1 });
+      const hit = await listSales(shop.orgId, { search: any.saleNumber });
+      assert.deepEqual(
+        hit.map((r) => r.id),
+        [any.id],
+      );
+      assert.deepEqual(await listSales(shop.orgId, { search: 'NOPE-9999' }), []);
+    });
+
+    test('ordering follows occurred_at, so a backdated sale sorts where it happened', async () => {
+      const rows = await listSales(shop.orgId);
+      assert.equal(rows[0].id, onTheTenth, 'the 10th is newer than the 1st');
+    });
+  });
 });
 
 /**

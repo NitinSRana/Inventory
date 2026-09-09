@@ -1,7 +1,15 @@
 import Decimal from 'decimal.js';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, sql, type SQL } from 'drizzle-orm';
 
-import { locations, products, saleLines, sales, stockMovements } from '@/db/schema';
+import {
+  SALE_STATUSES,
+  TENDER_TYPES,
+  locations,
+  products,
+  saleLines,
+  sales,
+  stockMovements,
+} from '@/db/schema';
 import { withTenant, type Tx } from '@/db/tenant';
 import { netFromGross } from '@/server/settings/valuation';
 import { getRatesByBand } from '@/server/settings/vat';
@@ -21,6 +29,19 @@ import { getBatchStock } from '@/server/stock/levels';
  * tenant's own rates — never trusted from the caller, so nothing about the
  * total can be posted from the client.
  */
+
+/**
+ * When a sale happened, as against when this database heard about it.
+ *
+ * `occurred_at` is the till's own time; it is null only for rows written before
+ * that column existed, where `created_at` is the same moment anyway. Defined
+ * once because three things have to agree on it — the list's ordering, its date
+ * filter, and any report that assigns a sale to a period. A sale rung up at
+ * 23:55 on the 31st and synced at 00:05 on the 1st belongs to the earlier
+ * month, and a VAT return is the place where disagreeing about that is
+ * expensive.
+ */
+export const SALE_OCCURRED = sql<Date>`coalesce(${sales.occurredAt}, ${sales.createdAt})`;
 
 async function defaultLocationId(tx: Tx): Promise<string> {
   const [location] = await tx
@@ -205,21 +226,52 @@ export async function checkout(
  * says "you overcharged me five minutes ago" and needs to find the sale
  * before it can be voided.
  */
-export async function listSales(orgId: string, limit = 50) {
+export type SaleFilters = {
+  /** Inclusive, plain `YYYY-MM-DD` as a date input hands it over. */
+  from?: string;
+  to?: string;
+  tenderType?: (typeof TENDER_TYPES)[number];
+  status?: (typeof SALE_STATUSES)[number];
+  /** Matches the sale number. */
+  search?: string;
+  limit?: number;
+};
+
+export async function listSales(orgId: string, filters: SaleFilters = {}) {
+  const { from, to, tenderType, status, search, limit = 50 } = filters;
+
+  const where: SQL[] = [];
+  /*
+   * The list displays, orders by and filters on the same expression, and all
+   * three matter. It used to display `occurred_at` while ordering by
+   * `created_at`; a date filter added against either one alone would have
+   * silently dropped sales whose displayed date sat inside the range — the kind
+   * of bug that surfaces weeks later as "the filter lost a sale". A sale synced
+   * from an external till carries the time it happened at their end, which is
+   * the only time a shopkeeper recognises.
+   */
+  if (from) where.push(sql`${SALE_OCCURRED} >= ${from}::date`);
+  // Inclusive of the closing day itself, rather than stopping at its midnight.
+  if (to) where.push(sql`${SALE_OCCURRED} < (${to}::date + interval '1 day')`);
+  if (tenderType) where.push(eq(sales.tenderType, tenderType));
+  if (status) where.push(eq(sales.status, status));
+  if (search?.trim()) where.push(ilike(sales.saleNumber, `%${search.trim()}%`));
+
   return withTenant(orgId, (tx) =>
     tx
       .select({
         id: sales.id,
         saleNumber: sales.saleNumber,
-        // Falls back to createdAt, which is never null, for any row from
-        // before occurred_at existed.
-        occurredAt: sql<Date>`coalesce(${sales.occurredAt}, ${sales.createdAt})`,
+        occurredAt: SALE_OCCURRED,
         tenderType: sales.tenderType,
         total: sales.total,
         status: sales.status,
       })
       .from(sales)
-      .orderBy(sql`${sales.createdAt} desc`)
+      .where(where.length ? and(...where) : undefined)
+      // id breaks ties, so two sales in the same second keep a stable order
+      // rather than shuffling between renders.
+      .orderBy(sql`${SALE_OCCURRED} desc`, desc(sales.id))
       .limit(limit),
   );
 }

@@ -335,6 +335,12 @@ export const sales = pgTable('sales', {
   orgNumber: uniqueIndex('sales_organization_id_sale_number_key').on(t.organizationId, t.saleNumber),
   byStatus: index('sales_organization_id_status_idx').on(t.organizationId, t.status),
   byTime: index('sales_organization_id_created_at_idx').on(t.organizationId, t.createdAt),
+  // Serves the sales list, which orders and filters on when a sale happened
+  // rather than when it was recorded. See 0014_sales_occurred_index.sql.
+  byOccurred: index('sales_organization_id_occurred_idx').on(
+    t.organizationId,
+    sql`(coalesce(${t.occurredAt}, ${t.createdAt})) desc`,
+  ),
 }));
 
 export const saleLines = pgTable('sale_lines', {
