@@ -300,7 +300,9 @@
       "unknownProduct": "No product in your catalogue matches this barcode or SKU. Import the catalogue first.",
       "notADate": "Expiry date must be written as YYYY-MM-DD, for example 2026-09-16",
       "conflictingCost": "The same product, expiry and lot appears twice with different costs",
-      "noLocation": "This shop has no default location."
+      "noLocation": "This shop has no default location.",
+      "duplicateSkuInFile": "The same SKU appears more than once in this file",
+      "skuOnAnotherProduct": "This SKU is already on a different product. Clear it there first, or correct the barcode."
     },
     "createSuppliers": "{count, plural, one {Create the missing supplier} other {Create the # missing suppliers}}",
     "addSupplier": "Add a supplier",

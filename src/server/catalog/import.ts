@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { eq, sql } from 'drizzle-orm';
 
 import { UNITS, VAT_BANDS, products, suppliers } from '@/db/schema';
@@ -88,16 +90,28 @@ export async function importProductsCsv(
   }
 
   return withTenant(orgId, async (tx) => {
+    /*
+     * Which existing product a row *is*, answered two ways.
+     *
+     * Matching on barcode alone only ever worked for the products that have
+     * one. Roughly two thirds of a real catalogue does not: loose produce, deli
+     * counter lines, anything a wholesaler ships without a retail barcode. For
+     * those, the shop's own article number is the identifier, and both unique
+     * indexes on products already treat it as one.
+     */
     const existing = await tx
-      .select({ id: products.id, gtin: products.gtin })
+      .select({ id: products.id, gtin: products.gtin, sku: products.sku })
       .from(products);
     const byGtin = new Map(existing.filter((p) => p.gtin).map((p) => [p.gtin!, p.id]));
+    // products_org_sku_uniq guarantees this map cannot collide.
+    const bySku = new Map(existing.filter((p) => p.sku).map((p) => [p.sku!, p.id]));
 
     const supplierRows = await tx.select({ id: suppliers.id, name: suppliers.name }).from(suppliers);
     const supplierByName = new Map(supplierRows.map((s) => [s.name.trim().toLowerCase(), s.id]));
 
     const unknownSuppliers = new Set<string>();
     const seenGtins = new Set<string>();
+    const seenSkus = new Set<string>();
     const seenCaseGtins = new Set<string>();
     const parsed: { values: typeof products.$inferInsert; isUpdate: boolean }[] = [];
 
@@ -141,6 +155,18 @@ export async function importProductsCsv(
           continue;
         }
         seenCaseGtins.add(caseGtin);
+      }
+
+      // Now that a SKU identifies a product, two rows carrying the same one are
+      // two claims about one product. Left alone they both resolve to the same
+      // id and the whole import dies on a constraint nobody can act on.
+      const sku = cell('sku') || null;
+      if (sku) {
+        if (seenSkus.has(sku)) {
+          errors.push({ line, column: 'sku', message: 'duplicateSkuInFile' });
+          continue;
+        }
+        seenSkus.add(sku);
       }
 
       const unit = cell('unit').toLowerCase();
@@ -202,14 +228,34 @@ export async function importProductsCsv(
         }
       }
 
+      /*
+       * Barcode first, then SKU. The barcode is the stronger claim — it is the
+       * thing that gets scanned at the till — so when a row's two identifiers
+       * point at different products, it decides. Resolving here rather than
+       * leaving it to ON CONFLICT is what lets one statement handle both.
+       */
+      const matchedId = (gtin !== null ? byGtin.get(gtin) : undefined) ?? (sku ? bySku.get(sku) : undefined);
+
+      // The barcode matched one product while the SKU still belongs to another.
+      // Moving an article number between products silently is not something a
+      // spreadsheet should be able to do by accident, and letting it through
+      // kills the whole import on a constraint with no line number attached.
+      if (sku && matchedId !== undefined && bySku.has(sku) && bySku.get(sku) !== matchedId) {
+        errors.push({ line, column: 'sku', message: 'skuOnAnotherProduct' });
+        continue;
+      }
+
       parsed.push({
         values: {
+          // Minted for a new product rather than defaulted, so every row can go
+          // through the same upsert on the primary key.
+          id: matchedId ?? randomUUID(),
           organizationId: orgId,
           name,
           gtin,
           caseGtin,
           unitsPerCase,
-          sku: cell('sku') || null,
+          sku,
           unit: (unit || 'each') as (typeof UNITS)[number],
           costPrice,
           sellPrice,
@@ -218,7 +264,7 @@ export async function importProductsCsv(
           shelfLifeDays,
           supplierId,
         },
-        isUpdate: gtin !== null && byGtin.has(gtin),
+        isUpdate: matchedId !== undefined,
       });
     }
 
@@ -243,20 +289,24 @@ export async function importProductsCsv(
     }
 
     // One statement, inside the tenant transaction: the whole file lands or none
-    // of it does. Conflict target is the partial unique index on (org, gtin).
-    // ponytail: re-import matching is by unit barcode (gtin) only, same as
-    // before this file supported case barcodes. A row with a case barcode but
-    // no unit barcode still inserts fresh each time rather than updating in
-    // place — upgrade to also match on case_gtin if that's needed.
+    // of it does. The conflict target is the primary key, because which product
+    // a row belongs to was already decided above — by barcode, then by SKU.
+    // ponytail: case barcode is still not an identifier. A row carrying only a
+    // case barcode inserts fresh each time; add it to the resolution above if a
+    // wholesaler file ever ships that way.
     await tx
       .insert(products)
       .values(parsed.map((p) => p.values))
       .onConflictDoUpdate({
-        target: [products.organizationId, products.gtin],
-        targetWhere: sql`${products.gtin} is not null`,
+        target: products.id,
         set: {
           name: sql`excluded.name`,
           sku: sql`excluded.sku`,
+          // Coalesced, unlike every other column: a file with no barcode column
+          // at all is silent about barcodes, not an instruction to delete the
+          // ones already there. Reachable only now that a row without a barcode
+          // can match an existing product.
+          gtin: sql`coalesce(excluded.gtin, ${products.gtin})`,
           caseGtin: sql`excluded.case_gtin`,
           unitsPerCase: sql`excluded.units_per_case`,
           unit: sql`excluded.unit`,
