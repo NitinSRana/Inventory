@@ -1,4 +1,4 @@
-import { and, asc, eq, ilike, inArray, or, type SQL } from 'drizzle-orm';
+import { and, asc, eq, ilike, inArray, isNull, or, type SQL } from 'drizzle-orm';
 
 import { products, UNITS, type VAT_BANDS, type DATE_TYPES, type COUNT_FREQUENCIES } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
@@ -64,14 +64,45 @@ function clean(input: ProductInput) {
   return { ...input, name, gtin, caseGtin, sku: input.sku?.trim() || null };
 }
 
-export async function listProducts(
-  orgId: string,
-  options: { search?: string; limit?: number; includeInactive?: boolean } = {},
-) {
-  const { search, limit = 50, includeInactive = false } = options;
+/**
+ * "Needs attention" — the catalogue's own to-do list.
+ *
+ * A product with no price cannot be sold at all (checkout refuses it), one with
+ * no barcode cannot be scanned, and one with no category is invisible to the
+ * count schedule. All three are silent until someone hits them at the till or
+ * the shelf, which is exactly when it is most expensive to find out.
+ */
+const NEEDS_ATTENTION = or(
+  isNull(products.sellPrice),
+  isNull(products.gtin),
+  isNull(products.categoryId),
+)!;
+
+export type ProductFilters = {
+  search?: string;
+  categoryId?: string;
+  supplierId?: string;
+  /** Only products missing a price, a barcode or a category. */
+  needsAttention?: boolean;
+  limit?: number;
+  includeInactive?: boolean;
+};
+
+export async function listProducts(orgId: string, options: ProductFilters = {}) {
+  const {
+    search,
+    categoryId,
+    supplierId,
+    needsAttention,
+    limit = 50,
+    includeInactive = false,
+  } = options;
 
   const filters: SQL[] = [];
   if (!includeInactive) filters.push(eq(products.isActive, true));
+  if (categoryId) filters.push(eq(products.categoryId, categoryId));
+  if (supplierId) filters.push(eq(products.supplierId, supplierId));
+  if (needsAttention) filters.push(NEEDS_ATTENTION);
   if (search?.trim()) {
     const term = `%${search.trim()}%`;
     filters.push(
@@ -150,6 +181,26 @@ export async function deactivateProduct(orgId: string, productId: string) {
     tx
       .update(products)
       .set({ isActive: false })
+      .where(eq(products.id, productId))
+      .returning(),
+  );
+  return product ?? null;
+}
+
+/**
+ * The way back.
+ *
+ * Deactivating is this product's whole deletion model — the ledger references a
+ * product forever, so rows are hidden rather than removed. Until now the only
+ * route back to active was re-importing the barcode through the CSV, which
+ * forces `is_active = true` as a side effect: a shop that deactivated something
+ * by mistake had to discover that, or live with it.
+ */
+export async function reactivateProduct(orgId: string, productId: string) {
+  const [product] = await withTenant(orgId, (tx) =>
+    tx
+      .update(products)
+      .set({ isActive: true })
       .where(eq(products.id, productId))
       .returning(),
   );

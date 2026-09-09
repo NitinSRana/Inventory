@@ -6,7 +6,13 @@ import { BackLink } from '@/components/back-link';
 import { Button } from '@/components/ui/button';
 import { requireRole } from '@/server/auth/session';
 import { listCategories } from '@/server/catalog/categories';
-import { InvalidBarcodeError, deactivateProduct, getProduct, updateProduct } from '@/server/catalog/products';
+import {
+  InvalidBarcodeError,
+  deactivateProduct,
+  getProduct,
+  reactivateProduct,
+  updateProduct,
+} from '@/server/catalog/products';
 import { listSuppliers } from '@/server/catalog/suppliers';
 import { getVatRates } from '@/server/settings/vat';
 import { PageTitle } from '@/components/data-list';
@@ -61,6 +67,13 @@ export default async function EditProductPage({
     redirect(`/${locale}/products`);
   }
 
+  async function reactivate() {
+    'use server';
+    const { orgId } = await requireRole(locale, 'manager');
+    await reactivateProduct(orgId, id);
+    redirect(`/${locale}/products/${id}`);
+  }
+
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-24">
       <BackLink href={`/${locale}/products/${id}`} label={tBack('product')} />
@@ -75,12 +88,23 @@ export default async function EditProductPage({
         error={typeof error === 'string' ? error : undefined}
       />
 
-      {/* Deactivate, not delete — the ledger still references this product. */}
-      <form action={deactivate}>
-        <Button type="submit" variant="outline" className="h-11">
-          {t('deactivate')}
-        </Button>
-      </form>
+      {/* Deactivate, not delete — the ledger still references this product.
+          Which of the two shows depends on where the product already is, so
+          there is never a button that would do nothing. */}
+      {product.isActive ? (
+        <form action={deactivate}>
+          <Button type="submit" variant="outline" className="h-11">
+            {t('deactivate')}
+          </Button>
+        </form>
+      ) : (
+        <form action={reactivate} className="flex flex-col items-start gap-2">
+          <p className="text-muted-foreground text-sm">{t('inactiveBody')}</p>
+          <Button type="submit" variant="outline" className="h-11">
+            {t('reactivate')}
+          </Button>
+        </form>
+      )}
     </main>
   );
 }

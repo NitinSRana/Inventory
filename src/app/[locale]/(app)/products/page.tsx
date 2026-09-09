@@ -5,12 +5,16 @@ import { PackageOpen, SearchX } from 'lucide-react';
 
 import { DataGroupHeader, DataList, DataRow, PageTitle } from '@/components/data-list';
 import { EmptyState } from '@/components/empty-state';
-import { StickyAction } from '@/components/form';
-import { buttonVariants } from '@/components/ui/button';
+import { Field, FieldRow, NativeSelect, StickyAction } from '@/components/form';
+import { Badge } from '@/components/ui/badge';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { LIST_LIMITS, limitFrom, one, pick } from '@/lib/search-params';
 import { countProducts } from '@/server/catalog/import';
+import { listCategories } from '@/server/catalog/categories';
 import { listProducts } from '@/server/catalog/products';
+import { listSuppliers } from '@/server/catalog/suppliers';
 import { requireOrg } from '@/server/auth/session';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
@@ -21,35 +25,128 @@ export default async function ProductsPage({ params, searchParams }: PageProps<'
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const { q } = await searchParams;
-  const search = typeof q === 'string' ? q : undefined;
-
+  const sp = await searchParams;
   const t = await getTranslations('products');
   const { orgId } = await requireOrg(locale);
-  const [rows, total] = await Promise.all([
-    listProducts(orgId, { search }),
-    countProducts(orgId),
+
+  const [categories, suppliers] = await Promise.all([
+    listCategories(orgId),
+    listSuppliers(orgId),
   ]);
+
+  const search = one(sp.q);
+  const filters = {
+    search,
+    // Only accept an id the shop actually owns — an unknown uuid then filters
+    // to nothing rather than reaching a where clause on trust.
+    categoryId: pick(sp.category, categories.map((c) => c.id)),
+    supplierId: pick(sp.supplier, suppliers.map((s) => s.id)),
+    needsAttention: one(sp.needs) === '1',
+    includeInactive: one(sp.inactive) === '1',
+    limit: limitFrom(sp.limit),
+  };
+  const filtered = Boolean(
+    filters.search ||
+      filters.categoryId ||
+      filters.supplierId ||
+      filters.needsAttention ||
+      filters.includeInactive,
+  );
+
+  const [rows, total] = await Promise.all([listProducts(orgId, filters), countProducts(orgId)]);
+
+  const nextLimit = LIST_LIMITS[LIST_LIMITS.indexOf(filters.limit) + 1];
+  const withLimit = (limit: number) => {
+    const next = new URLSearchParams();
+    for (const [k, v] of Object.entries(sp)) {
+      const single = one(v);
+      if (single && k !== 'limit') next.set(k, single);
+    }
+    next.set('limit', String(limit));
+    return `/${locale}/products?${next}`;
+  };
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 pb-24">
-      <PageTitle caption={!search && total > 0 ? t('shownOfTotal', { shown: rows.length, total }) : undefined}>
+      {/* The count is only true of the whole catalogue, so it goes away as soon
+          as any filter narrows what is on screen — otherwise it reads as "43 of
+          2,051" while showing one category. */}
+      <PageTitle
+        caption={!filtered && total > 0 ? t('shownOfTotal', { shown: rows.length, total }) : undefined}
+      >
         {t('title')}
       </PageTitle>
 
-      {/* GET form so the search term lives in the URL, not in component state. */}
-      <form role="search" className="flex flex-col gap-2 md:max-w-lg">
-        <label htmlFor="q" className="sr-only">
-          {t('searchLabel')}
-        </label>
-        <Input
-          id="q"
-          name="q"
-          type="search"
-          defaultValue={search ?? ''}
-          placeholder={t('searchLabel')}
-          className="h-11"
-        />
+      {/* GET form so the filters live in the URL, not in component state. */}
+      <form role="search" className="flex flex-col gap-3 md:max-w-3xl">
+        <Field name="q" label={t('searchLabel')}>
+          <Input id="q" name="q" type="search" defaultValue={search ?? ''} className="h-11" />
+        </Field>
+
+        <FieldRow>
+          <Field name="category" label={t('category')}>
+            <NativeSelect id="category" name="category" defaultValue={filters.categoryId ?? ''} className="h-11">
+              <option value="">{t('anyCategory')}</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
+          <Field name="supplier" label={t('supplier')}>
+            <NativeSelect id="supplier" name="supplier" defaultValue={filters.supplierId ?? ''} className="h-11">
+              <option value="">{t('anySupplier')}</option>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
+        </FieldRow>
+
+        <div className="flex flex-col gap-2">
+          <label htmlFor="needs" className="flex items-start gap-3">
+            <input
+              id="needs"
+              name="needs"
+              type="checkbox"
+              value="1"
+              defaultChecked={filters.needsAttention}
+              className="border-input accent-primary mt-0.5 size-5 shrink-0 rounded"
+            />
+            <span className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium">{t('needsAttention')}</span>
+              <span className="text-muted-foreground text-sm">{t('needsAttentionHint')}</span>
+            </span>
+          </label>
+          <label htmlFor="inactive" className="flex items-start gap-3">
+            <input
+              id="inactive"
+              name="inactive"
+              type="checkbox"
+              value="1"
+              defaultChecked={filters.includeInactive}
+              className="border-input accent-primary mt-0.5 size-5 shrink-0 rounded"
+            />
+            <span className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium">{t('showInactive')}</span>
+              <span className="text-muted-foreground text-sm">{t('showInactiveHint')}</span>
+            </span>
+          </label>
+        </div>
+
+        <div className="flex gap-2">
+          <Button type="submit" variant="outline" className="h-11 w-fit">
+            {t('applyFilters')}
+          </Button>
+          {filtered && (
+            <Link href={`/${locale}/products`} className={buttonVariants({ variant: 'ghost', className: 'h-11' })}>
+              {t('clearFilters')}
+            </Link>
+          )}
+        </div>
       </form>
 
       {rows.length === 0 ? (
@@ -89,7 +186,19 @@ export default async function ProductsPage({ params, searchParams }: PageProps<'
                       {isNewGroup && <DataGroupHeader>{letter}</DataGroupHeader>}
                       <DataRow
                         href={`/${locale}/products/${p.id}`}
-                        title={p.name}
+                        title={
+                          <>
+                            {p.name}
+                            {/* Only ever on screen when the inactive filter is
+                                on, but an inactive row must never be mistaken
+                                for a live one. */}
+                            {!p.isActive && (
+                              <Badge variant="secondary" className="ml-2">
+                                {t('inactive')}
+                              </Badge>
+                            )}
+                          </>
+                        }
                         subtitle={<span className="font-mono">{p.gtin ?? t('noBarcode')}</span>}
                         value={p.sellPrice ?? '—'}
                         meta={p.unit}
@@ -116,6 +225,11 @@ export default async function ProductsPage({ params, searchParams }: PageProps<'
               {rows.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell>
+                    {!p.isActive && (
+                      <Badge variant="secondary" className="mr-2">
+                        {t('inactive')}
+                      </Badge>
+                    )}
                     <Link href={`/${locale}/products/${p.id}`} className="hover:underline">
                       {p.name}
                     </Link>
@@ -127,6 +241,16 @@ export default async function ProductsPage({ params, searchParams }: PageProps<'
               ))}
             </TableBody>
           </Table>
+
+          {/* Raise the ceiling rather than page — see the sales list. */}
+          {rows.length === filters.limit && nextLimit && (
+            <Link
+              href={withLimit(nextLimit)}
+              className={buttonVariants({ variant: 'outline', className: 'h-11 w-fit' })}
+            >
+              {t('showMore', { count: nextLimit })}
+            </Link>
+          )}
         </>
       )}
 
