@@ -25,7 +25,7 @@ import type { ImportPreview, RowError } from '@/server/catalog/import';
 export type ImportState =
   | { status: 'idle' }
   | { status: 'empty' }
-  | { status: 'blocked'; preview: ImportPreview }
+  | { status: 'blocked'; preview: ImportPreview; text: string }
   | { status: 'ready'; preview: ImportPreview; text: string };
 
 /** Errors are grouped by column so one wrong header reads as one problem, not 400. */
@@ -52,11 +52,14 @@ export function ImportForm({
   const t = useTranslations('import');
   const [state, formAction, pending] = useActionState(action, { status: 'idle' } as ImportState);
 
-  const preview = state.status === 'blocked' || state.status === 'ready' ? state.preview : null;
+  const checked = state.status === 'blocked' || state.status === 'ready' ? state : null;
+  const preview = checked?.preview ?? null;
   const ready = state.status === 'ready';
 
   return (
-    <div className="flex flex-col gap-6">
+    // One form around everything: the panels carry buttons that need to post
+    // the checked file back, and a button outside the form posts nothing.
+    <form action={formAction} className="flex flex-col gap-6">
       {state.status === 'empty' && (
         <p role="alert" className="text-destructive text-sm">
           {t('noFile')}
@@ -142,18 +145,33 @@ export function ImportForm({
           <p className="text-muted-foreground text-sm">
             {t('unknownSuppliers', { names: preview.unknownSuppliers.slice(0, 10).join(', ') })}
           </p>
-          {/* Telling someone to add a supplier without a way to do it was a
-              dead end. `next` brings them straight back here. */}
-          <Link
-            href={addSupplierHref}
-            className={buttonVariants({ variant: 'outline', className: 'h-11' })}
-          >
-            {t('addSupplier')}
-          </Link>
+          {/* Ordering, not importing, is the real problem: suppliers have to
+              exist before a product file can reference them. The file already
+              names them, so retyping each one into a form is busywork — and
+              the manual route stays for anyone who wants to fill in lead times
+              and minimums while they are there. */}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="submit"
+              name="createSuppliers"
+              value="1"
+              variant="outline"
+              disabled={pending}
+              className="h-11"
+            >
+              {t('createSuppliers', { count: preview.unknownSuppliers.length })}
+            </Button>
+            <Link
+              href={addSupplierHref}
+              className={buttonVariants({ variant: 'outline', className: 'h-11' })}
+            >
+              {t('addSupplier')}
+            </Link>
+          </div>
         </div>
       )}
 
-      <form action={formAction} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
         <Field name="file" label={t('fileLabel')} hint={ready ? t('replaceFile') : undefined}>
           {/* Native file input: the OS picker already handles cloud drives and
               recent files better than anything worth building. */}
@@ -162,7 +180,7 @@ export function ImportForm({
             name="file"
             type="file"
             accept=".csv,text/csv"
-            required={!ready}
+            required={!checked}
             className="border-input file:bg-muted file:text-foreground h-12 w-full rounded-lg border bg-transparent px-3 py-2 text-sm file:mr-3 file:h-8 file:rounded-md file:border-0 file:px-3"
           />
         </Field>
@@ -173,7 +191,7 @@ export function ImportForm({
             ponytail: a ~200KB ceiling — roughly 2,000 rows — before the action
             payload gets unreasonable. Stream to storage if a chain ever needs
             more than one shop's catalogue in one file. */}
-        {ready && <textarea name="text" defaultValue={state.text} hidden readOnly />}
+        {checked && <textarea name="text" defaultValue={checked.text} hidden readOnly />}
 
         <details className="text-sm">
           <summary className="cursor-pointer py-2">{t('formatTitle')}</summary>
@@ -201,7 +219,7 @@ export function ImportForm({
             {pending ? t('working') : ready ? t('submit') : t('check')}
           </Button>
         </StickyAction>
-      </form>
-    </div>
+      </div>
+    </form>
   );
 }

@@ -7,6 +7,7 @@ import { createTestOrg } from '@/server/testing/fixtures';
 
 import { importProductsCsv } from './import';
 import { listProducts } from './products';
+import { createSupplier } from './suppliers';
 
 const CSV = [
   'name,barcode,price,shelf location,notes',
@@ -50,5 +51,30 @@ describe('import preview', () => {
     assert.equal(again.toCreate, 0);
     assert.equal(again.toUpdate, 2);
     assert.ok(again.sample.every((r) => r.isUpdate));
+  });
+
+  test('creating the suppliers a file names clears the block', async () => {
+    const org = await createTestOrg('Import Suppliers');
+    const csv = [
+      'name,barcode,price,supplier',
+      'Vollmilch 1L,4001234567891,1.29,Molkerei Nord',
+      'Butter 250g,4006381333931,2.49,Molkerei Nord',
+      'Brot 500g,5012345678900,1.10,Backerei Sud',
+    ].join('\n');
+
+    const blocked = await importProductsCsv(org.orgId, csv, { dryRun: true });
+    // Named once each, not once per row — three rows, two suppliers.
+    assert.deepEqual(blocked.unknownSuppliers, ['Molkerei Nord', 'Backerei Sud']);
+    assert.equal(blocked.errors.length, 3, 'every row referencing one is held back');
+
+    for (const name of blocked.unknownSuppliers) await createSupplier(org.orgId, { name });
+
+    const result = await importProductsCsv(org.orgId, csv);
+    assert.deepEqual(result.errors, [], 'the same file now imports untouched');
+    assert.equal(result.created, 3);
+    assert.ok(
+      (await listProducts(org.orgId)).every((p) => p.supplierId),
+      'and every product is attached to its supplier',
+    );
   });
 });

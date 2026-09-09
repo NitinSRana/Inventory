@@ -7,6 +7,7 @@ import { ImportForm, type ImportState } from '@/components/import-form';
 import { buttonVariants } from '@/components/ui/button';
 import { requireRole } from '@/server/auth/session';
 import { importProductsCsv } from '@/server/catalog/import';
+import { createSupplier } from '@/server/catalog/suppliers';
 import { PageTitle } from '@/components/data-list';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
@@ -26,30 +27,36 @@ export default async function ImportPage({
   await requireRole(locale, 'manager');
 
   /**
-   * One action, two steps.
+   * One action, three buttons.
    *
-   * Without `confirm` it dry-runs and hands the parsed text back for the
-   * preview; with it, the same text is imported for real. The write path never
-   * re-reads the file input, so what gets imported is exactly what was shown.
+   * Check dry-runs and hands the parsed text back for the preview; Import
+   * writes that same text; Create suppliers fills the gap the file named and
+   * re-checks. The write path never re-reads the file input, so what gets
+   * imported is exactly what was shown.
    */
   async function run(_prev: ImportState, formData: FormData): Promise<ImportState> {
     'use server';
     const { orgId } = await requireRole(locale, 'manager');
 
+    const file = formData.get('file');
+    const fresh = file instanceof File && file.size > 0;
     const carried = formData.get('text');
-    const confirmed = formData.get('confirm') === '1' && typeof carried === 'string';
+    if (!fresh && typeof carried !== 'string') return { status: 'empty' };
+    const text = fresh ? await (file as File).text() : (carried as string);
 
-    let text: string;
-    if (confirmed) {
-      text = carried as string;
-    } else {
-      const file = formData.get('file');
-      if (!(file instanceof File) || file.size === 0) return { status: 'empty' };
-      text = await file.text();
+    // A newly chosen file is always checked first — never imported on a click
+    // whose label described the previous one.
+    const confirmed = !fresh && formData.get('confirm') === '1';
+
+    if (formData.get('createSuppliers') === '1') {
+      // Re-derived here rather than posted: the names come out of the file the
+      // server just read, not out of the browser.
+      const { unknownSuppliers } = await importProductsCsv(orgId, text, { dryRun: true });
+      for (const name of unknownSuppliers) await createSupplier(orgId, { name });
     }
 
     const result = await importProductsCsv(orgId, text, { dryRun: !confirmed });
-    if (result.errors.length > 0) return { status: 'blocked', preview: result };
+    if (result.errors.length > 0) return { status: 'blocked', preview: result, text };
     if (!confirmed) return { status: 'ready', preview: result, text };
 
     // A dropped column on a successful import is the worse case: nothing looks

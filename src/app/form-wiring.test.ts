@@ -46,7 +46,8 @@ function declaredNames(src: string) {
   // whose name carries the confirm step.
   if (src.includes('<BarcodeField')) names.add('gtin');
   if (src.includes('<DateNudgeInput')) names.add('expiryDate');
-  if (src.includes('<ImportForm')) for (const n of ['file', 'text', 'confirm']) names.add(n);
+  if (src.includes('<ImportForm'))
+    for (const n of ['file', 'text', 'confirm', 'createSuppliers']) names.add(n);
   return names;
 }
 
