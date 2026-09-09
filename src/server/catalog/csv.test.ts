@@ -46,25 +46,38 @@ test('preserves empty fields in the middle of a row', () => {
 });
 
 test('maps headers regardless of case, spacing or punctuation', () => {
-  const index = mapHeaders(['Product Name', ' EAN ', 'Cost_Price', 'Sell price']);
+  const { index } = mapHeaders(['Product Name', ' EAN ', 'Cost_Price', 'Sell price']);
   assert.equal(index.name, 0);
   assert.equal(index.gtin, 1);
   assert.equal(index.costPrice, 2);
   assert.equal(index.sellPrice, 3);
 });
 
-test('ignores columns it does not recognise', () => {
-  const index = mapHeaders(['name', 'shelf location', 'notes']);
+test('ignores columns it does not recognise, but names them', () => {
+  const { index, unknown } = mapHeaders(['name', 'shelf location', 'notes']);
   assert.deepEqual(index, { name: 0 });
+  // The whole point: "Retail Price" spelled some way no alias covers used to
+  // vanish, and the shop found out at the till on a product priced null.
+  assert.deepEqual(unknown, ['shelf location', 'notes']);
+});
+
+test('a recognised header is never reported as unknown, even repeated', () => {
+  const { unknown } = mapHeaders(['ean', 'barcode']);
+  assert.deepEqual(unknown, []);
+});
+
+test('an empty trailing header is a formatting artefact, not a column', () => {
+  const { unknown } = mapHeaders(['name', 'ean', '']);
+  assert.deepEqual(unknown, []);
 });
 
 test('first matching column wins when a header repeats', () => {
-  const index = mapHeaders(['ean', 'barcode']);
+  const { index } = mapHeaders(['ean', 'barcode']);
   assert.equal(index.gtin, 0);
 });
 
 test('maps case/outer barcode and pack size, distinct from the unit barcode', () => {
-  const index = mapHeaders(['Code', 'Description', 'Outer Barcode', 'Unit Barcode']);
+  const { index } = mapHeaders(['Code', 'Description', 'Outer Barcode', 'Unit Barcode']);
   assert.equal(index.sku, 0);
   assert.equal(index.name, 1);
   assert.equal(index.caseGtin, 2);

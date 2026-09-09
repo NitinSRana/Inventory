@@ -8,6 +8,21 @@ import { mapHeaders, parseCsv } from './csv';
 
 export type RowError = { line: number; column: string; message: string };
 
+/**
+ * A handful of rows as the importer read them.
+ *
+ * "12 will be created" proves the file parsed; it proves nothing about whether
+ * the right column landed in the right field. Seeing a name, a barcode and a
+ * price is what actually catches a semicolon file read as one column, or a
+ * price column that mapped to nothing.
+ */
+export type ImportSampleRow = {
+  name: string;
+  gtin: string | null;
+  sellPrice: string | null;
+  isUpdate: boolean;
+};
+
 export type ImportPreview = {
   totalRows: number;
   errors: RowError[];
@@ -15,6 +30,10 @@ export type ImportPreview = {
   toCreate: number;
   toUpdate: number;
   unknownSuppliers: string[];
+  /** Header columns no alias matched. Ignored during the import, not silently. */
+  unknownColumns: string[];
+  /** The first few rows as parsed, so the mapping can be eyeballed. */
+  sample: ImportSampleRow[];
 };
 
 export type ImportResult = ImportPreview & { created: number; updated: number };
@@ -46,12 +65,14 @@ export async function importProductsCsv(
       toCreate: 0,
       toUpdate: 0,
       unknownSuppliers: [],
+      unknownColumns: [],
+      sample: [],
       created: 0,
       updated: 0,
     };
   }
 
-  const index = mapHeaders(rows[0]);
+  const { index, unknown: unknownColumns } = mapHeaders(rows[0]);
   if (index.name === undefined) {
     return {
       totalRows: rows.length - 1,
@@ -59,6 +80,8 @@ export async function importProductsCsv(
       toCreate: 0,
       toUpdate: 0,
       unknownSuppliers: [],
+      unknownColumns,
+      sample: [],
       created: 0,
       updated: 0,
     };
@@ -206,6 +229,13 @@ export async function importProductsCsv(
       toCreate: parsed.length - toUpdate,
       toUpdate,
       unknownSuppliers: [...unknownSuppliers],
+      unknownColumns,
+      sample: parsed.slice(0, 5).map((p) => ({
+        name: p.values.name,
+        gtin: p.values.gtin ?? null,
+        sellPrice: p.values.sellPrice ?? null,
+        isUpdate: p.isUpdate,
+      })),
     };
 
     if (errors.length > 0 || options.dryRun || parsed.length === 0) {

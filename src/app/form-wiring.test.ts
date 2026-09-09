@@ -42,9 +42,11 @@ function declaredNames(src: string) {
     if (m) names.add(m[1] ?? m[2]);
   }
   // BarcodeField and DateNudgeInput name their own control; the page never
-  // declares it.
+  // declares it. ImportForm owns its whole form, including the submit button
+  // whose name carries the confirm step.
   if (src.includes('<BarcodeField')) names.add('gtin');
   if (src.includes('<DateNudgeInput')) names.add('expiryDate');
+  if (src.includes('<ImportForm')) for (const n of ['file', 'text', 'confirm']) names.add(n);
   return names;
 }
 

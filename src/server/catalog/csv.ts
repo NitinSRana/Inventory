@@ -110,14 +110,31 @@ const COLUMNS: Record<string, string[]> = {
 
 const normalise = (h: string) => h.trim().toLowerCase().replace(/[\s_\-.]/g, '');
 
-/** Maps a header row to field names. Unknown columns are ignored, not fatal. */
-export function mapHeaders(header: string[]): Record<string, number> {
+/**
+ * Maps a header row to field names.
+ *
+ * Unknown columns are still not fatal — a wholesaler export carries a dozen
+ * columns this product has no field for, and refusing the file over them would
+ * be useless. They are reported instead: a column silently dropped because
+ * "Retail Price" was spelled in a way no alias covers is the failure someone
+ * only discovers weeks later, at the till, on a product priced null.
+ */
+export function mapHeaders(header: string[]): { index: Record<string, number>; unknown: string[] } {
   const index: Record<string, number> = {};
+  const unknown: string[] = [];
   header.forEach((raw, i) => {
     const h = normalise(raw);
+    // A trailing delimiter leaves an empty header cell in most exports. That is
+    // a formatting artefact, not a column the shop meant to send.
+    if (h === '') return;
+    let matched = false;
     for (const [field, aliases] of Object.entries(COLUMNS)) {
-      if (aliases.includes(h) && !(field in index)) index[field] = i;
+      if (aliases.includes(h)) {
+        matched = true;
+        if (!(field in index)) index[field] = i;
+      }
     }
+    if (!matched) unknown.push(raw.trim());
   });
-  return index;
+  return { index, unknown };
 }
