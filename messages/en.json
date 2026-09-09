@@ -293,10 +293,28 @@
       "notAWholeNumber": "Shelf life must be a whole number of days",
       "unknownSupplier": "Supplier is not in your supplier list",
       "missingNameColumn": "No name column found. The first row must be headers.",
-      "empty": "The file is empty."
+      "empty": "The file is empty.",
+      "missingProductColumn": "No barcode or SKU column found. Rows have to name a product that already exists.",
+      "missingQuantityColumn": "No quantity column found.",
+      "tooManyRows": "Too many rows for one file. Split it and import the parts.",
+      "unknownProduct": "No product in your catalogue matches this barcode or SKU. Import the catalogue first.",
+      "notADate": "Expiry date must be written as YYYY-MM-DD, for example 2026-09-16",
+      "conflictingCost": "The same product, expiry and lot appears twice with different costs",
+      "noLocation": "This shop has no default location."
     },
     "createSuppliers": "{count, plural, one {Create the missing supplier} other {Create the # missing suppliers}}",
-    "addSupplier": "Add a supplier"
+    "addSupplier": "Add a supplier",
+    "opening": {
+      "title": "Import opening stock",
+      "intro": "How much of each product is on the shelf right now. Rows are recorded as receipts, so run this once — importing the same file twice receives everything twice.",
+      "formatBody": "One row per product and expiry date. Each row names a product already in your catalogue, by barcode or SKU, and says how many there are. Split a product across several rows when it has stock with different expiry dates.",
+      "formatColumns": "Recognised columns: barcode, sku, quantity, expiry_date, lot, unit_cost. Expiry dates must be written as YYYY-MM-DD.",
+      "rowLimit": "Up to {max} rows per file.",
+      "willReceive": "{count, plural, =0 {Nothing to record} one {# row to record} other {# rows to record}} against your stock.",
+      "received": "{count, plural, =0 {Nothing was recorded} one {# row recorded} other {# rows recorded}}.",
+      "sampleQuantity": "Quantity",
+      "sampleExpiry": "Expiry"
+    }
   },
   "reports": {
     "title": "Reports",
@@ -478,7 +496,8 @@
     "categories": "Categories",
     "product": "Product",
     "sales": "Sales",
-    "sale": "Sale"
+    "sale": "Sale",
+    "import": "Import products"
   },
   "firstRun": {
     "title": "Get set up",

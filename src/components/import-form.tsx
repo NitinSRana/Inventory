@@ -6,7 +6,7 @@ import Link from 'next/link';
 
 import { Field, StickyAction } from '@/components/form';
 import { Button, buttonVariants } from '@/components/ui/button';
-import type { ImportPreview, RowError } from '@/server/catalog/import';
+import type { RowError } from '@/server/catalog/import';
 
 /**
  * Check the file, then import it.
@@ -17,16 +17,34 @@ import type { ImportPreview, RowError } from '@/server/catalog/import';
  * writes. Seeing "Semi-Skimmed Milk / 5000112637922 / 1.45" is the only thing
  * that catches a column that mapped to the wrong field.
  *
- * This is the one client component in the flow, and only because a Server
+ * Two importers share this: the catalogue and opening stock. Everything that
+ * differs between them — the summary sentence, the sample's columns, the
+ * format notes — arrives already worded, so this component knows nothing about
+ * what either file means.
+ *
+ * It is the one client component in the flow, and only because a Server
  * Component cannot hold the file between the two steps: React resets an
  * uncontrolled form once its action runs, so the browser's copy is gone by the
  * time the preview renders. The text comes back from the server instead.
  */
+export type CheckedFile = {
+  totalRows: number;
+  errors: RowError[];
+  /** Header columns no alias matched — ignored during the import, not silently. */
+  unknownColumns: string[];
+  /** Suppliers the file names that the shop has not set up. Catalogue only. */
+  unknownSuppliers: string[];
+  /** What importing this would do, already worded by the caller. */
+  summary: string;
+  /** A few rows as parsed, with their own column headings. */
+  sample: { columns: string[]; rows: string[][] };
+};
+
 export type ImportState =
   | { status: 'idle' }
   | { status: 'empty' }
-  | { status: 'blocked'; preview: ImportPreview; text: string }
-  | { status: 'ready'; preview: ImportPreview; text: string };
+  | { status: 'blocked'; checked: CheckedFile; text: string }
+  | { status: 'ready'; checked: CheckedFile; text: string };
 
 /** Errors are grouped by column so one wrong header reads as one problem, not 400. */
 function groupErrors(errors: RowError[]) {
@@ -42,18 +60,20 @@ function groupErrors(errors: RowError[]) {
 
 export function ImportForm({
   action,
-  templateHref,
   addSupplierHref,
+  children,
 }: {
   action: (prev: ImportState, formData: FormData) => Promise<ImportState>;
-  templateHref: string;
-  addSupplierHref: string;
+  /** Omitted by importers that cannot produce an unknown supplier. */
+  addSupplierHref?: string;
+  /** The "what the file needs" note and its template link, from the page. */
+  children: React.ReactNode;
 }) {
   const t = useTranslations('import');
   const [state, formAction, pending] = useActionState(action, { status: 'idle' } as ImportState);
 
-  const checked = state.status === 'blocked' || state.status === 'ready' ? state : null;
-  const preview = checked?.preview ?? null;
+  const held = state.status === 'blocked' || state.status === 'ready' ? state : null;
+  const checked = held?.checked ?? null;
   const ready = state.status === 'ready';
 
   return (
@@ -75,13 +95,13 @@ export function ImportForm({
           </p>
           <p className="text-muted-foreground text-sm tabular-nums">
             {t('problemSummary', {
-              rows: state.preview.totalRows,
-              problems: state.preview.errors.length,
+              rows: state.checked.totalRows,
+              problems: state.checked.errors.length,
             })}
           </p>
 
           <ul className="flex flex-col gap-2">
-            {groupErrors(state.preview.errors).map((g) => (
+            {groupErrors(state.checked.errors).map((g) => (
               <li key={`${g.column}-${g.message}`} className="text-sm">
                 <span className="font-medium">{t(`problems.${g.message}`)}</span>
                 <span className="text-muted-foreground block text-xs tabular-nums">
@@ -96,32 +116,36 @@ export function ImportForm({
         </div>
       )}
 
-      {/* Clean file. The counts answer "what will this do"; the rows answer
+      {/* Clean file. The summary answers "what will this do"; the rows answer
           "did my columns land where I think they did". */}
       {ready && (
         <div className="flex flex-col gap-3 rounded-lg border p-4">
           <p role="status" className="text-sm font-medium tabular-nums">
-            {t('willImport', {
-              create: state.preview.toCreate,
-              update: state.preview.toUpdate,
-            })}
+            {state.checked.summary}
           </p>
-          {state.preview.sample.length > 0 && (
+          {state.checked.sample.rows.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-muted-foreground text-left">
-                    <th className="py-1 pr-4 font-normal">{t('sampleName')}</th>
-                    <th className="py-1 pr-4 font-normal">{t('sampleBarcode')}</th>
-                    <th className="py-1 pr-4 text-right font-normal">{t('samplePrice')}</th>
+                    {state.checked.sample.columns.map((c, i) => (
+                      <th key={c} className={`py-1 pr-4 font-normal ${i > 0 ? 'text-right' : ''}`}>
+                        {c}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {state.preview.sample.map((row, i) => (
+                  {state.checked.sample.rows.map((row, i) => (
                     <tr key={i} className="border-t">
-                      <td className="py-1 pr-4">{row.name}</td>
-                      <td className="py-1 pr-4 font-mono text-xs">{row.gtin ?? '—'}</td>
-                      <td className="py-1 pr-4 text-right tabular-nums">{row.sellPrice ?? '—'}</td>
+                      {row.map((cell, j) => (
+                        <td
+                          key={j}
+                          className={`py-1 pr-4 ${j > 0 ? 'text-right tabular-nums' : ''}`}
+                        >
+                          {cell}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
@@ -134,22 +158,22 @@ export function ImportForm({
 
       {/* Shown on both outcomes: an ignored column is just as wrong on a file
           that would otherwise import cleanly. */}
-      {preview && preview.unknownColumns.length > 0 && (
+      {checked && checked.unknownColumns.length > 0 && (
         <p className="text-muted-foreground text-sm">
-          {t('ignoredColumns', { names: preview.unknownColumns.slice(0, 10).join(', ') })}
+          {t('ignoredColumns', { names: checked.unknownColumns.slice(0, 10).join(', ') })}
         </p>
       )}
 
-      {preview && preview.unknownSuppliers.length > 0 && (
+      {checked && addSupplierHref && checked.unknownSuppliers.length > 0 && (
         <div className="flex flex-col items-start gap-2">
           <p className="text-muted-foreground text-sm">
-            {t('unknownSuppliers', { names: preview.unknownSuppliers.slice(0, 10).join(', ') })}
+            {t('unknownSuppliers', { names: checked.unknownSuppliers.slice(0, 10).join(', ') })}
           </p>
           {/* Ordering, not importing, is the real problem: suppliers have to
               exist before a product file can reference them. The file already
-              names them, so retyping each one into a form is busywork — and
-              the manual route stays for anyone who wants to fill in lead times
-              and minimums while they are there. */}
+              names them, so retyping each one into a form is busywork — and the
+              manual route stays for anyone who wants to fill in lead times and
+              minimums while they are there. */}
           <div className="flex flex-wrap gap-2">
             <Button
               type="submit"
@@ -159,7 +183,7 @@ export function ImportForm({
               disabled={pending}
               className="h-11"
             >
-              {t('createSuppliers', { count: preview.unknownSuppliers.length })}
+              {t('createSuppliers', { count: checked.unknownSuppliers.length })}
             </Button>
             <Link
               href={addSupplierHref}
@@ -191,22 +215,9 @@ export function ImportForm({
             ponytail: a ~200KB ceiling — roughly 2,000 rows — before the action
             payload gets unreasonable. Stream to storage if a chain ever needs
             more than one shop's catalogue in one file. */}
-        {checked && <textarea name="text" defaultValue={checked.text} hidden readOnly />}
+        {held && <textarea name="text" defaultValue={held.text} hidden readOnly />}
 
-        <details className="text-sm">
-          <summary className="cursor-pointer py-2">{t('formatTitle')}</summary>
-          <div className="flex flex-col gap-2 pt-2">
-            <p className="text-muted-foreground">{t('formatBody')}</p>
-            <p className="text-muted-foreground text-xs">{t('formatColumns')}</p>
-            <a
-              href={templateHref}
-              download="catalogue-template.csv"
-              className={buttonVariants({ variant: 'outline', className: 'h-11 w-fit' })}
-            >
-              {t('downloadTemplate')}
-            </a>
-          </div>
-        </details>
+        {children}
 
         <StickyAction>
           <Button

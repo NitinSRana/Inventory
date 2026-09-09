@@ -111,7 +111,7 @@ const COLUMNS: Record<string, string[]> = {
 const normalise = (h: string) => h.trim().toLowerCase().replace(/[\s_\-.]/g, '');
 
 /**
- * Maps a header row to field names.
+ * Maps a header row to field names, against whichever alias table applies.
  *
  * Unknown columns are still not fatal — a wholesaler export carries a dozen
  * columns this product has no field for, and refusing the file over them would
@@ -119,7 +119,10 @@ const normalise = (h: string) => h.trim().toLowerCase().replace(/[\s_\-.]/g, '')
  * "Retail Price" was spelled in a way no alias covers is the failure someone
  * only discovers weeks later, at the till, on a product priced null.
  */
-export function mapHeaders(header: string[]): { index: Record<string, number>; unknown: string[] } {
+export function mapColumns(
+  header: string[],
+  columns: Record<string, string[]>,
+): { index: Record<string, number>; unknown: string[] } {
   const index: Record<string, number> = {};
   const unknown: string[] = [];
   header.forEach((raw, i) => {
@@ -128,7 +131,7 @@ export function mapHeaders(header: string[]): { index: Record<string, number>; u
     // a formatting artefact, not a column the shop meant to send.
     if (h === '') return;
     let matched = false;
-    for (const [field, aliases] of Object.entries(COLUMNS)) {
+    for (const [field, aliases] of Object.entries(columns)) {
       if (aliases.includes(h)) {
         matched = true;
         if (!(field in index)) index[field] = i;
@@ -138,3 +141,31 @@ export function mapHeaders(header: string[]): { index: Record<string, number>; u
   });
   return { index, unknown };
 }
+
+/** The catalogue file's columns. */
+export const mapHeaders = (header: string[]) => mapColumns(header, COLUMNS);
+
+/**
+ * The opening-stock file's columns — a different question about the same shop,
+ * so a different table. It names a product that already exists and says how
+ * much of it is on the shelf; nothing here creates or edits a product.
+ */
+export const OPENING_STOCK_COLUMNS: Record<string, string[]> = {
+  gtin: COLUMNS.gtin,
+  sku: COLUMNS.sku,
+  quantity: ['quantity', 'qty', 'count', 'counted', 'stock', 'onhand', 'menge', 'bestand', 'anzahl'],
+  expiryDate: [
+    'expiry',
+    'expirydate',
+    'expires',
+    'bestbefore',
+    'bestbeforedate',
+    'useby',
+    'usebydate',
+    'mhd',
+    'haltbarkeitsdatum',
+    'ablaufdatum',
+  ],
+  lotNumber: ['lot', 'lotnumber', 'batch', 'batchnumber', 'charge', 'chargennummer'],
+  unitCost: ['cost', 'unitcost', 'costprice', 'buyprice', 'ek', 'einkaufspreis'],
+};
