@@ -23,6 +23,7 @@ import {
   listProducts,
 } from '@/server/catalog/products';
 import { UnpricedProductError, checkout, getSale } from '@/server/pos/checkout';
+import { UnconfiguredVatBandError } from '@/server/settings/valuation';
 import { InsufficientStockError } from '@/server/stock/fefo';
 import { getProductStock } from '@/server/stock/levels';
 
@@ -199,7 +200,14 @@ export default async function CheckoutPage({
       const sale = await checkout(orgId, { lines: current, tenderType, actorId: userId });
       saleId = sale.id;
     } catch (e) {
-      const code = e instanceof InsufficientStockError ? 'stock' : e instanceof UnpricedProductError ? 'unpriced' : 'unknown';
+      const code =
+        e instanceof InsufficientStockError
+          ? 'stock'
+          : e instanceof UnpricedProductError
+            ? 'unpriced'
+            : e instanceof UnconfiguredVatBandError
+              ? 'noVatRate'
+              : 'unknown';
       redirect(`/${locale}/checkout?cart=${encodeURIComponent(rawCart)}&error=${code}`);
     }
     // The id, not the total: a bare figure cannot show what was actually sold,
@@ -314,6 +322,19 @@ export default async function CheckoutPage({
         {error === 'unpriced' && (
           <p role="alert" className="text-destructive text-sm">
             {t('unpriced')}
+          </p>
+        )}
+        {/* A refusal someone can act on: the fix is one screen away, and the
+            basket is still here when they come back. */}
+        {error === 'noVatRate' && (
+          <p role="alert" className="text-destructive flex flex-col items-start gap-2 text-sm">
+            {t('noVatRate')}
+            <Link
+              href={`/${locale}/settings/vat`}
+              className={buttonVariants({ variant: 'outline', className: 'h-11' })}
+            >
+              {t('setVatRates')}
+            </Link>
           </p>
         )}
         {error === 'unknown' && (

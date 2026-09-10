@@ -1,5 +1,7 @@
 import Decimal from 'decimal.js';
 
+import type { VatBand } from './vat-seeds';
+
 /**
  * VAT arithmetic for stock valuation. Pure module, no database import.
  *
@@ -41,3 +43,38 @@ export function marginPercent(sellPriceGross: string, costPriceNet: string, vatR
   if (netSell.lessThanOrEqualTo(0)) return null;
   return netSell.minus(costPriceNet).dividedBy(netSell).times(100).toFixed(1);
 }
+
+/** A sale reached a band the shop never gave a rate for. */
+export class UnconfiguredVatBandError extends Error {
+  // Declared rather than a parameter property: this module is reached by the
+  // unit suite, which runs on Node's strip-only TypeScript and rejects those.
+  readonly band: VatBand;
+
+  constructor(band: VatBand) {
+    super(`No VAT rate is configured for the ${band} band`);
+    this.name = 'UnconfiguredVatBandError';
+    this.band = band;
+  }
+}
+
+/**
+ * The rate to charge, or a refusal — never a guess.
+ *
+ * Zero-rated is the one band that needs no row: the band *is* the rate, and
+ * most food in the UK sits there. Every other band carries VAT by definition,
+ * so an absent rate is a question nobody can answer at the till, and answering
+ * it with 0% silently under-declares on every line.
+ */
+export function rateForBand(rates: Partial<Record<VatBand, string>>, band: VatBand): string {
+  if (band === 'zero') return rates.zero ?? '0';
+  const rate = rates[band];
+  if (rate === undefined) throw new UnconfiguredVatBandError(band);
+  return rate;
+}
+
+/**
+ * Seeds the bands for a country, if nothing is set yet.
+ *
+ * Deliberately refuses to overwrite: a tenant that has adjusted a rate should
+ * not have it silently reset by someone re-picking the country.
+ */

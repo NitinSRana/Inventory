@@ -26,20 +26,27 @@ export async function getVatRates(orgId: string) {
   return [...current.values()];
 }
 
-/** Band → rate, with every known band present so callers need no fallback. */
-export async function getRatesByBand(orgId: string): Promise<Record<VatBand, string>> {
+/**
+ * Band → the rate the shop actually set. Bands nobody configured are absent.
+ *
+ * This used to fill every band in with '0' so callers needed no fallback, and
+ * that hid the one distinction that matters: "this shop charges nothing on
+ * that band" reads identically to "nobody has ever said". A till that cannot
+ * tell those apart rings up standard-rated goods at 0% VAT and stores the
+ * result as fact — which is what happened to every sale made before the rates
+ * were seeded.
+ *
+ * Valuation callers may still choose to treat an absent band as zero; the
+ * point is that they now choose it in the open. Anything that *stores* a VAT
+ * figure should go through rateForBand instead.
+ */
+export async function getRatesByBand(orgId: string): Promise<Partial<Record<VatBand, string>>> {
   const rows = await getVatRates(orgId);
-  const byBand = Object.fromEntries(VAT_BANDS.map((b) => [b, '0'])) as Record<VatBand, string>;
+  const byBand: Partial<Record<VatBand, string>> = {};
   for (const row of rows) byBand[row.band as VatBand] = row.rate;
   return byBand;
 }
 
-/**
- * Seeds the bands for a country, if nothing is set yet.
- *
- * Deliberately refuses to overwrite: a tenant that has adjusted a rate should
- * not have it silently reset by someone re-picking the country.
- */
 export async function seedVatRatesForCountry(orgId: string, countryCode: string) {
   const seed = COUNTRY_VAT_SEEDS[countryCode.toUpperCase()];
   if (!seed) return { seeded: 0, reason: 'unknownCountry' as const };

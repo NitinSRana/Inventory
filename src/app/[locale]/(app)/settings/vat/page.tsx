@@ -102,7 +102,14 @@ export default async function VatSettingsPage({
                   inputMode="decimal"
                   // Stored as a fraction, shown as a percentage — nobody thinks
                   // in 0.19.
-                  defaultValue={(Number(rates[band as VatBand]) * 100).toFixed(2).replace(/\.00$/, '')}
+                  // Blank, not "0", when the band was never set: a zero here
+                  // is what convinces someone VAT is configured when it is not.
+                  defaultValue={
+                    rates[band as VatBand] === undefined
+                      ? ''
+                      : (Number(rates[band as VatBand]) * 100).toFixed(2).replace(/\.00$/, '')
+                  }
+                  placeholder={t('notSet')}
                   className="h-12 w-28 text-right tabular-nums"
                 />
                 <span className="text-muted-foreground text-sm">%</span>

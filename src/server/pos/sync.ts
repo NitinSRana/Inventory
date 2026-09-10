@@ -11,8 +11,9 @@ import {
 } from '@/db/schema';
 import { withTenant, type Tx } from '@/db/tenant';
 import { normalizeGtin } from '@/server/catalog/ean';
-import { netFromGross } from '@/server/settings/valuation';
+import { netFromGross, rateForBand } from '@/server/settings/valuation';
 import { getRatesByBand } from '@/server/settings/vat';
+import type { VatBand } from '@/server/settings/vat-seeds';
 import { allocateFefoPartial } from '@/server/stock/fefo';
 import { getBatchStock } from '@/server/stock/levels';
 
@@ -257,7 +258,11 @@ async function importOne(
     const lineValues: (typeof saleLines.$inferInsert)[] = [];
     for (const [productId, line] of lineByProduct) {
       const lineTotal = line.grossTotal.toDecimalPlaces(4);
-      const vatRate = new Decimal(rates[line.vatBand as keyof typeof rates] ?? '0');
+      // Same refusal as the till. A synced sale already happened, so skipping
+      // it loudly costs stock accuracy on one sale — but importing it with an
+      // invented 0% writes a wrong number into the VAT return, which is worse
+      // and much harder to notice. Matches how refunds are handled above.
+      const vatRate = new Decimal(rateForBand(rates, line.vatBand as VatBand));
       const lineNet = new Decimal(netFromGross(lineTotal.toString(), vatRate.toString(), 4));
       const vatAmount = lineTotal.minus(lineNet);
 

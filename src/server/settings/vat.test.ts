@@ -2,7 +2,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { COUNTRY_VAT_SEEDS, SEEDED_COUNTRIES } from './vat-seeds.ts';
-import { grossValue, marginPercent, netFromGross } from './valuation.ts';
+import {
+  UnconfiguredVatBandError,
+  grossValue,
+  marginPercent,
+  netFromGross,
+  rateForBand,
+} from './valuation.ts';
 
 test('every seeded country has a standard rate', () => {
   for (const country of SEEDED_COUNTRIES) {
@@ -60,4 +66,24 @@ test('a shopkeeper reading margin off the shelf price would overstate it by roug
 
 test('a free or zero sell price has no margin to report', () => {
   assert.equal(marginPercent('0', '1.00', '0.1900'), null);
+});
+
+test('a band nobody configured is a question, not a zero', () => {
+  // The bug this exists to stop: two sales went through at 0% VAT on
+  // standard-rated goods because no rate row existed yet, and the shop had no
+  // way of knowing until the numbers were read back off a return.
+  assert.throws(() => rateForBand({}, 'standard'), UnconfiguredVatBandError);
+  assert.throws(() => rateForBand({ standard: '0.1900' }, 'reduced'), UnconfiguredVatBandError);
+});
+
+test('zero-rated needs no row, because the band is the rate', () => {
+  // Most UK food sits here, and refusing to sell bread until someone types a
+  // zero would be an absurd way to protect a number that cannot be wrong.
+  assert.equal(rateForBand({}, 'zero'), '0');
+});
+
+test('a configured rate is returned exactly as stored', () => {
+  // No parsing, no rounding: the string goes to decimal.js untouched.
+  assert.equal(rateForBand({ standard: '0.1900' }, 'standard'), '0.1900');
+  assert.equal(rateForBand({ standard: '0.0000' }, 'standard'), '0.0000');
 });

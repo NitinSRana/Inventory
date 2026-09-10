@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { before, describe, test } from 'node:test';
 
 import { createProduct } from '@/server/catalog/products';
+import { UnconfiguredVatBandError } from '@/server/settings/valuation';
 import { seedVatRatesForCountry } from '@/server/settings/vat';
 import { InsufficientStockError } from '@/server/stock/fefo';
 import { getBatchStock, getProductStock } from '@/server/stock/levels';
@@ -513,5 +514,76 @@ describe('voiding an older sale', () => {
       where reference_id = ${sale.id} and movement_type = 'manual_adjustment' limit 1`;
     assert.match(movement.note, /Rung up twice at close$/);
     assert.match(movement.note, new RegExp(`^Reverses sale ${sale.saleNumber}: `));
+  });
+});
+
+describe('a shop that has not set up VAT yet', () => {
+  let org: TestOrg;
+  let chocolate: string;
+  let milk: string;
+
+  before(async () => {
+    // Deliberately no seedVatRatesForCountry: this is the shop on day one,
+    // ringing things up before anyone has been to the settings screen.
+    org = await createTestOrg('No Vat Rates');
+    chocolate = (
+      await createProduct(org.orgId, {
+        name: 'Schokolade 100g',
+        gtin: '4001234567921',
+        sellPrice: '1.2000',
+        vatBand: 'standard',
+      })
+    ).id;
+    milk = (
+      await createProduct(org.orgId, {
+        name: 'Vollmilch 1L',
+        gtin: '4001234567938',
+        sellPrice: '1.2000',
+        vatBand: 'zero',
+      })
+    ).id;
+    await receiveStock(org.orgId, { productId: chocolate, quantity: '20' });
+    await receiveStock(org.orgId, { productId: milk, quantity: '20' });
+  });
+
+  test('a standard-rated sale is refused rather than rung up at 0%', async () => {
+    // What actually happened: two real sales stored 0.0000 VAT on standard
+    // goods, and nothing said so until the numbers were read off a return.
+    await assert.rejects(
+      () =>
+        checkout(org.orgId, {
+          lines: [{ productId: chocolate, quantity: '1' }],
+          tenderType: 'cash',
+        }),
+      UnconfiguredVatBandError,
+    );
+
+    const [{ n }] = await adminSql`
+      select count(*)::int n from sales where organization_id = ${org.orgId}`;
+    assert.equal(n, 0, 'and no half-made sale was left behind');
+  });
+
+  test('zero-rated goods still sell, because the band is the rate', async () => {
+    // Refusing to sell bread until someone types a zero would be an absurd way
+    // to protect a number that cannot be wrong. Most UK food sits here.
+    const sale = await checkout(org.orgId, {
+      lines: [{ productId: milk, quantity: '2' }],
+      tenderType: 'cash',
+    });
+    assert.equal(sale.total, '2.4000');
+    assert.equal(sale.vatTotal, '0.0000');
+  });
+
+  test('once the rate is set, the same basket goes through at that rate', async () => {
+    await seedVatRatesForCountry(org.orgId, 'DE'); // standard = 19%
+    const sale = await checkout(org.orgId, {
+      lines: [{ productId: chocolate, quantity: '1' }],
+      tenderType: 'cash',
+    });
+
+    // The shopper still hands over the €1.20 on the shelf edge; what changed is
+    // that the shop now knows how much of it was tax.
+    assert.equal(sale.total, '1.2000');
+    assert.equal(sale.vatTotal, '0.1916');
   });
 });

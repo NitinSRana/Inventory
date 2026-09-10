@@ -439,7 +439,8 @@
       "unknownCountry": "No starting rates for that country yet. Enter them by hand instead.",
       "alreadyConfigured": "Rates are already set up.",
       "invalidRate": "A rate must be between 0 and 100."
-    }
+    },
+    "notSet": "Not set"
   },
   "team": {
     "title": "Team",
@@ -606,7 +607,9 @@
     "subtotal": "Subtotal",
     "saleNotFound": "Can't find that sale",
     "saleNotFoundBody": "It may have been on a different device or organisation. Nothing was lost — check Sales for the full list.",
-    "viewInSales": "View in Sales"
+    "viewInSales": "View in Sales",
+    "noVatRate": "This product's VAT band has no rate set, so the sale cannot be recorded correctly. Set the rate and the basket will still be here.",
+    "setVatRates": "Set VAT rates"
   },
   "sales": {
     "title": "Sales",

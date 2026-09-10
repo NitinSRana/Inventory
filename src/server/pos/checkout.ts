@@ -12,7 +12,7 @@ import {
   stockMovements,
 } from '@/db/schema';
 import { withTenant, type Tx } from '@/db/tenant';
-import { netFromGross } from '@/server/settings/valuation';
+import { netFromGross, rateForBand } from '@/server/settings/valuation';
 import { getRatesByBand } from '@/server/settings/vat';
 import { allocateFefo } from '@/server/stock/fefo';
 import { getBatchStock } from '@/server/stock/levels';
@@ -135,7 +135,10 @@ export async function checkout(
        * bar.
        */
       const lineTotal = unitPrice.times(quantity);
-      const vatRate = new Decimal(rates[product.vatBand as keyof typeof rates] ?? '0');
+      // Throws rather than falling back to 0%: a sale is the moment a VAT
+      // figure stops being a display value and becomes a stored fact the shop
+      // will later declare from.
+      const vatRate = new Decimal(rateForBand(rates, product.vatBand));
       /*
        * Derive net first, then take VAT as the remainder. Doing it this way
        * round guarantees net + vat === lineTotal exactly, so no penny can go
