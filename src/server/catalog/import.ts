@@ -288,36 +288,52 @@ export async function importProductsCsv(
       return { ...preview, created: 0, updated: 0 };
     }
 
-    // One statement, inside the tenant transaction: the whole file lands or none
-    // of it does. The conflict target is the primary key, because which product
-    // a row belongs to was already decided above — by barcode, then by SKU.
-    // ponytail: case barcode is still not an identifier. A row carrying only a
-    // case barcode inserts fresh each time; add it to the resolution above if a
-    // wholesaler file ever ships that way.
-    await tx
-      .insert(products)
-      .values(parsed.map((p) => p.values))
-      .onConflictDoUpdate({
-        target: products.id,
-        set: {
-          name: sql`excluded.name`,
-          sku: sql`excluded.sku`,
-          // Coalesced, unlike every other column: a file with no barcode column
-          // at all is silent about barcodes, not an instruction to delete the
-          // ones already there. Reachable only now that a row without a barcode
-          // can match an existing product.
-          gtin: sql`coalesce(excluded.gtin, ${products.gtin})`,
-          caseGtin: sql`excluded.case_gtin`,
-          unitsPerCase: sql`excluded.units_per_case`,
-          unit: sql`excluded.unit`,
-          costPrice: sql`excluded.cost_price`,
-          sellPrice: sql`excluded.sell_price`,
-          minStock: sql`excluded.min_stock`,
-          shelfLifeDays: sql`excluded.shelf_life_days`,
-          supplierId: sql`excluded.supplier_id`,
-          isActive: sql`true`,
-        },
-      });
+    /*
+     * Written in chunks, all inside the tenant transaction, so the file is
+     * still all or nothing. The conflict target is the primary key, because
+     * which product a row belongs to was already decided above — by barcode,
+     * then by SKU.
+     *
+     * One statement per chunk rather than one for the file: the driver binds a
+     * parameter per column per row and refuses past 65,534 of them, which a
+     * 5,000-row catalogue crosses. That surfaced as MAX_PARAMETERS_EXCEEDED
+     * with no row attached — the same unactionable failure this import already
+     * had one of. The size is derived from the column count so that adding a
+     * column cannot quietly lower the ceiling back under a real file.
+     *
+     * ponytail: case barcode is still not an identifier. A row carrying only a
+     * case barcode inserts fresh each time; add it to the resolution above if a
+     * wholesaler file ever ships that way.
+     */
+    const columnsPerRow = Object.keys(parsed[0].values).length;
+    const chunkSize = Math.max(1, Math.floor(60_000 / columnsPerRow));
+
+    for (let start = 0; start < parsed.length; start += chunkSize) {
+      await tx
+        .insert(products)
+        .values(parsed.slice(start, start + chunkSize).map((p) => p.values))
+        .onConflictDoUpdate({
+          target: products.id,
+          set: {
+            name: sql`excluded.name`,
+            sku: sql`excluded.sku`,
+            // Coalesced, unlike every other column: a file with no barcode
+            // column at all is silent about barcodes, not an instruction to
+            // delete the ones already there. Reachable only now that a row
+            // without a barcode can match an existing product.
+            gtin: sql`coalesce(excluded.gtin, ${products.gtin})`,
+            caseGtin: sql`excluded.case_gtin`,
+            unitsPerCase: sql`excluded.units_per_case`,
+            unit: sql`excluded.unit`,
+            costPrice: sql`excluded.cost_price`,
+            sellPrice: sql`excluded.sell_price`,
+            minStock: sql`excluded.min_stock`,
+            shelfLifeDays: sql`excluded.shelf_life_days`,
+            supplierId: sql`excluded.supplier_id`,
+            isActive: sql`true`,
+          },
+        });
+    }
 
     return { ...preview, created: preview.toCreate, updated: toUpdate };
   });
