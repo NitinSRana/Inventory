@@ -106,3 +106,36 @@ test('a semicolon inside a comma-separated file is just text', () => {
     ['Milk', 'a;b'],
   ]);
 });
+
+test('a bare inch mark is literal text, not the start of a quoted field', () => {
+  // Real names from this catalogue. A wholesaler export writes the inch mark
+  // bare; RFC 4180 would have it doubled, but nobody tells the wholesaler.
+  assert.deepEqual(parseCsv('name,sku\n10" BAMBOO STEAMER,L901116'), [
+    ['name', 'sku'],
+    ['10" BAMBOO STEAMER', 'L901116'],
+  ]);
+});
+
+test('one bare quote does not swallow the rest of the file', () => {
+  // What it used to do: the quote opened a field that never closed, so every
+  // delimiter and newline after it became literal and three rows arrived as
+  // one. This is the assertion that would have caught it.
+  const rows = parseCsv(
+    ['name,sku', '10" BAMBOO STEAMER,L901116', 'PLAIN PRODUCT,ABC1', 'ANOTHER,ABC2'].join('\n'),
+  );
+  assert.equal(rows.length, 4, 'header and three rows');
+  assert.deepEqual(rows[2], ['PLAIN PRODUCT', 'ABC1']);
+  assert.deepEqual(rows[3], ['ANOTHER', 'ABC2']);
+});
+
+test('a properly doubled quote is still unescaped', () => {
+  // The well-formed spelling of the same name must keep working.
+  assert.deepEqual(parseCsv('name\n"10"" BAMBOO STEAMER"'), [['name'], ['10" BAMBOO STEAMER']]);
+});
+
+test('a quoted field containing a delimiter still holds together', () => {
+  assert.deepEqual(parseCsv('name,sku\n"Milch, fettarm",MF1L'), [
+    ['name', 'sku'],
+    ['Milch, fettarm', 'MF1L'],
+  ]);
+});

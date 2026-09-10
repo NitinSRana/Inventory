@@ -56,7 +56,19 @@ export function parseCsv(text: string): string[][] {
       continue;
     }
 
-    if (c === '"') inQuotes = true;
+    /*
+     * A quote opens a quoted field only as the field's FIRST character. RFC
+     * 4180 says so, and this catalogue is the reason it matters: it is full of
+     * inch marks — `10" BAMBOO STEAMER`, `RICE VERMICELLI 4" 15kg` — which a
+     * hand-made export writes bare rather than doubling.
+     *
+     * Treating those as an opening quote did not merely drop the character. It
+     * put the parser into quoted mode for the rest of the file, so every
+     * delimiter and newline after it became literal text and the entire
+     * remainder collapsed into one field. One inch mark, one product, whole
+     * file gone.
+     */
+    if (c === '"' && field === '') inQuotes = true;
     else if (c === delimiter) {
       row.push(field);
       field = '';
