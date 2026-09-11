@@ -6,7 +6,7 @@ import { UNITS, VAT_BANDS, products, suppliers } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 
 import { normalizeGtin } from './ean';
-import { mapHeaders, parseCsv } from './csv';
+import { mapHeaders, parseCsv, unwrapDoubleEncoded } from './csv';
 
 export type RowError = { line: number; column: string; message: string };
 
@@ -117,7 +117,12 @@ export async function importProductsCsv(
 
     for (let r = 1; r < rows.length; r++) {
       const line = r + 1; // 1-based, and row 1 is the header — matches the spreadsheet.
-      const cell = (field: string) => (index[field] !== undefined ? rows[r][index[field]]?.trim() : '') || '';
+      // unwrapDoubleEncoded because this shop's export writes some rows encoded
+      // twice; it is a no-op on every value from a well-formed file.
+      const cell = (field: string) =>
+        unwrapDoubleEncoded(
+          (index[field] !== undefined ? rows[r][index[field]]?.trim() : '') || '',
+        );
 
       const name = cell('name');
       if (!name) {

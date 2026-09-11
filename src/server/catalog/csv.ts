@@ -93,6 +93,37 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((r) => r.some((cell) => cell.trim() !== ''));
 }
 
+/**
+ * Undoes a field that was CSV-encoded twice.
+ *
+ * This catalogue's export writes some rows encoded once and others encoded
+ * twice, in the same file:
+ *
+ *   "RICE VERMICELLI 4"" 15kg"                      -> once, correct
+ *   """10"""""""" BAMBOO STEAMER (25.4CM) 30PCS"""  -> twice
+ *
+ * Parsing the second one correctly yields `"10"""" BAMBOO STEAMER..."`, which
+ * is a faithful decode of a value that was already wrong when it arrived. Ten
+ * product names in this shop looked like that.
+ *
+ * Two rules, applied until the value stops changing: drop a matching pair of
+ * outer quotes, then halve any EVEN run of quotes. An odd run is left alone —
+ * that is a real inch mark, which is exactly what these names contain. A value
+ * from a correctly-encoded file never matches either rule, so this is a no-op
+ * the moment the export is fixed upstream.
+ */
+export function unwrapDoubleEncoded(value: string): string {
+  let out = value;
+  for (let i = 0; i < 10; i++) {
+    let next = out;
+    if (next.length > 1 && next.startsWith('"') && next.endsWith('"')) next = next.slice(1, -1);
+    next = next.replace(/"+/g, (run) => (run.length % 2 === 0 ? '"'.repeat(run.length / 2) : run));
+    if (next === out) break;
+    out = next;
+  }
+  return out;
+}
+
 /** Header aliases, so a store's own column names mostly just work. */
 const COLUMNS: Record<string, string[]> = {
   name: [

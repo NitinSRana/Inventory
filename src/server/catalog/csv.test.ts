@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { mapHeaders, parseCsv } from './csv.ts';
+import { mapHeaders, parseCsv, unwrapDoubleEncoded } from './csv.ts';
 
 test('parses a plain file', () => {
   assert.deepEqual(parseCsv('name,ean\nMilk,123\nBread,456'), [
@@ -138,4 +138,32 @@ test('a quoted field containing a delimiter still holds together', () => {
     ['name', 'sku'],
     ['Milch, fettarm', 'MF1L'],
   ]);
+});
+
+test('a field encoded twice is unwrapped to what the shop meant', () => {
+  // Exactly what parsing line 1379 of this shop's export produces.
+  assert.equal(
+    unwrapDoubleEncoded('"10"""" BAMBOO STEAMER (25.4CM) 30PCS"'),
+    '10" BAMBOO STEAMER (25.4CM) 30PCS',
+  );
+  assert.equal(
+    unwrapDoubleEncoded('"5"""" STEAMER PAPER 20x120g (350PCS) BAG"'),
+    '5" STEAMER PAPER 20x120g (350PCS) BAG',
+  );
+});
+
+test('a correctly encoded field is left exactly alone', () => {
+  // The same file has both spellings, so the no-op case is the one that must
+  // not regress: an inch mark is an ODD run of quotes and stays put.
+  assert.equal(unwrapDoubleEncoded('RICE VERMICELLI 4" 15kg'), 'RICE VERMICELLI 4" 15kg');
+  assert.equal(unwrapDoubleEncoded('Milch, fettarm 1L'), 'Milch, fettarm 1L');
+  assert.equal(unwrapDoubleEncoded(''), '');
+  assert.equal(unwrapDoubleEncoded('1.29'), '1.29');
+});
+
+test('a name truncated upstream is not guessed at', () => {
+  // Opens with a quote and never closes: the rest was lost before the file was
+  // written, and inventing an ending would be worse than leaving it visible.
+  const truncated = '"LL MOCHI - ASSORTED TROPICAL FRUIT (PINEAPPLE';
+  assert.equal(unwrapDoubleEncoded(truncated), truncated);
 });
