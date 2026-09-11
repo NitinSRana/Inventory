@@ -94,7 +94,7 @@ export function parseCsv(text: string): string[][] {
 }
 
 /**
- * Undoes a field that was CSV-encoded twice.
+ * Repairs the two quoting defects this shop's export produces.
  *
  * This catalogue's export writes some rows encoded once and others encoded
  * twice, in the same file:
@@ -111,8 +111,18 @@ export function parseCsv(text: string): string[][] {
  * that is a real inch mark, which is exactly what these names contain. A value
  * from a correctly-encoded file never matches either rule, so this is a no-op
  * the moment the export is fixed upstream.
+ *
+ * The second defect is a name that was cut off mid-field, which leaves the
+ * opening quote with nothing to close it:
+ *
+ *   "LL MOCHI - ASSORTED TROPICAL FRUIT (PINEAPPLE
+ *
+ * That quote is punctuation from a field that no longer exists, and it is
+ * dropped. The missing words are NOT invented — the unbalanced bracket stays
+ * exactly where it is, so the row still looks wrong to whoever reads it, which
+ * is the only honest outcome when the text is gone from every source file.
  */
-export function unwrapDoubleEncoded(value: string): string {
+export function repairExportQuoting(value: string): string {
   let out = value;
   for (let i = 0; i < 10; i++) {
     let next = out;
@@ -121,6 +131,8 @@ export function unwrapDoubleEncoded(value: string): string {
     if (next === out) break;
     out = next;
   }
+  // An opening quote with no closing one anywhere: the field was truncated.
+  if (out.startsWith('"') && !out.slice(1).includes('"')) out = out.slice(1);
   return out;
 }
 

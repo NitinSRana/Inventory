@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { mapHeaders, parseCsv, unwrapDoubleEncoded } from './csv.ts';
+import { mapHeaders, parseCsv, repairExportQuoting } from './csv.ts';
 
 test('parses a plain file', () => {
   assert.deepEqual(parseCsv('name,ean\nMilk,123\nBread,456'), [
@@ -143,11 +143,11 @@ test('a quoted field containing a delimiter still holds together', () => {
 test('a field encoded twice is unwrapped to what the shop meant', () => {
   // Exactly what parsing line 1379 of this shop's export produces.
   assert.equal(
-    unwrapDoubleEncoded('"10"""" BAMBOO STEAMER (25.4CM) 30PCS"'),
+    repairExportQuoting('"10"""" BAMBOO STEAMER (25.4CM) 30PCS"'),
     '10" BAMBOO STEAMER (25.4CM) 30PCS',
   );
   assert.equal(
-    unwrapDoubleEncoded('"5"""" STEAMER PAPER 20x120g (350PCS) BAG"'),
+    repairExportQuoting('"5"""" STEAMER PAPER 20x120g (350PCS) BAG"'),
     '5" STEAMER PAPER 20x120g (350PCS) BAG',
   );
 });
@@ -155,15 +155,29 @@ test('a field encoded twice is unwrapped to what the shop meant', () => {
 test('a correctly encoded field is left exactly alone', () => {
   // The same file has both spellings, so the no-op case is the one that must
   // not regress: an inch mark is an ODD run of quotes and stays put.
-  assert.equal(unwrapDoubleEncoded('RICE VERMICELLI 4" 15kg'), 'RICE VERMICELLI 4" 15kg');
-  assert.equal(unwrapDoubleEncoded('Milch, fettarm 1L'), 'Milch, fettarm 1L');
-  assert.equal(unwrapDoubleEncoded(''), '');
-  assert.equal(unwrapDoubleEncoded('1.29'), '1.29');
+  assert.equal(repairExportQuoting('RICE VERMICELLI 4" 15kg'), 'RICE VERMICELLI 4" 15kg');
+  assert.equal(repairExportQuoting('Milch, fettarm 1L'), 'Milch, fettarm 1L');
+  assert.equal(repairExportQuoting(''), '');
+  assert.equal(repairExportQuoting('1.29'), '1.29');
 });
 
-test('a name truncated upstream is not guessed at', () => {
-  // Opens with a quote and never closes: the rest was lost before the file was
-  // written, and inventing an ending would be worse than leaving it visible.
-  const truncated = '"LL MOCHI - ASSORTED TROPICAL FRUIT (PINEAPPLE';
-  assert.equal(unwrapDoubleEncoded(truncated), truncated);
+test('a truncated name loses its orphan quote but not its evidence', () => {
+  // The opening quote belongs to a field that was cut off; it is punctuation,
+  // not part of the name, and the same value appears in two other exports of
+  // this catalogue. The missing words are not invented: the unbalanced bracket
+  // stays, so the row still reads as wrong to whoever has to fix it.
+  assert.equal(
+    repairExportQuoting('"LL MOCHI - ASSORTED TROPICAL FRUIT (PINEAPPLE'),
+    'LL MOCHI - ASSORTED TROPICAL FRUIT (PINEAPPLE',
+  );
+  assert.equal(
+    repairExportQuoting('"LL JAPANESE STYLE MOCHI - ASSORTED ?TARO'),
+    'LL JAPANESE STYLE MOCHI - ASSORTED ?TARO',
+  );
+});
+
+test('a quote that does close is not an orphan', () => {
+  // Guard on the rule above: only a lone opening quote is dropped.
+  assert.equal(repairExportQuoting('SAY "HELLO" BRAND 6x1kg'), 'SAY "HELLO" BRAND 6x1kg');
+  assert.equal(repairExportQuoting('RICE VERMICELLI 4" 15kg'), 'RICE VERMICELLI 4" 15kg');
 });
