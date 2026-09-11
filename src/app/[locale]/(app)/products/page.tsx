@@ -107,7 +107,10 @@ export default async function ProductsPage({ params, searchParams }: PageProps<'
         </FieldRow>
 
         <div className="flex flex-col gap-2">
-          <label htmlFor="needs" className="flex items-start gap-3">
+          {/* min-h-11 = the 44px target the rest of the app uses. Two lines of
+              text-sm come to 42px on their own, and the whole row is the tap
+              target, so the shortfall is invisible until it is measured. */}
+          <label htmlFor="needs" className="flex min-h-11 items-start gap-3 py-1">
             <input
               id="needs"
               name="needs"
@@ -121,7 +124,7 @@ export default async function ProductsPage({ params, searchParams }: PageProps<'
               <span className="text-muted-foreground text-sm">{t('needsAttentionHint')}</span>
             </span>
           </label>
-          <label htmlFor="inactive" className="flex items-start gap-3">
+          <label htmlFor="inactive" className="flex min-h-11 items-start gap-3 py-1">
             <input
               id="inactive"
               name="inactive"
