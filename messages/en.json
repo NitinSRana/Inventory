@@ -385,7 +385,8 @@
       "sale": "Sale",
       "who": "Who",
       "reason": "Reason"
-    }
+    },
+    "showMore": "Show up to {count}"
   },
   "suppliers": {
     "title": "Suppliers",

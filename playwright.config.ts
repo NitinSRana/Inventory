@@ -51,6 +51,17 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { storageState: STORAGE_STATE },
     },
+    // Separate from the flows because it sets its own viewport per test and
+    // asserts on measurements rather than on the ledger. Same session.
+    {
+      name: 'layout',
+      testMatch: /layout\.spec\.ts/,
+      dependencies: ['setup'],
+      // A 2,000-row report rendered from Frankfurt outruns the suite's usual
+      // navigation budget, and waiting on it is the whole point here.
+      timeout: 180_000,
+      use: { storageState: STORAGE_STATE, navigationTimeout: 120_000 },
+    },
   ],
 
   webServer: EXTERNAL

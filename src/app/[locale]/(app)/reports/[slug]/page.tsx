@@ -13,6 +13,7 @@ import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 import { trimQuantity } from '@/lib/quantity';
 import { requireOrg } from '@/server/auth/session';
+import { LIST_LIMITS, limitFrom } from '@/lib/search-params';
 import { REPORT_SLUGS, buildReport, type ReportSlug } from '@/server/reports';
 import { formatCell } from '@/server/reports/display';
 
@@ -44,7 +45,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<'/[
   if (!REPORT_SLUGS.includes(slug as ReportSlug)) notFound();
   const reportSlug = slug as ReportSlug;
 
-  const { days } = await searchParams;
+  const { days, limit } = await searchParams;
   const period = PERIODS.includes(Number(days) as (typeof PERIODS)[number]) ? Number(days) : 30;
 
   const t = await getTranslations('reports');
@@ -69,6 +70,23 @@ export default async function ReportPage({ params, searchParams }: PageProps<'/[
   const showPeriod = TIME_BOUNDED.includes(reportSlug);
   const exportHref =
     `/${locale}/reports/${reportSlug}/export` + (showPeriod ? `?days=${period}` : '');
+
+  /*
+   * Every other list in this app raises a ceiling rather than rendering
+   * everything, and the reports were the one place that did not. Low stock on a
+   * 2,000-product catalogue is 2,050 rows — laid out twice, because the phone
+   * cards and the desktop table are both rendered and one is hidden by CSS —
+   * which is several thousand nodes for a page nobody reads past the top of.
+   *
+   * Sliced here rather than in buildReport on purpose: the CSV export calls the
+   * same builder, and a truncated export is a wrong answer rather than a slow
+   * one. The headline and the row count stay over the whole result too.
+   */
+  const shown = limitFrom(limit);
+  const visible = report.rows.slice(0, shown);
+  const nextLimit = LIST_LIMITS[LIST_LIMITS.indexOf(shown) + 1];
+  const withLimit = (n: number) =>
+    `/${locale}/reports/${reportSlug}?limit=${n}` + (showPeriod ? `&days=${period}` : '');
 
   const moneyColumn = MONEY_COLUMN[reportSlug];
   const headlineValue = moneyColumn
@@ -118,7 +136,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<'/[
               nothing, which is the same call every other list in the app makes. */}
           <div className="overflow-hidden rounded-lg border md:hidden">
             <ul className="divide-border divide-y">
-              {report.rows.map((row, i) => (
+              {visible.map((row, i) => (
                 <li key={i} className="flex flex-col gap-1 px-4 py-3">
                   <span className="font-medium">{row[report.columns[0].key]}</span>
                   <dl className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-sm">
@@ -148,7 +166,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<'/[
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {report.rows.map((row, i) => (
+                {visible.map((row, i) => (
                   <TableRow key={i}>
                     {report.columns.map((c) => (
                       <TableCell
@@ -163,6 +181,17 @@ export default async function ReportPage({ params, searchParams }: PageProps<'/[
               </TableBody>
             </Table>
           </div>
+
+          {/* Raise the ceiling rather than page — the same link every other
+              list in the app uses. Export gives the whole thing regardless. */}
+          {report.rows.length > visible.length && nextLimit && (
+            <Link
+              href={withLimit(nextLimit)}
+              className={buttonVariants({ variant: 'outline', className: 'h-11 w-fit' })}
+            >
+              {t('showMore', { count: Math.min(nextLimit, report.rows.length) })}
+            </Link>
+          )}
         </>
       )}
 
