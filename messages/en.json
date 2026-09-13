@@ -16,7 +16,22 @@
     "error": "That didn't work. Check the address and try again.",
     "passwordError": "Wrong email or password.",
     "throttled": "Too many attempts. Wait a few minutes and try again.",
-    "unavailable": "We couldn't check that just now — this one is on us, not you. Try again in a moment, and tell us if it keeps happening."
+    "unavailable": "We couldn't check that just now — this one is on us, not you. Try again in a moment, and tell us if it keeps happening.",
+    "forgotLink": "Forgot password?",
+    "forgotTitle": "Reset your password",
+    "forgotIntro": "We'll email you a link to choose a new one.",
+    "resetSubmit": "Email me a reset link",
+    "resetSent": "If that address can sign in here, a reset link is on its way. Check your email.",
+    "backToSignIn": "Back to sign in",
+    "resetTitle": "Choose a new password",
+    "resetIntro": "At least {min} characters.",
+    "newPasswordLabel": "New password",
+    "confirmPasswordLabel": "Type it again",
+    "saveNewPassword": "Save password",
+    "resetShort": "Use at least {min} characters.",
+    "resetMismatch": "Those two passwords are different.",
+    "resetFailed": "That didn't save. Ask for a new reset link and try again.",
+    "resetExpired": "That reset link has expired or was already used. Ask for a new one."
   },
   "scan": {
     "barcodeLabel": "Barcode",

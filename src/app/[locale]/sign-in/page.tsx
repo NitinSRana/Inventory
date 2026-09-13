@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { headers } from 'next/headers';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { PageTitle } from '@/components/data-list';
@@ -58,9 +59,9 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
   }
 
   /**
-   * Password sign-in. No mail server in the loop at all — set once (in the
-   * Supabase dashboard, since there is no self-serve password-set flow yet),
-   * works instantly and offline of any inbox from then on.
+   * Password sign-in. No mail server in the loop at all — works instantly and
+   * offline of any inbox. A forgotten password is reset by email from the
+   * Forgot password screen.
    */
   async function signInWithPassword(formData: FormData) {
     'use server';
@@ -127,6 +128,15 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
               />
             </Field>
 
+            {/* Where the design puts it, beside the password. 44px tall: a
+                phone is where people most often find they have forgotten. */}
+            <Link
+              href={`/${locale}/sign-in/forgot`}
+              className="text-link inline-flex min-h-11 items-center self-end text-sm font-semibold"
+            >
+              {t('forgotLink')}
+            </Link>
+
             {error && (
               <p role="alert" className="text-destructive text-sm">
                 {error === 'throttled'
@@ -135,7 +145,9 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
                     ? t('unavailable')
                     : error === 'password'
                       ? t('passwordError')
-                      : t('error')}
+                      : error === 'resetExpired'
+                        ? t('resetExpired')
+                        : t('error')}
               </p>
             )}
 

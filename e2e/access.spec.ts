@@ -72,3 +72,29 @@ test('a refused sign-in never reveals whether the account exists', async ({ page
   // main, and would otherwise make this ambiguous.
   await expect(page.locator('main [role="alert"]')).toBeVisible();
 });
+
+/**
+ * The reset form has to hold the same line as sign-in: whatever the address,
+ * the answer reads the same. Accepts the throttle's two refusals for the same
+ * reason the sign-in test does — CI runs with no database behind the limiter.
+ */
+test('asking for a password reset never reveals whether the account exists', async ({ page }) => {
+  await page.goto('/en/sign-in/forgot');
+  await page.getByLabel('Email').fill(`not-a-member-${Date.now()}@example.com`);
+  await page.getByRole('button', { name: 'Email me a reset link' }).click();
+
+  await expect(page).toHaveURL(/\/en\/sign-in\/forgot\?(sent=1|error=(throttled|unavailable))$/);
+
+  const body = (await page.locator('body').innerText()).toLowerCase();
+  for (const leak of ['no such', 'not found', 'unknown', 'no account', 'not registered']) {
+    expect(body).not.toContain(leak);
+  }
+  await expect(page.locator('main [role="status"], main [role="alert"]')).toBeVisible();
+});
+
+test('the new-password screen without a reset link goes back to sign-in', async ({ page }) => {
+  // No recovery session, nothing to reset: a form here could only fail.
+  await page.goto('/en/sign-in/reset-password');
+  await expect(page).toHaveURL(/\/en\/sign-in\?error=resetExpired$/);
+  await expect(page.locator('main [role="alert"]')).toBeVisible();
+});

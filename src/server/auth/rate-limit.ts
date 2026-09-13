@@ -45,6 +45,14 @@ export const SIGN_IN_PER_CLIENT: Limit = { limit: 10, windowSeconds: 15 * 60 };
 export const SIGN_IN_PASSWORD_PER_EMAIL: Limit = { limit: 5, windowSeconds: 15 * 60 };
 export const SIGN_IN_PASSWORD_PER_CLIENT: Limit = { limit: 20, windowSeconds: 15 * 60 };
 
+/**
+ * Password-reset emails. Tight per address, like the magic link: each one is a
+ * real email to someone's inbox, and a form that sends them freely is a way to
+ * flood a stranger's mail with messages from a shop.
+ */
+export const PASSWORD_RESET_PER_EMAIL: Limit = { limit: 3, windowSeconds: 15 * 60 };
+export const PASSWORD_RESET_PER_CLIENT: Limit = { limit: 10, windowSeconds: 15 * 60 };
+
 /** Postgres: relation or function does not exist. */
 const UNDEFINED_OBJECT = ['42P01', '42883'];
 
