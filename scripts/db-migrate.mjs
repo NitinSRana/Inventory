@@ -22,7 +22,11 @@ if (!url) {
   process.exit(1);
 }
 
-const dryRun = process.argv.includes('--dry-run');
+// --check is the CI form of --dry-run: same read-only pass, but pending work is
+// a failure rather than a preview. Separate flag because a dry run that exits
+// non-zero would be a surprise to anyone using it to look before they leap.
+const check = process.argv.includes('--check');
+const dryRun = check || process.argv.includes('--dry-run');
 // Records migrations as applied without running them. For adopting a database
 // that was migrated by hand before this script existed — which is exactly how
 // the Frankfurt project got its first four.
@@ -62,6 +66,15 @@ try {
     }
   } else if (dryRun) {
     console.log(`would apply:\n  ${pending.map((m) => m.name).join('\n  ')}`);
+    if (check) {
+      console.error(
+        `\n${pending.length} migration(s) are in the repository but not in this database.\n` +
+          'Deployed code that expects them fails at the query, not at the build — which is\n' +
+          'how a report and a settings screen went out broken while every check was green.\n' +
+          'Run `pnpm db:migrate` against it.',
+      );
+      process.exitCode = 1;
+    }
   } else {
     for (const migration of pending) {
       await sql.begin(async (tx) => {

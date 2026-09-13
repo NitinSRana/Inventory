@@ -10,6 +10,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Deliberately separate from `verify`, which is credential-free on purpose so
+  # anyone who clones the repo can run the whole gate. This one needs the owner
+  # connection, so it is scoped to pushes to main and skips itself when the
+  # secret is absent — a fork must not fail CI over a database it cannot reach.
+  #
+  # It exists because db:test proves a migration against a scratch database,
+  # which is not the same as having run it. Migrations 0014 and 0015 sat
+  # unapplied while every check stayed green, and the first sign was a report
+  # failing live on a missing column.
+  schema-drift:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Migrations applied to production
+        env:
+          ADMIN_DATABASE_URL: ${{ secrets.ADMIN_DATABASE_URL }}
+        run: |
+          if [ -z "$ADMIN_DATABASE_URL" ]; then
+            echo "::warning::ADMIN_DATABASE_URL is not set — schema drift was NOT checked."
+            exit 0
+          fi
+          pnpm db:check
+
   verify:
     runs-on: ubuntu-latest
     # Two Postgres instances, a production build and a browser run.

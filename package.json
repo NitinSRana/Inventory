@@ -10,6 +10,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "node --test \"src/**/*.test.ts\"",
     "db:migrate": "node scripts/db-migrate.mjs",
+    "db:check": "node scripts/db-migrate.mjs --check",
     "db:test": "node scripts/db-test.mjs",
     "test:integration": "node scripts/integration-test.mjs",
     "test:e2e": "node --env-file-if-exists=.env.local node_modules/@playwright/test/cli.js test",

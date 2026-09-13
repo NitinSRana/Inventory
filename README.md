@@ -45,6 +45,24 @@ Adopting a database that was migrated by hand:
 pnpm db:migrate --baseline   # record migrations as applied without running them
 ```
 
+### Before deploying
+
+```bash
+pnpm db:check                # fails if the database is behind the repository
+```
+
+`pnpm db:test` proves a migration against a scratch database, which is not the
+same as having run it against a real one. Deployed code that expects a column
+fails at the query rather than at the build, so the first sign is a live screen
+erroring — that is exactly how 0014 and 0015 went out unapplied while every
+check stayed green.
+
+CI runs this on every push to `main` (the `schema-drift` job) when
+`ADMIN_DATABASE_URL` is set as a repository secret, and warns rather than fails
+when it is not, so a fork is never blocked by a database it cannot reach. It
+reports drift; it cannot hold back a Vercel deploy, so **apply migrations before
+merging the code that needs them.**
+
 ## Checks
 
 ```bash

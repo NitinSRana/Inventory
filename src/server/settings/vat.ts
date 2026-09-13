@@ -1,7 +1,7 @@
 import Decimal from 'decimal.js';
 import { asc, desc, eq } from 'drizzle-orm';
 
-import { VAT_BANDS, vatRates } from '@/db/schema';
+import { vatRates } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 
 import { COUNTRY_VAT_SEEDS, type VatBand } from './vat-seeds';
