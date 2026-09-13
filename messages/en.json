@@ -22,7 +22,22 @@
     "barcodeLabel": "Barcode",
     "scan": "Scan",
     "stop": "Stop",
-    "cameraUnavailable": "Camera unavailable. Type the barcode instead."
+    "cameraUnavailable": "Camera unavailable. Type the barcode instead.",
+    "pageTitle": "Scan",
+    "pageIntro": "Scan or type a barcode to see what it is and how much is on the shelf.",
+    "notFound": "No product has this barcode",
+    "notFoundBody": "Check the number, or add it to the catalogue if it is new.",
+    "notFoundAskManager": "Check the number. If it is a new product, ask a manager to add it.",
+    "addProduct": "Add product",
+    "currentStock": "Current stock",
+    "batches": "{count, plural, =0 {Batches} one {# batch} other {# batches}}",
+    "noBatches": "None of this is in stock right now.",
+    "expires": "Expires {date}",
+    "noExpiry": "No expiry date",
+    "receiveBatch": "Receive batch",
+    "openProduct": "Open product",
+    "correctStock": "Correct stock",
+    "startCount": "Stock count"
   },
   "overview": {
     "inventoryValue": "Inventory value",
@@ -484,11 +499,14 @@
     "count": "Count",
     "more": "More",
     "signOut": "Sign out",
-    "checkout": "Checkout"
+    "checkout": "Checkout",
+    "products": "Products",
+    "scan": "Scan"
   },
   "more": {
     "title": "More",
     "sections": {
+      "stock": "Stock",
       "catalogue": "Catalogue",
       "insight": "Insight",
       "settings": "Settings"
@@ -502,7 +520,15 @@
       "categories": "Categories",
       "store": "Store",
       "insights": "Insights",
-      "sales": "Sales"
+      "sales": "Sales",
+      "receive": "Receive delivery",
+      "count": "Stock count"
+    },
+    "signOut": "Sign out",
+    "roles": {
+      "staff": "Staff",
+      "manager": "Manager",
+      "owner": "Owner"
     }
   },
   "errors": {

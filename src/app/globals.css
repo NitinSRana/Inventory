@@ -17,6 +17,7 @@
 
 @theme inline {
   --color-success: var(--success);
+  --color-link: var(--link);
   --color-warning-subtle: var(--warning-subtle);
   --color-destructive-subtle: var(--destructive-subtle);
   --color-warning: var(--warning);
@@ -64,60 +65,71 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/*
+ * Values from the Figma redesign (file 7P9p7x0R2wp9CqKLruUHrr): the warm
+ * off-white ground (#faf9f6), hairline borders (#eae8e4), ink (#1c1c1e) and the
+ * blue it keeps for links and the active tab (#2563eb). The file defines no
+ * variables, so these were read off the frames and converted to OKLCH.
+ *
+ * Two of its colours were NOT taken: its amber (#d97706) and green (#16a34a)
+ * sit around 3:1 on their tinted badges, under the WCAG AA 4.5:1 that
+ * .claude/rules/ui.md requires for a phone read at an angle in a cold store.
+ * `--warning` and `--success` keep their darkened values.
+ */
 :root {
-  --background: oklch(0.99 0.002 95);
-  --foreground: oklch(0.21 0.008 90);
+  --background: oklch(0.984 0.004 84.6);
+  --foreground: oklch(0.225 0.003 286);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.008 90);
+  --card-foreground: oklch(0.225 0.003 286);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.008 90);
-  /* A more vivid brand blue (matching the product design's #1a56db) than the
-     muted tone this replaced. Chosen deliberately, not a default: white text
-     on it clears WCAG AA at 6.18:1. It doesn't compete with the urgency
-     system — destructive/warning/success are untouched, and always were the
-     only colours carrying a *meaning* in this product; primary is chrome. */
-  /* From design_handoff_inventory/README.md §1 — calmer, higher-contrast
-     (8.4:1) than the earlier vivid blue; less saturated so it doesn't
-     compete with the urgency ladder at a glance. */
-  --primary: oklch(0.45 0.09 235);
+  --popover-foreground: oklch(0.225 0.003 286);
+  /* Ink, not blue. The redesign draws every action button near-black (Log
+     Delivery, Receive Batch, Scan) and spends blue only on links and the active
+     tab — so "your move" now reads as the darkest thing on the screen rather
+     than as a hue, and blue is left free to mean "this is where you are". */
+  --primary: oklch(0.225 0.003 286);
   --primary-foreground: oklch(0.99 0.002 95);
+  /* Links, the active tab and the focus ring. 5.2:1 on the ground. */
+  --link: oklch(0.546 0.215 262.9);
   --secondary: oklch(0.965 0.003 95);
-  --secondary-foreground: oklch(0.21 0.008 90);
+  --secondary-foreground: oklch(0.225 0.003 286);
   --muted: oklch(0.965 0.003 95);
-  --muted-foreground: oklch(0.505 0.008 90);
+  --muted-foreground: oklch(0.51 0.007 286);
   --accent: oklch(0.965 0.003 95);
-  --accent-foreground: oklch(0.21 0.008 90);
+  --accent-foreground: oklch(0.225 0.003 286);
   --destructive: oklch(0.515 0.19 27);
   /* Darkened until it clears WCAG AA (4.5:1) on the light background. */
   --warning: oklch(0.545 0.125 62);
   --warning-foreground: oklch(0.99 0.002 95);
-  --border: oklch(0.915 0.004 95);
-  --input: oklch(0.915 0.004 95);
-  --ring: oklch(0.45 0.09 235);
+  --border: oklch(0.93 0.006 84.6);
+  --input: oklch(0.93 0.006 84.6);
+  --ring: oklch(0.546 0.215 262.9);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.5rem;
-  /* A persistent dark-navy rail (matching the product design), not a
-     light/dark-mode-following surface — same reasoning as a lot of SaaS
-     sidebars staying dark regardless of the page theme. */
-  --sidebar: oklch(0.218 0.036 251.3);
-  --sidebar-foreground: oklch(0.929 0.013 255.5);
-  --sidebar-primary: oklch(0.45 0.09 235);
+  /* 10px cards on a phone; at md the 87.5% root below brings it to the 8px
+     the desktop frames use, without a second value. */
+  --radius: 0.625rem;
+  /* A light rail now, with the brand at the top and the signed-in person at the
+     bottom, as the desktop frames draw it. It follows the page theme. */
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.141 0.005 285.8);
+  --sidebar-primary: oklch(0.225 0.003 286);
   --sidebar-primary-foreground: oklch(0.99 0.002 95);
-  --sidebar-accent: oklch(0.279 0.037 260);
-  --sidebar-accent-foreground: oklch(0.929 0.013 255.5);
-  --sidebar-border: oklch(1 0 0 / 6%);
-  --sidebar-ring: oklch(0.45 0.09 235);
+  --sidebar-accent: oklch(0.967 0.001 286.4);
+  --sidebar-accent-foreground: oklch(0.141 0.005 285.8);
+  --sidebar-border: oklch(0.92 0.004 286.3);
+  --sidebar-ring: oklch(0.546 0.215 262.9);
   --destructive-subtle: oklch(0.515 0.19 27 / 10%);
   --warning-subtle: oklch(0.545 0.125 62 / 10%);
   --success: oklch(0.46 0.12 155);
 }
 
 /* Same tokens, reached by the device preference rather than a class that
-   nothing sets. Kept as one block so light and dark cannot drift. */
+   nothing sets. Kept as one block so light and dark cannot drift. The redesign
+   has no dark frames; this keeps its roles — ink actions, blue links — inverted. */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: oklch(0.185 0.008 250);
@@ -126,8 +138,9 @@
     --card-foreground: oklch(0.965 0.003 250);
     --popover: oklch(0.235 0.008 250);
     --popover-foreground: oklch(0.965 0.003 250);
-    --primary: oklch(0.72 0.11 235);
+    --primary: oklch(0.965 0.003 250);
     --primary-foreground: oklch(0.185 0.008 250);
+    --link: oklch(0.72 0.14 262);
     --secondary: oklch(0.265 0.008 250);
     --secondary-foreground: oklch(0.965 0.003 250);
     --muted: oklch(0.265 0.008 250);
@@ -139,21 +152,20 @@
     --warning-foreground: oklch(0.185 0.008 250);
     --border: oklch(0.305 0.01 250);
     --input: oklch(0.305 0.01 250);
-    --ring: oklch(0.72 0.11 235);
+    --ring: oklch(0.72 0.14 262);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
     --chart-4: oklch(0.371 0 0);
     --chart-5: oklch(0.269 0 0);
-    /* Same navy rail as light mode — it doesn't follow the page theme. */
-    --sidebar: oklch(0.218 0.036 251.3);
-    --sidebar-foreground: oklch(0.929 0.013 255.5);
-    --sidebar-primary: oklch(0.72 0.11 235);
+    --sidebar: oklch(0.21 0.008 250);
+    --sidebar-foreground: oklch(0.965 0.003 250);
+    --sidebar-primary: oklch(0.965 0.003 250);
     --sidebar-primary-foreground: oklch(0.185 0.008 250);
-    --sidebar-accent: oklch(0.279 0.037 260);
-    --sidebar-accent-foreground: oklch(0.929 0.013 255.5);
-    --sidebar-border: oklch(1 0 0 / 6%);
-    --sidebar-ring: oklch(0.72 0.11 235);
+    --sidebar-accent: oklch(0.265 0.008 250);
+    --sidebar-accent-foreground: oklch(0.965 0.003 250);
+    --sidebar-border: oklch(0.305 0.01 250);
+    --sidebar-ring: oklch(0.72 0.14 262);
     --destructive-subtle: oklch(0.705 0.155 25 / 16%);
     --warning-subtle: oklch(0.80 0.115 78 / 16%);
     --success: oklch(0.72 0.13 155);

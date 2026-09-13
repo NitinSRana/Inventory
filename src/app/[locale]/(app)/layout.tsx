@@ -1,14 +1,15 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
+import { Barcode } from 'lucide-react';
 
 import { AppNav } from '@/components/app-nav';
 import { AppSidebar } from '@/components/app-sidebar';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
-import { createClient } from '@/lib/supabase/server';
 import { getSessionState } from '@/server/auth/session';
+
+import { signOut } from './actions';
 
 /**
  * The shell every signed-in screen sits inside.
@@ -29,8 +30,8 @@ export default async function AppLayout({ children, params }: LayoutProps<'/[loc
 
   const [org] = await withTenant(session.orgId, (tx) => tx.select().from(organizations));
 
-  // No display-name field exists on a user — email is all there is to
-  // initial from. "a.b@x.com" -> "AB"; a bare local part still gets one.
+  // Initials from the email, which the session always has. "a.b@x.com" -> "AB";
+  // a bare local part still gets one.
   const initials =
     session.email
       .split(/[@.+_-]/)
@@ -39,49 +40,56 @@ export default async function AppLayout({ children, params }: LayoutProps<'/[loc
       .map((s) => s[0]?.toUpperCase())
       .join('') || '?';
 
-  async function signOut() {
-    'use server';
-    const supabase = await createClient();
-    await supabase.auth.signOut();
-    redirect(`/${locale}`);
-  }
-
   return (
     // Sidebar beside the content on a desktop browser, stacked with a bottom
     // tab bar on a phone. Only one of the two navs is ever visible.
     <div className="flex min-h-full md:items-stretch">
-      <AppSidebar locale={locale} role={session.role} />
+      <AppSidebar
+        locale={locale}
+        role={session.role}
+        orgName={org.name}
+        email={session.email}
+        initials={initials}
+        signOut={signOut.bind(null, locale)}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="bg-background sticky top-0 z-40 border-b">
-          <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-3 px-4">
-            <Link href={`/${locale}`} className="truncate font-medium">
-              {org.name}
-            </Link>
-            <div className="flex items-center gap-2">
+        {/* Phone only. The desktop frames carry the shop in the sidebar instead,
+            so a header there would say the same thing twice. Scan is the way
+            into receiving and counting now that the tab bar no longer holds
+            them: an aisle task starts with a product in hand. */}
+        <header className="bg-card sticky top-0 z-40 border-b md:hidden">
+          <div className="flex items-center justify-between gap-3 px-4 py-2">
+            <Link href={`/${locale}`} className="flex min-w-0 items-center gap-2">
               <span
                 aria-hidden
-                className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                className="bg-primary text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-md text-sm font-bold"
               >
-                {initials}
+                {org.name.charAt(0).toUpperCase()}
               </span>
-              <form action={signOut}>
-                <Button type="submit" variant="ghost" className="text-muted-foreground h-11 text-sm">
-                  {t('signOut')}
-                </Button>
-              </form>
-            </div>
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate text-sm font-bold">{org.name}</span>
+                {org.address && (
+                  <span className="text-muted-foreground truncate text-xs">{org.address}</span>
+                )}
+              </span>
+            </Link>
+            {/* 44px, not the 28px the frame draws: this is the most-used control
+                in the aisle, and the touch minimum is an accessibility rule. */}
+            <Link
+              href={`/${locale}/scan`}
+              className={buttonVariants({ className: 'h-11 shrink-0 gap-2' })}
+            >
+              <Barcode aria-hidden className="size-4" />
+              {t('scan')}
+            </Link>
           </div>
         </header>
 
         {/* The page fills the monitor; the *controls* inside it are what get
             capped (Field/FieldRow/BarcodeField cap at md:max-w-lg, EmptyState
-            likewise). Those are two different jobs and they were being confused:
-            capping the page to hold a form to a readable measure left a 1920px
-            screen showing an 896px column with 370px of dead space either side,
-            which is the "why is there so much white space" this is answering.
-            Still capped at all, because a table stretched across an ultrawide is
-            no more readable than one crushed into 320px.
+            likewise). Still capped at all, because a table stretched across an
+            ultrawide is no more readable than one crushed into 320px.
             pb-20 clears the fixed bottom bar on mobile; there is none above md. */}
         <div className="mx-auto w-full max-w-7xl flex-1 pb-20 md:pb-0">{children}</div>
       </div>

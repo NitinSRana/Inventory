@@ -84,8 +84,12 @@ this is the vocabulary for using them, not a duplicate source of truth.
 
 **Colour has exactly two meanings.** Warm hue = state of the world (expiry
 urgency: `destructive` / `warning` / `muted-foreground` / plain). Cool hue =
-your move (`primary` — button, focus ring, active tab, link). They never
-overlap. A headline figure like "at risk this month: €604" is a fact, not an
+where you are and where you can go (`link` — links, the active tab, the focus
+ring). They never overlap. Actions are neither: since the Figma redesign
+(`7P9p7x0R2wp9CqKLruUHrr`) a button is ink (`primary`, near-black), the
+darkest thing on the screen rather than a hue. The redesign's own amber and
+green badge colours fail WCAG AA and were not adopted — `warning` and
+`success` keep their darkened values. A headline figure like "at risk this month: €604" is a fact, not an
 alarm — it stays `foreground`, not `destructive`. `warning` may also flag
 money-at-risk outside expiry (a supplier minimum-order gap, an
 over-delivery) — always as a tinted row with an icon and a sentence, never as

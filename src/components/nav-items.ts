@@ -1,9 +1,9 @@
 import {
   BarChart3,
   Boxes,
+  CalendarClock,
   ClipboardList,
-  Home,
-  Package,
+  Ellipsis,
   PackagePlus,
   Percent,
   Receipt,
@@ -30,30 +30,37 @@ import type { Role } from '@/server/auth/roles';
  */
 
 /**
- * The daily loop, always one tap away on a phone.
+ * The phone's tab bar, as the redesign draws it: Today, the till, the catalogue
+ * and More.
  *
- * Four destinations plus More, not nine: checkout, receiving and counting are
- * what a shop does every day, and the dashboard is where it starts. A launcher
- * with nine equal buttons makes the frequent things as hard to reach as the
- * rare ones.
+ * Receiving and counting left the bar for the header Scan button, which is where
+ * an aisle task actually starts — with a product in hand. The design's own More
+ * screen then listed neither, which would have made counting unreachable on a
+ * phone; the `stock` section below puts both back one tap from More, and the
+ * sidebar lists them too.
  */
 export const TABS = [
-  { path: '', key: 'home', Icon: Home },
+  { path: '', key: 'home', Icon: CalendarClock },
   { path: '/checkout', key: 'checkout', Icon: ShoppingCart },
-  { path: '/receive', key: 'receive', Icon: PackagePlus },
-  { path: '/count', key: 'count', Icon: ClipboardList },
-  { path: '/more', key: 'more', Icon: Boxes },
+  { path: '/products', key: 'products', Icon: Boxes },
+  { path: '/more', key: 'more', Icon: Ellipsis },
 ] as const;
 
-/** The daily loop without More — the sidebar lists everything, so More has nothing left to point at. */
+/** The tab bar without More — the sidebar lists everything, so More has nothing left to point at. */
 export const PRIMARY = TABS.filter((t) => t.key !== 'more');
 
-/** Everything outside the daily loop, grouped by what it is for. */
+/** Everything outside the tab bar, grouped by what it is for. */
 export const SECTIONS = [
+  {
+    key: 'stock',
+    items: [
+      { path: 'receive', key: 'receive', Icon: PackagePlus, needs: 'staff' },
+      { path: 'count', key: 'count', Icon: ClipboardList, needs: 'staff' },
+    ],
+  },
   {
     key: 'catalogue',
     items: [
-      { path: 'products', key: 'products', Icon: Package, needs: 'staff' },
       { path: 'suppliers', key: 'suppliers', Icon: Truck, needs: 'staff' },
       { path: 'categories', key: 'categories', Icon: Tag, needs: 'manager' },
     ],

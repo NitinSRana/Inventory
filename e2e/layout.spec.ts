@@ -77,6 +77,8 @@ const PHONE = [
   ['corrections report', '/en/reports/corrections'],
   ['low stock report', '/en/reports/low-stock'],
   ['team', '/en/settings/team'],
+  ['scan', '/en/scan'],
+  ['more', '/en/more'],
 ] as const;
 
 const DESK = [
