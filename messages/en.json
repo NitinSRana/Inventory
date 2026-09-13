@@ -189,7 +189,8 @@
     "daysOfCoverUnknown": "Not enough count history yet to estimate",
     "shelfLocation": "Shelf location",
     "shelfLocationHint": "Where it sits in the shop, as your staff would say it — for example Fridge Row 2.",
-    "skuHint": "Your own article number. Re-importing a file matches on it when a product has no barcode."
+    "skuHint": "Your own article number. Re-importing a file matches on it when a product has no barcode.",
+    "reducedTo": "Reduced to {price}"
   },
   "home": {
     "signedOut": "Not signed in",
@@ -644,7 +645,8 @@
     "saleNotFoundBody": "It may have been on a different device or organisation. Nothing was lost — check Sales for the full list.",
     "viewInSales": "View in Sales",
     "noVatRate": "This product's VAT band has no rate set, so the sale cannot be recorded correctly. Set the rate and the basket will still be here.",
-    "setVatRates": "Set VAT rates"
+    "setVatRates": "Set VAT rates",
+    "reduced": "Reduced"
   },
   "sales": {
     "title": "Sales",
@@ -726,5 +728,22 @@
     "deadStock": "Not moving",
     "deadStockHint": "On the shelf, nothing sold in {days} days. Money that is not working.",
     "noDeadStock": "Everything on the shelf has sold at least once. Good."
+  },
+  "markdown": {
+    "title": "Mark down",
+    "intro": "A reduced price for this batch only. The till charges it for units taken from this batch; everything else stays at shelf price.",
+    "inBatch": "{quantity} {unit} in this batch",
+    "shelfPrice": "Shelf price {price}",
+    "priceLabel": "Reduced price (VAT included)",
+    "priceHint": "What a shopper pays per unit from this batch. It has to be lower than the shelf price.",
+    "save": "Mark down",
+    "clear": "Back to shelf price",
+    "errors": {
+      "invalidPrice": "Enter a price above zero.",
+      "notFound": "That batch is no longer here.",
+      "noShelfPrice": "This product has no shelf price to reduce from.",
+      "notBelowShelf": "A markdown has to be lower than the shelf price.",
+      "expiredUseBy": "This batch is past its use-by date and cannot be sold at any price."
+    }
   }
 }

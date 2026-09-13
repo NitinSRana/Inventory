@@ -282,6 +282,9 @@ async function importOne(
         productId,
         quantity: line.quantity.toString(),
         unitPrice: unitPrice.toString(),
+        // An external till's own discounts were not set by a markdown here, so
+        // they must never count as recovered expiry loss.
+        listPrice: unitPrice.toString(),
         vatBand: line.vatBand as 'standard' | 'reduced' | 'super_reduced' | 'zero',
         vatAmount: vatAmount.toDecimalPlaces(4).toString(),
         lineTotal: lineTotal.toString(),

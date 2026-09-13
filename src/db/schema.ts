@@ -211,6 +211,10 @@ export const batches = pgTable('batches', {
   dateType: text('date_type', { enum: DATE_TYPES }).notNull().default('best_before'),
   receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
   unitCost: numeric('unit_cost', { precision: 12, scale: 4 }),
+  /** Gross price a manager marked this batch down to. Charged only for units FEFO takes from it. See 0017. */
+  markdownPrice: numeric('markdown_price', { precision: 12, scale: 4 }),
+  markedDownAt: timestamp('marked_down_at', { withTimezone: true }),
+  markedDownBy: uuid('marked_down_by'),
   ...timestamps,
 }, (t) => ({
   byExpiry: index('batches_expiry_idx').on(t.organizationId, t.expiryDate),
@@ -354,12 +358,16 @@ export const saleLines = pgTable('sale_lines', {
   productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'restrict' }),
   quantity: numeric('quantity', { precision: 14, scale: 3 }).notNull(),
   unitPrice: numeric('unit_price', { precision: 12, scale: 4 }).notNull(),
+  /** Shelf price at the moment of sale. A unit_price below it sold marked down. See 0017. */
+  listPrice: numeric('list_price', { precision: 12, scale: 4 }).notNull(),
   vatBand: text('vat_band', { enum: VAT_BANDS }).notNull(),
   vatAmount: numeric('vat_amount', { precision: 12, scale: 4 }).notNull(),
   lineTotal: numeric('line_total', { precision: 12, scale: 4 }).notNull(),
   ...timestamps,
 }, (t) => ({
-  saleProduct: uniqueIndex('sale_lines_sale_id_product_id_key').on(t.saleId, t.productId),
+  // One line per price, not per product: units from a marked-down batch and
+  // units at shelf price are two lines of the same sale. See 0017.
+  salePrice: uniqueIndex('sale_lines_sale_id_product_id_unit_price_key').on(t.saleId, t.productId, t.unitPrice),
   byProduct: index('sale_lines_organization_id_product_id_idx').on(t.organizationId, t.productId),
 }));
 

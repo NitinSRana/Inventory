@@ -8,6 +8,7 @@ import { BarcodeField } from '@/components/barcode-field';
 import { DataList, DataRow, PageTitle } from '@/components/data-list';
 import { EmptyState } from '@/components/empty-state';
 import { Field } from '@/components/form';
+import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { organizations } from '@/db/schema';
@@ -22,7 +23,7 @@ import {
   getProductsByIds,
   listProducts,
 } from '@/server/catalog/products';
-import { UnpricedProductError, checkout, getSale } from '@/server/pos/checkout';
+import { UnpricedProductError, checkout, getSale, previewBasket } from '@/server/pos/checkout';
 import { UnconfiguredVatBandError } from '@/server/settings/valuation';
 import { InsufficientStockError } from '@/server/stock/fefo';
 import { getProductStock } from '@/server/stock/levels';
@@ -135,14 +136,38 @@ export default async function CheckoutPage({
   const cartProducts = await getProductsByIds(orgId, cart.map((l) => l.productId));
   const byId = new Map(cartProducts.map((p) => [p.id, p]));
 
-  const lines = cart
-    .map((l) => {
-      const product = byId.get(l.productId);
-      if (!product?.sellPrice) return null;
-      const lineTotal = new Decimal(product.sellPrice).times(l.quantity);
-      return { ...l, product, lineTotal: lineTotal.toDecimalPlaces(2).toString() };
-    })
-    .filter((l) => l !== null);
+  /*
+   * Priced exactly as the till will charge it. previewBasket runs the same FEFO
+   * and markdown logic checkout() writes, so units from a marked-down batch show
+   * their reduced price here — not only on the receipt, after the money has
+   * changed hands. A basket that cannot be sold right now (no stock, no price,
+   * no VAT rate) falls back to shelf prices, and completing the sale then says
+   * exactly which of those it is.
+   */
+  const priced = await previewBasket(orgId, cart).catch((e: unknown) => {
+    if (
+      e instanceof InsufficientStockError ||
+      e instanceof UnpricedProductError ||
+      e instanceof UnconfiguredVatBandError
+    ) {
+      return null;
+    }
+    throw e;
+  });
+
+  const lines = priced
+    ? priced.lines.flatMap((l) => {
+        const product = byId.get(l.productId);
+        return product
+          ? [{ productId: l.productId, product, quantity: l.quantity, unitPrice: l.unitPrice, listPrice: l.listPrice, lineTotal: l.lineTotal, markedDown: l.markedDown }]
+          : [];
+      })
+    : cart.flatMap((l) => {
+        const product = byId.get(l.productId);
+        if (!product?.sellPrice) return [];
+        const lineTotal = new Decimal(product.sellPrice).times(l.quantity).toString();
+        return [{ productId: l.productId, product, quantity: l.quantity, unitPrice: product.sellPrice, listPrice: product.sellPrice, lineTotal, markedDown: false }];
+      });
 
   const total = lines.reduce((acc, l) => acc.plus(l.lineTotal), new Decimal(0)).toDecimalPlaces(2).toString();
 
@@ -347,17 +372,33 @@ export default async function CheckoutPage({
           <EmptyState icon={ShoppingCart} title={t('cartEmpty')} body={t('cartEmptyBody')} />
         ) : (
           <DataList>
-            {lines.map((l) => (
+            {lines.map((l, i) => (
               <DataRow
-                key={l.productId}
+                // A product can take two lines now: units from a marked-down
+                // batch at one price, the rest at shelf price.
+                key={`${l.productId}-${l.unitPrice}`}
                 title={l.product.name}
                 subtitle={
-                  <>
-                    {trimQuantity(l.quantity)} {l.product.unit} × {money(l.product.sellPrice!)}
-                  </>
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span>
+                      {trimQuantity(l.quantity)} {l.product.unit} × {money(l.unitPrice)}
+                    </span>
+                    {/* The shelf price struck through beside it, so the shopper
+                        sees what they saved. Labelled in words, not by colour. */}
+                    {l.markedDown && (
+                      <>
+                        <s className="opacity-70">{money(l.listPrice)}</s>
+                        <Badge variant="outline">{t('reduced')}</Badge>
+                      </>
+                    )}
+                  </span>
                 }
                 value={money(l.lineTotal)}
                 meta={
+                  // One remove per product: it takes the whole product out of
+                  // the basket, so repeating it on the product's second line
+                  // would be two buttons doing one thing.
+                  lines.findIndex((x) => x.productId === l.productId) === i && (
                   <form action={removeLine}>
                     <input type="hidden" name="productId" value={l.productId} />
                     <input type="hidden" name="cart" value={cartValue} />
@@ -369,6 +410,7 @@ export default async function CheckoutPage({
                       <Trash2 aria-hidden className="size-4" />
                     </button>
                   </form>
+                  )
                 }
               />
             ))}
@@ -385,7 +427,7 @@ export default async function CheckoutPage({
         <aside className="bg-background fixed inset-x-4 bottom-20 z-30 flex flex-col gap-3 rounded-lg border p-3 md:static md:inset-x-auto md:bottom-auto md:z-auto md:border-0 md:p-0 lg:sticky lg:top-18 lg:w-80 lg:shrink-0 lg:self-start lg:rounded-lg lg:border lg:p-4">
           <div className="flex items-baseline justify-between gap-3">
             <span className="text-muted-foreground text-sm">
-              {t('itemCount', { count: lines.length })}
+              {t('itemCount', { count: cart.length })}
             </span>
             <span className="text-2xl font-semibold tabular-nums lg:text-3xl">{money(total)}</span>
           </div>

@@ -45,6 +45,7 @@ export async function getBatchStock(
         expiryDate: batches.expiryDate,
         quantity: stockLevels.quantity,
         dateType: batches.dateType,
+        markdownPrice: batches.markdownPrice,
       })
       .from(stockLevels)
       .innerJoin(batches, eq(batches.id, stockLevels.batchId))
@@ -63,6 +64,7 @@ export async function getBatchStock(
     expiryDate: r.expiryDate,
     quantity: r.quantity ?? '0',
     dateType: r.dateType,
+    markdownPrice: r.markdownPrice,
   }));
 }
 
@@ -82,6 +84,7 @@ export async function getProductBatches(orgId: string, productId: string) {
         expiryDate: batches.expiryDate,
         dateType: batches.dateType,
         receivedAt: batches.receivedAt,
+        markdownPrice: batches.markdownPrice,
         quantity: stockLevels.quantity,
         // Counted by the database, exactly as the expiring_stock view does it.
         // "Today" has to mean one thing across the product; deriving it in the

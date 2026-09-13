@@ -70,9 +70,9 @@ insert into public.sales (id, organization_id, location_id, sale_number, subtota
   ('a0000000-0000-0000-0000-000000000006', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a0000000-0000-0000-0000-000000000001', 'TXN-0001', 1.29, 0.09, 1.38, 'card'),
   ('b0000000-0000-0000-0000-000000000004', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'b0000000-0000-0000-0000-000000000001', 'TXN-0001', 2.10, 0.15, 2.25, 'cash');
 
-insert into public.sale_lines (organization_id, sale_id, product_id, quantity, unit_price, vat_band, vat_amount, line_total) values
-  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a0000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000003', 1, 1.29, 'reduced', 0.09, 1.38),
-  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'b0000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000003', 1, 2.10, 'reduced', 0.15, 2.25);
+insert into public.sale_lines (organization_id, sale_id, product_id, quantity, unit_price, list_price, vat_band, vat_amount, line_total) values
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'a0000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000003', 1, 1.29, 1.29, 'reduced', 0.09, 1.38),
+  ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'b0000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000003', 1, 2.10, 2.10, 'reduced', 0.15, 2.25);
 
 -- One EPOS connection per org, plus one unmatched barcode each, for 0011.
 insert into public.pos_connections (id, organization_id, location_id, provider, status) values
@@ -364,14 +364,18 @@ begin
 
   failed := false;
   begin
+    -- Every NOT NULL column filled, and only a foreign key violation counts as
+    -- blocked: with `when others`, the list_price column added in 0017 made this
+    -- insert fail on a null instead, and the check passed without ever reaching
+    -- the tenant boundary it exists to test.
     insert into public.sale_lines
-      (organization_id, sale_id, product_id, quantity, unit_price, vat_band, vat_amount, line_total)
+      (organization_id, sale_id, product_id, quantity, unit_price, list_price, vat_band, vat_amount, line_total)
     values (
       'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
       'a0000000-0000-0000-0000-000000000006',  -- org A's own sale
       'b0000000-0000-0000-0000-000000000003',  -- org B's product
-      1, 1, 'standard', 0, 1);
-  exception when others then failed := true;
+      1, 1, 1, 'standard', 0, 1);
+  exception when foreign_key_violation then failed := true;
   end;
   if not failed then
     raise exception 'FAIL: org A referenced org B''s product from a sale line';

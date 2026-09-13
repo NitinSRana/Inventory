@@ -12,10 +12,12 @@ import {
   stockMovements,
 } from '@/db/schema';
 import { withTenant, type Tx } from '@/db/tenant';
-import { netFromGross, rateForBand } from '@/server/settings/valuation';
+import { rateForBand } from '@/server/settings/valuation';
 import { getRatesByBand } from '@/server/settings/vat';
 import { allocateFefo } from '@/server/stock/fefo';
 import { getBatchStock } from '@/server/stock/levels';
+
+import { planLines, type SaleLinePlan } from './pricing';
 
 /**
  * POS checkout.
@@ -74,6 +76,151 @@ export class UnpricedProductError extends Error {
 
 export type CheckoutLine = { productId: string; quantity: string };
 
+/** One entry per product: scanning the same barcode twice adds to it. */
+function mergeLines(lines: CheckoutLine[]) {
+  const merged = new Map<string, Decimal>();
+  for (const line of lines) {
+    const qty = new Decimal(line.quantity);
+    merged.set(line.productId, (merged.get(line.productId) ?? new Decimal(0)).plus(qty));
+  }
+  return merged;
+}
+
+export type PlannedLine = SaleLinePlan & { productId: string; name: string };
+
+/**
+ * Decides everything a sale will write — its lines, its money, its stock
+ * movements — without writing any of it.
+ *
+ * checkout() writes the result and previewBasket() only reads it, so the total
+ * on the screen and the total on the receipt come from one calculation. With
+ * markdowns that stopped being a nicety: which batch FEFO takes decides what a
+ * unit costs, and a preview that multiplied the shelf price would show a
+ * shopper one total and charge them another.
+ */
+async function planSale(
+  tx: Tx,
+  orgId: string,
+  merged: Map<string, Decimal>,
+  locationId: string,
+  actorId: string | null,
+) {
+  // Asked of the database, not the Node clock: the expiry dashboard derives
+  // "today" from current_date, and a filter computed in a different
+  // timezone would disagree with what it already calls expired.
+  const todayRows = await tx.execute<{ today: string }>(sql`select current_date::text as today`);
+  const today = todayRows[0]?.today ?? '';
+
+  const rows = await tx
+    .select({
+      id: products.id,
+      name: products.name,
+      sellPrice: products.sellPrice,
+      vatBand: products.vatBand,
+    })
+    .from(products)
+    .where(inArray(products.id, [...merged.keys()]));
+  const byId = new Map(rows.map((r) => [r.id, r]));
+
+  const rates = await getRatesByBand(orgId);
+
+  let subtotal = new Decimal(0);
+  let vatTotal = new Decimal(0);
+  const lines: PlannedLine[] = [];
+  const lineValues: (typeof saleLines.$inferInsert)[] = [];
+  const movementValues: (typeof stockMovements.$inferInsert)[] = [];
+
+  for (const [productId, quantity] of merged) {
+    const product = byId.get(productId);
+    if (!product) throw new Error(`Product ${productId} not found`);
+    if (!product.sellPrice) throw new UnpricedProductError(product.name);
+
+    // Throws rather than falling back to 0%: a sale is the moment a VAT
+    // figure stops being a display value and becomes a stored fact the shop
+    // will later declare from.
+    const vatRate = rateForBand(rates, product.vatBand);
+
+    // A batch past its use-by date cannot be sold — that's a criminal
+    // offence in the UK, not a judgement call the till gets to make.
+    // Best-before past date is routine and stays sellable; FEFO still pulls
+    // it first once excluded batches are out of the running. A markdown never
+    // changes this: a reduced sticker does not make an expired use-by legal.
+    const sellable = (await getBatchStock(orgId, productId, locationId, tx)).filter(
+      (b) => !(b.dateType === 'use_by' && b.expiryDate !== null && b.expiryDate < today),
+    );
+
+    // FEFO first, pricing second. A markdown belongs to a batch, so what a unit
+    // costs is only known once FEFO has said which batch it came out of.
+    const allocations = allocateFefo(sellable, quantity.toString());
+    const markdownByBatch = new Map(sellable.map((b) => [b.batchId, b.markdownPrice ?? null]));
+
+    /*
+     * sellPrice is the SHELF price: what the customer actually pays, VAT
+     * included. UK and EU consumer retail prices are display-inclusive by
+     * law, so VAT is extracted from the price rather than added on top of it.
+     * planLines keeps that order — price × quantity, then VAT as the remainder
+     * — for every price a product sells at in this sale.
+     */
+    const planned = planLines(
+      product.sellPrice,
+      vatRate,
+      allocations.map((a) => ({ ...a, markdownPrice: markdownByBatch.get(a.batchId) })),
+    );
+
+    for (const p of planned) {
+      subtotal = subtotal.plus(p.net);
+      vatTotal = vatTotal.plus(p.vatAmount);
+      lines.push({ ...p, productId, name: product.name });
+      lineValues.push({
+        organizationId: orgId,
+        saleId: '', // filled in once the parent row exists, below
+        productId,
+        quantity: p.quantity,
+        unitPrice: p.unitPrice,
+        listPrice: p.listPrice,
+        vatBand: product.vatBand,
+        vatAmount: p.vatAmount,
+        lineTotal: p.lineTotal,
+      });
+    }
+
+    for (const a of allocations) {
+      movementValues.push({
+        organizationId: orgId,
+        productId,
+        locationId,
+        batchId: a.batchId,
+        quantityDelta: new Decimal(a.quantity).negated().toString(),
+        movementType: 'consumption',
+        referenceType: 'sale',
+        actorId,
+      });
+    }
+  }
+
+  return { lines, lineValues, movementValues, subtotal, vatTotal };
+}
+
+/**
+ * What a basket comes to right now, priced exactly as checkout() would charge
+ * it — markdowns included — without selling anything.
+ *
+ * Throws what checkout() would throw (no stock, no price, no VAT rate), so the
+ * caller decides how a basket that cannot be sold is shown.
+ */
+export async function previewBasket(orgId: string, basket: CheckoutLine[], locationId?: string) {
+  const merged = mergeLines(basket);
+  if (merged.size === 0) return { lines: [] as PlannedLine[], total: '0' };
+
+  return withTenant(orgId, async (tx) => {
+    const plan = await planSale(tx, orgId, merged, locationId ?? (await defaultLocationId(tx)), null);
+    return {
+      lines: plan.lines,
+      total: plan.subtotal.plus(plan.vatTotal).toDecimalPlaces(4).toString(),
+    };
+  });
+}
+
 export async function checkout(
   orgId: string,
   input: {
@@ -84,106 +231,17 @@ export async function checkout(
   },
 ) {
   if (input.lines.length === 0) throw new Error('A sale needs at least one line');
-
-  // Scanning the same barcode twice must add to one line, not collide with the
-  // sale_lines unique (sale_id, product_id) index.
-  const merged = new Map<string, Decimal>();
-  for (const line of input.lines) {
-    const qty = new Decimal(line.quantity);
-    merged.set(line.productId, (merged.get(line.productId) ?? new Decimal(0)).plus(qty));
-  }
+  const merged = mergeLines(input.lines);
 
   return withTenant(orgId, async (tx) => {
     const locationId = input.locationId ?? (await defaultLocationId(tx));
-    const productIds = [...merged.keys()];
-
-    // Asked of the database, not the Node clock: the expiry dashboard derives
-    // "today" from current_date, and a filter computed in a different
-    // timezone would disagree with what it already calls expired.
-    const todayRows = await tx.execute<{ today: string }>(sql`select current_date::text as today`);
-    const today = todayRows[0]?.today ?? '';
-
-    const rows = await tx
-      .select({
-        id: products.id,
-        name: products.name,
-        sellPrice: products.sellPrice,
-        vatBand: products.vatBand,
-      })
-      .from(products)
-      .where(inArray(products.id, productIds));
-    const byId = new Map(rows.map((r) => [r.id, r]));
-
-    const rates = await getRatesByBand(orgId);
-
-    let subtotal = new Decimal(0);
-    let vatTotal = new Decimal(0);
-    const lineValues: (typeof saleLines.$inferInsert)[] = [];
-    const movementValues: (typeof stockMovements.$inferInsert)[] = [];
-
-    for (const [productId, quantity] of merged) {
-      const product = byId.get(productId);
-      if (!product) throw new Error(`Product ${productId} not found`);
-      if (!product.sellPrice) throw new UnpricedProductError(product.name);
-
-      const unitPrice = new Decimal(product.sellPrice);
-      /*
-       * sellPrice is the SHELF price: what the customer actually pays, VAT
-       * included. UK and EU consumer retail prices are display-inclusive by
-       * law, so VAT is extracted from the price rather than added on top of it.
-       * Adding it on top would charge a customer £1.44 for a £1.20 chocolate
-       * bar.
-       */
-      const lineTotal = unitPrice.times(quantity);
-      // Throws rather than falling back to 0%: a sale is the moment a VAT
-      // figure stops being a display value and becomes a stored fact the shop
-      // will later declare from.
-      const vatRate = new Decimal(rateForBand(rates, product.vatBand));
-      /*
-       * Derive net first, then take VAT as the remainder. Doing it this way
-       * round guarantees net + vat === lineTotal exactly, so no penny can go
-       * missing to rounding and the receipt always adds up.
-       */
-      const lineNet = new Decimal(netFromGross(lineTotal.toString(), vatRate.toString(), 4));
-      const vatAmount = lineTotal.minus(lineNet);
-
-      subtotal = subtotal.plus(lineNet);
-      vatTotal = vatTotal.plus(vatAmount);
-
-      lineValues.push({
-        organizationId: orgId,
-        saleId: '', // filled in once the parent row exists, below
-        productId,
-        quantity: quantity.toString(),
-        unitPrice: unitPrice.toString(),
-        vatBand: product.vatBand,
-        vatAmount: vatAmount.toDecimalPlaces(4).toString(),
-        lineTotal: lineTotal.toDecimalPlaces(4).toString(),
-      });
-
-      // A batch past its use-by date cannot be sold — that's a criminal
-      // offence in the UK, not a judgement call the till gets to make.
-      // Best-before past date is routine and stays sellable; FEFO still pulls
-      // it first once excluded batches are out of the running.
-      const sellable = (await getBatchStock(orgId, productId, locationId, tx)).filter(
-        (b) => !(b.dateType === 'use_by' && b.expiryDate !== null && b.expiryDate < today),
-      );
-
-      // FEFO, same as a write-off with no batch specified: oldest expiry first.
-      const allocations = allocateFefo(sellable, quantity.toString());
-      for (const a of allocations) {
-        movementValues.push({
-          organizationId: orgId,
-          productId,
-          locationId,
-          batchId: a.batchId,
-          quantityDelta: new Decimal(a.quantity).negated().toString(),
-          movementType: 'consumption',
-          referenceType: 'sale',
-          actorId: input.actorId ?? null,
-        });
-      }
-    }
+    const { lineValues, movementValues, subtotal, vatTotal } = await planSale(
+      tx,
+      orgId,
+      merged,
+      locationId,
+      input.actorId ?? null,
+    );
 
     const total = subtotal.plus(vatTotal);
 

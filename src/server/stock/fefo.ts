@@ -16,6 +16,8 @@ export type BatchStock = {
   quantity: string;
   /** Optional: only checkout.ts's use-by filtering reads this. */
   dateType?: 'use_by' | 'best_before';
+  /** Optional: only checkout's pricing reads this. Gross, from batches.markdown_price. */
+  markdownPrice?: string | null;
 };
 
 export type Allocation = { batchId: string; quantity: string };

@@ -7,6 +7,7 @@ import { BackLink } from '@/components/back-link';
 import { DataList, DataRow, PageTitle, SectionHeading } from '@/components/data-list';
 import { EmptyState } from '@/components/empty-state';
 import { UrgencyBadge, urgencyOf } from '@/components/expiry-urgency';
+import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { MOVEMENT_TYPES, organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
@@ -204,6 +205,9 @@ export default async function ProductPage({
               return (
                 <DataRow
                   key={b.batchId}
+                  // A manager marks a batch down from its own row: the markdown
+                  // belongs to this batch, not to the product.
+                  href={canManage ? `/${locale}/products/${id}/markdown?batch=${b.batchId}` : undefined}
                   title={
                     <>
                       {b.expiryDate ?? t('noExpiry')}{' '}
@@ -229,7 +233,14 @@ export default async function ProductPage({
                     )
                   }
                   value={trimQuantity(b.quantity ?? '0')}
-                  meta={<span className="opacity-70">{product.unit}</span>}
+                  meta={
+                    <span className="flex items-center gap-2">
+                      {b.markdownPrice && (
+                        <Badge variant="outline">{t('reducedTo', { price: money(b.markdownPrice) })}</Badge>
+                      )}
+                      <span className="opacity-70">{product.unit}</span>
+                    </span>
+                  }
                 />
               );
             })}
