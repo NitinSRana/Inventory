@@ -54,11 +54,11 @@ test('maps headers regardless of case, spacing or punctuation', () => {
 });
 
 test('ignores columns it does not recognise, but names them', () => {
-  const { index, unknown } = mapHeaders(['name', 'shelf location', 'notes']);
+  const { index, unknown } = mapHeaders(['name', 'aisle notes', 'notes']);
   assert.deepEqual(index, { name: 0 });
   // The whole point: "Retail Price" spelled some way no alias covers used to
   // vanish, and the shop found out at the till on a product priced null.
-  assert.deepEqual(unknown, ['shelf location', 'notes']);
+  assert.deepEqual(unknown, ['aisle notes', 'notes']);
 });
 
 test('a recognised header is never reported as unknown, even repeated', () => {
@@ -180,4 +180,15 @@ test('a quote that does close is not an orphan', () => {
   // Guard on the rule above: only a lone opening quote is dropped.
   assert.equal(repairExportQuoting('SAY "HELLO" BRAND 6x1kg'), 'SAY "HELLO" BRAND 6x1kg');
   assert.equal(repairExportQuoting('RICE VERMICELLI 4" 15kg'), 'RICE VERMICELLI 4" 15kg');
+});
+
+test('a shelf column is recognised however the export spells it', () => {
+  // It was the example of a column this importer ignored, until 0016 gave it
+  // somewhere to go. A shop that already tracks shelves should not have to
+  // rename the header to be heard.
+  for (const header of ['Shelf', 'Shelf Location', 'shelf_location', 'Location', 'Bin']) {
+    const { index, unknown } = mapHeaders(['name', header]);
+    assert.equal(index.shelfLocation, 1, header);
+    assert.deepEqual(unknown, [], header);
+  }
 });

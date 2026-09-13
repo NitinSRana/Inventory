@@ -45,6 +45,8 @@ export async function startCountSession(
     name?: string | null;
     scopeType?: 'full' | 'category' | 'supplier' | 'custom';
     scopeId?: string | null;
+    /** Narrows a count to one shelf, shown beside its name. */
+    shelfLocation?: string | null;
     locationId?: string;
     startedBy?: string | null;
   } = {},
@@ -77,6 +79,7 @@ export async function startCountSession(
         name: input.name ?? null,
         scopeType: input.scopeType ?? 'full',
         scopeId: input.scopeId ?? null,
+        shelfLocation: input.shelfLocation ?? null,
         startedBy: input.startedBy ?? null,
       })
       .returning();

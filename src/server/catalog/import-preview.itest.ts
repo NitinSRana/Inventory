@@ -10,7 +10,7 @@ import { listProducts } from './products';
 import { createSupplier } from './suppliers';
 
 const CSV = [
-  'name,barcode,price,shelf location,notes',
+  'name,barcode,price,aisle notes,notes',
   'Vollmilch 1L,4001234567891,1.29,Aisle 3,cold',
   'Butter 250g,4006381333931,2.49,Aisle 3,',
 ].join('\n');
@@ -26,7 +26,7 @@ describe('import preview', () => {
     assert.deepEqual(await listProducts(org.orgId), [], 'and it really did not');
 
     // The mapping check: a column no alias covers is named rather than dropped.
-    assert.deepEqual(preview.unknownColumns, ['shelf location', 'notes']);
+    assert.deepEqual(preview.unknownColumns, ['aisle notes', 'notes']);
 
     // The sample is what someone actually reads to spot a shifted column.
     assert.deepEqual(preview.sample, [

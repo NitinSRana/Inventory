@@ -161,6 +161,8 @@ const COLUMNS: Record<string, string[]> = {
   minStock: ['min', 'minstock', 'minimum'],
   shelfLifeDays: ['shelflife', 'shelflifedays', 'mhd', 'haltbarkeit'],
   supplier: ['supplier', 'vendor', 'lieferant'],
+  // Free text, as staff name it ("Fridge Row 2"). See 0016_shelf_location.
+  shelfLocation: ['shelf', 'shelflocation', 'location', 'bin'],
 };
 
 const normalise = (h: string) => h.trim().toLowerCase().replace(/[\s_\-.]/g, '');

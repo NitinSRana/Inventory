@@ -34,6 +34,8 @@ Detailed patterns and code examples are in `.claude/rules/database.md`, which lo
 
 3. **Stock is addressed as `(product, location, batch)`.** Every tenant has one location today; write code as if they had ten. Depletion picks batches FEFO (first-expired-first-out).
 
+   A product also carries a free-text `shelf_location` ("Fridge Row 2", migration 0016), added with the Figma redesign. It is a label for staff — where the product goes back, how a count is scoped — and **not** an address stock moves between. Never post a movement, split a batch or allocate FEFO by shelf; the ledger's address stays `(product, location, batch)`.
+
 ## Stack
 
 | | |

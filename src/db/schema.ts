@@ -186,6 +186,8 @@ export const products = pgTable('products', {
   minStock: numeric('min_stock', { precision: 14, scale: 3 }),
   maxStock: numeric('max_stock', { precision: 14, scale: 3 }),
   shelfLifeDays: integer('shelf_life_days'),
+  /** Where it sits in the shop, as staff name it ("Fridge Row 2"). Batches inherit it. See 0016. */
+  shelfLocation: text('shelf_location'),
   countFrequency: text('count_frequency', { enum: COUNT_FREQUENCIES }),
   isActive: boolean('is_active').notNull().default(true),
   ...timestamps,
@@ -426,6 +428,8 @@ export const countSessions = pgTable('count_sessions', {
   scopeType: text('scope_type', { enum: ['full', 'category', 'supplier', 'custom'] })
     .notNull().default('full'),
   scopeId: uuid('scope_id'),
+  /** The shelf a count covers, when narrower than its category. See 0016. */
+  shelfLocation: text('shelf_location'),
   status: text('status', { enum: ['in_progress', 'completed', 'cancelled'] })
     .notNull().default('in_progress'),
   startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),

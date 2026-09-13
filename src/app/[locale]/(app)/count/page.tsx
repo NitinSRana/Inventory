@@ -41,7 +41,12 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
     'use server';
     const { orgId, userId } = await requireOrg(locale);
     const name = String(formData.get('name') ?? '').trim();
-    await startCountSession(orgId, { name: name || null, startedBy: userId });
+    const shelfLocation = String(formData.get('shelfLocation') ?? '').trim();
+    await startCountSession(orgId, {
+      name: name || null,
+      shelfLocation: shelfLocation || null,
+      startedBy: userId,
+    });
     redirect(`/${locale}/count`);
   }
 
@@ -102,6 +107,14 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
         <form action={start} className="flex flex-col gap-4">
           <Field name="name" label={t('sectionLabel')}>
             <Input id="name" name="name" placeholder={t('sectionPlaceholder')} className="h-12" />
+          </Field>
+          <Field name="shelfLocation" label={t('shelfLabel')} hint={t('shelfHint')}>
+            <Input
+              id="shelfLocation"
+              name="shelfLocation"
+              placeholder={t('shelfPlaceholder')}
+              className="h-12"
+            />
           </Field>
           <Button type="submit" variant={dueCategories.length > 0 ? 'outline' : 'default'} className="h-12 w-fit">
             {t('start')}
@@ -202,7 +215,8 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
   return (
     <main className="flex flex-1 flex-col gap-5 p-4 pb-28">
       <div className="flex items-baseline justify-between gap-3">
-        <PageTitle>{session.name ?? t('title')}</PageTitle>
+        {/* "Dairy & chilled — Chiller shelf 3", as the count frame reads. */}
+        <PageTitle caption={session.shelfLocation ?? undefined}>{session.name ?? t('title')}</PageTitle>
         <span className="text-muted-foreground text-sm tabular-nums">
           {t('countedSoFar', { count: lines.length })}
         </span>

@@ -128,6 +128,20 @@ export default async function ScanPage({ params, searchParams }: PageProps<'/[lo
                 {trimQuantity(onHand)} <span className="text-sm font-normal opacity-70">{product.unit}</span>
               </span>
             </div>
+            {/* The shelf, so a worker holding the product knows where it goes
+                back. Said plainly when nobody has set one yet. */}
+            <div className="bg-card flex flex-col gap-1 rounded-lg border p-3">
+              <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+                {t('shelfLocation')}
+              </span>
+              <span
+                className={
+                  product.shelfLocation ? 'text-lg font-bold' : 'text-muted-foreground text-lg font-medium'
+                }
+              >
+                {product.shelfLocation ?? t('noShelf')}
+              </span>
+            </div>
           </div>
 
           <section className="flex flex-col gap-2">

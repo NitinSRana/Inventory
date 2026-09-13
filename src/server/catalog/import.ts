@@ -165,6 +165,7 @@ export async function importProductsCsv(
       // Now that a SKU identifies a product, two rows carrying the same one are
       // two claims about one product. Left alone they both resolve to the same
       // id and the whole import dies on a constraint nobody can act on.
+      const shelfLocation = cell('shelfLocation') || null;
       const sku = cell('sku') || null;
       if (sku) {
         if (seenSkus.has(sku)) {
@@ -267,6 +268,7 @@ export async function importProductsCsv(
           vatBand,
           minStock,
           shelfLifeDays,
+          shelfLocation,
           supplierId,
         },
         isUpdate: matchedId !== undefined,
@@ -334,6 +336,10 @@ export async function importProductsCsv(
             sellPrice: sql`excluded.sell_price`,
             minStock: sql`excluded.min_stock`,
             shelfLifeDays: sql`excluded.shelf_life_days`,
+            // Coalesced like the barcode: a file with no shelf column is
+            // silent about shelves, not an instruction to clear the ones
+            // staff set in the app.
+            shelfLocation: sql`coalesce(excluded.shelf_location, ${products.shelfLocation})`,
             supplierId: sql`excluded.supplier_id`,
             isActive: sql`true`,
           },

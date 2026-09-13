@@ -23,6 +23,8 @@ export type ProductInput = {
   minStock?: string | null;
   maxStock?: string | null;
   shelfLifeDays?: number | null;
+  /** Free text, as staff name it ("Fridge Row 2"). See 0016. */
+  shelfLocation?: string | null;
   countFrequency?: (typeof COUNT_FREQUENCIES)[number] | null;
 };
 

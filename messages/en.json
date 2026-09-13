@@ -37,7 +37,9 @@
     "receiveBatch": "Receive batch",
     "openProduct": "Open product",
     "correctStock": "Correct stock",
-    "startCount": "Stock count"
+    "startCount": "Stock count",
+    "shelfLocation": "Shelf location",
+    "noShelf": "Not set"
   },
   "overview": {
     "inventoryValue": "Inventory value",
@@ -184,7 +186,10 @@
     "correctUnchanged": "That's the same as what's already on hand — nothing to correct.",
     "correctSubmit": "Save correction",
     "daysOfCover": "{days, plural, =0 {gone today at recent rates} one {about # day left at recent rates} other {about # days left at recent rates}}",
-    "daysOfCoverUnknown": "Not enough count history yet to estimate"
+    "daysOfCoverUnknown": "Not enough count history yet to estimate",
+    "shelfLocation": "Shelf location",
+    "shelfLocationHint": "Where it sits in the shop, as your staff would say it — for example Fridge Row 2.",
+    "skuHint": "Your own article number. Re-importing a file matches on it when a product has no barcode."
   },
   "home": {
     "signedOut": "Not signed in",
@@ -244,7 +249,10 @@
     "shrinkValue": "shrinkage",
     "shrinkHint": "Missing against what real sales say should be on the shelf — theft, spoilage, or a miscount.",
     "gainValue": "found stock",
-    "gainHint": "More on the shelf than the ledger expected — check for a delivery that was never logged."
+    "gainHint": "More on the shelf than the ledger expected — check for a delivery that was never logged.",
+    "shelfLabel": "Shelf (optional)",
+    "shelfPlaceholder": "e.g. Chiller shelf 3",
+    "shelfHint": "Narrow this count to one shelf. Leave it blank to count the whole section."
   },
   "receive": {
     "title": "Receive delivery",

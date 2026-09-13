@@ -9,6 +9,7 @@ type Defaults = {
   name?: string;
   gtin?: string | null;
   caseGtin?: string | null;
+  sku?: string | null;
   isWeighed?: boolean;
   unitsPerCase?: string | null;
   unit?: string;
@@ -17,6 +18,7 @@ type Defaults = {
   vatBand?: string | null;
   dateType?: string | null;
   shelfLifeDays?: number | null;
+  shelfLocation?: string | null;
   supplierId?: string | null;
   categoryId?: string | null;
 };
@@ -103,6 +105,19 @@ export async function ProductForm({
         </Field>
       </FieldRow>
 
+      {/* The shop's own article number. This form never had it, so saving any
+          product erased it — and with it the identifier a re-import matches
+          most of a catalogue on, since most lines carry no barcode. */}
+      <Field name="sku" label={t('sku')} hint={t('skuHint')}>
+        <Input
+          id="sku"
+          name="sku"
+          autoComplete="off"
+          defaultValue={defaults.sku ?? ''}
+          className="h-12 font-mono"
+        />
+      </Field>
+
       <Field name="unit" label={t('unit')}>
         <NativeSelect id="unit" name="unit" defaultValue={defaults.unit ?? 'each'}>
           {UNITS.map((u) => (
@@ -173,6 +188,17 @@ export async function ProductForm({
         />
       </Field>
 
+      {/* Where it sits, as staff would say it. Shown when someone scans it and
+          on the expiry list, so it answers "where does this go back". */}
+      <Field name="shelfLocation" label={t('shelfLocation')} hint={t('shelfLocationHint')}>
+        <Input
+          id="shelfLocation"
+          name="shelfLocation"
+          defaultValue={defaults.shelfLocation ?? ''}
+          className="h-12"
+        />
+      </Field>
+
       {/* Legally distinct in the UK: selling past use-by is a criminal
           offence, past best-before is routine and gets marked down. The till
           refuses a sale on the former; the dashboard flags both differently. */}
@@ -231,6 +257,7 @@ export function productInputFrom(formData: FormData) {
     name: String(formData.get('name') ?? ''),
     gtin: value('gtin'),
     caseGtin: value('caseGtin'),
+    sku: value('sku'),
     unitsPerCase: value('unitsPerCase'),
     // An unchecked box posts nothing at all, so absence is false.
     isWeighed: formData.get('isWeighed') !== null,
@@ -245,5 +272,6 @@ export function productInputFrom(formData: FormData) {
     supplierId: value('supplierId'),
     categoryId: value('categoryId'),
     shelfLifeDays: value('shelfLifeDays') ? Number(value('shelfLifeDays')) : null,
+    shelfLocation: value('shelfLocation'),
   };
 }
