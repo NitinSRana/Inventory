@@ -41,13 +41,17 @@ test('the sign-in form offers a password and a mail link, not just one', async (
  *
  * Asserting `error=password` specifically was wrong twice over. It needs the
  * throttle's own table to be reachable, which it is not in this project: CI
- * runs with a placeholder DATABASE_URL and no Postgres behind it, and the
- * throttle fails closed, so every attempt legitimately returns `throttled`.
+ * runs with a placeholder DATABASE_URL and no Postgres behind it. The throttle
+ * still refuses when it cannot read its table, but it now says why —
+ * `unavailable`, not `throttled` — because reporting a dead database as "too
+ * many attempts" once sent someone hunting a rate limit that did not exist.
  * Run locally against a real database it passes a handful of times and then
  * trips SIGN_IN_PASSWORD_PER_EMAIL, which is the throttle working.
  *
- * Both answers are correct and neither leaks membership, so both are accepted
- * and what is actually checked is the leak. The wrong-password wording itself
+ * All three answers are correct and none leaks membership: `throttled` and
+ * `unavailable` are both decided before a credential is ever checked, so they
+ * read identically for every address. All three are accepted, and what is
+ * actually checked is the leak. The wrong-password wording itself
  * is pinned by the unit test on signInOutcome, which needs no Supabase.
  */
 test('a refused sign-in never reveals whether the account exists', async ({ page }) => {
@@ -57,7 +61,7 @@ test('a refused sign-in never reveals whether the account exists', async ({ page
   await page.getByLabel('Password').fill('definitely-wrong');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 
-  await expect(page).toHaveURL(/\/en\/sign-in\?error=(password|throttled)$/);
+  await expect(page).toHaveURL(/\/en\/sign-in\?error=(password|throttled|unavailable)$/);
 
   const body = await page.locator('body').innerText();
   for (const leak of ['no such', 'not found', 'unknown', 'no account', 'not registered']) {
