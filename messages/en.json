@@ -241,7 +241,14 @@
     "expiresOn": "Exp: {date}",
     "lotLabel": "Lot: {lot}",
     "batchValue": "Val: {value}",
-    "receiveBatch": "Receive batch"
+    "receiveBatch": "Receive batch",
+    "minStock": "Min stock",
+    "maxStock": "Max stock",
+    "createSubmit": "Create product",
+    "editTitle": "Edit product",
+    "saveChanges": "Save changes",
+    "currentStockLine": "Current stock: <strong>{quantity} {unit}</strong>",
+    "lastMovementLine": "Last movement: {date}"
   },
   "home": {
     "signedOut": "Not signed in",

@@ -1,6 +1,7 @@
-import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { getFormatter, getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound, redirect } from 'next/navigation';
 import Decimal from 'decimal.js';
+import { Info } from 'lucide-react';
 
 import { BackLink } from '@/components/back-link';
 import { PageTitle } from '@/components/data-list';
@@ -25,6 +26,10 @@ export const dynamic = 'force-dynamic';
  * explaining what happened. Posts through `adjustStock()`, the same
  * compensating-movement mechanism every other correction in this ledger uses,
  * tagged `manual_adjustment` so it never reads as a count's own variance.
+ *
+ * Laid out as the "Correct Stock Level" frame. Its amber notice is neutral
+ * here: amber means expiry or money at risk, and this is guidance. The submit
+ * button is ink, as every primary action is.
  */
 export default async function CorrectStockPage({
   params,
@@ -36,6 +41,7 @@ export default async function CorrectStockPage({
   const { error } = await searchParams;
   const t = await getTranslations('products');
   const tBack = await getTranslations('back');
+  const format = await getFormatter();
   const { orgId } = await requireRole(locale, 'manager');
 
   // RLS scopes this, so another tenant's id is indistinguishable from a missing one.
@@ -43,7 +49,11 @@ export default async function CorrectStockPage({
   if (!product) notFound();
 
   const stock = await getProductStock(orgId, id);
-  const onHand = stock.reduce((sum, s) => sum + Number(s.quantity ?? 0), 0);
+  const onHand = stock.reduce((sum, s) => sum.plus(s.quantity ?? '0'), new Decimal(0)).toString();
+  const lastMovementAt = stock
+    .map((s) => s.lastMovementAt)
+    .filter((d): d is Date => d !== null)
+    .sort((a, b) => b.getTime() - a.getTime())[0];
 
   async function save(formData: FormData) {
     'use server';
@@ -73,21 +83,48 @@ export default async function CorrectStockPage({
   }
 
   return (
-    <main className="flex flex-1 flex-col gap-6 p-4 pb-24">
+    <main className="flex flex-1 flex-col gap-5 p-4 pb-24">
       <BackLink href={`/${locale}/products/${id}`} label={tBack('product')} />
       <PageTitle>{t('correctStock')}</PageTitle>
-      <p className="text-muted-foreground text-sm">{t('correctStockBody')}</p>
 
-      <form action={save} className="flex flex-col gap-4 pb-32 md:pb-0">
-        <Field name="quantity" label={t('correctQuantity', { unit: product.unit })}>
+      <p className="bg-muted flex items-start gap-2 rounded-lg border p-3 text-sm md:max-w-lg">
+        <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+        {t('correctStockBody')}
+      </p>
+
+      <section className="bg-card flex flex-col gap-1 rounded-xl border p-4 md:max-w-lg">
+        <span className="text-base font-bold">{product.name}</span>
+        <span className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-sm">
+          <span className="tabular-nums">
+            {t.rich('currentStockLine', {
+              quantity: trimQuantity(onHand),
+              unit: product.unit,
+              strong: (chunks) => <strong className="text-foreground font-semibold">{chunks}</strong>,
+            })}
+          </span>
+          {lastMovementAt && (
+            <>
+              <span aria-hidden>•</span>
+              <span>
+                {t('lastMovementLine', {
+                  date: format.dateTime(lastMovementAt, { dateStyle: 'medium', timeStyle: 'short' }),
+                })}
+              </span>
+            </>
+          )}
+        </span>
+      </section>
+
+      <form action={save} className="flex flex-col gap-5 pb-32 md:pb-0">
+        <Field name="quantity" label={t('correctQuantity', { unit: product.unit })} required>
           <Input
             id="quantity"
             name="quantity"
             inputMode="decimal"
             required
             autoFocus
-            defaultValue={trimQuantity(String(onHand))}
-            className="h-14 text-right text-lg tabular-nums"
+            defaultValue={trimQuantity(onHand)}
+            className="h-14 text-lg tabular-nums"
           />
         </Field>
 
@@ -95,9 +132,17 @@ export default async function CorrectStockPage({
           name="reason"
           label={t('correctReason')}
           hint={t('correctReasonHint')}
+          required
           error={error === 'reason' ? t('correctReasonRequired') : undefined}
         >
-          <Input id="reason" name="reason" required className="h-12" />
+          {/* A sentence, so a box a sentence fits in. */}
+          <textarea
+            id="reason"
+            name="reason"
+            required
+            rows={4}
+            className="border-input bg-card focus-visible:border-ring focus-visible:ring-ring/50 w-full rounded-lg border px-3 py-2 text-base outline-none focus-visible:ring-3 md:text-sm"
+          />
         </Field>
 
         {error === 'unchanged' && (
@@ -107,7 +152,7 @@ export default async function CorrectStockPage({
         )}
 
         <StickyAction>
-          <Button type="submit" variant="destructive" className="h-12 w-full sm:w-fit">
+          <Button type="submit" className="h-12 w-full sm:w-fit sm:px-8">
             {t('correctSubmit')}
           </Button>
         </StickyAction>

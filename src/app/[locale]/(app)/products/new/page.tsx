@@ -72,6 +72,7 @@ export default async function NewProductPage({
         vatBands={vatBands}
         defaults={prefill}
         error={typeof error === 'string' ? error : undefined}
+        submitLabel={t('createSubmit')}
       />
     </main>
   );

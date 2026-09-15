@@ -77,7 +77,7 @@ export default async function EditProductPage({
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-24">
       <BackLink href={`/${locale}/products/${id}`} label={tBack('product')} />
-      <PageTitle>{product.name}</PageTitle>
+      <PageTitle caption={product.name}>{t('editTitle')}</PageTitle>
 
       <ProductForm
         action={save}
@@ -86,14 +86,15 @@ export default async function EditProductPage({
         vatBands={vatBands}
         defaults={product}
         error={typeof error === 'string' ? error : undefined}
+        submitLabel={t('saveChanges')}
       />
 
       {/* Deactivate, not delete — the ledger still references this product.
           Which of the two shows depends on where the product already is, so
           there is never a button that would do nothing. */}
       {product.isActive ? (
-        <form action={deactivate}>
-          <Button type="submit" variant="outline" className="h-11">
+        <form action={deactivate} className="md:max-w-lg">
+          <Button type="submit" variant="ghost" className="text-destructive h-11 w-full sm:w-fit">
             {t('deactivate')}
           </Button>
         </form>

@@ -30,9 +30,10 @@ function componentFiles(dir: string): string[] {
  * `<Field name="quantity">` looks like a control and is not one — it labels the
  * control inside it. Counting the wrapper made an earlier version of this test
  * pass while the real input was renamed, which is precisely the bug it exists to
- * find.
+ * find. `Segmented` and `SwitchRow` are the opposite case: each renders exactly
+ * one control (the radios, the checkbox) under the name it is given.
  */
-const CONTROL = /<(?:Input|NativeSelect|input|select|textarea)\b[^>]*>/g;
+const CONTROL = /<(?:Input|NativeSelect|Segmented|SwitchRow|input|select|textarea)\b[^>]*>/g;
 const NAME = /\bname=(?:"([^"]+)"|\{`([^`]+)`\})/;
 
 function declaredNames(src: string) {
