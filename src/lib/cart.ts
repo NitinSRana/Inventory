@@ -50,6 +50,15 @@ export function addToCart(lines: CartLine[], productId: string, quantity: string
   );
 }
 
+/** The basket stepper's minus: one unit off, and the line goes when it reaches nothing. */
+export function takeOneFromCart(lines: CartLine[], productId: string): CartLine[] {
+  return lines.flatMap((l) => {
+    if (l.productId !== productId) return [l];
+    const left = new Decimal(l.quantity).minus(1);
+    return left.greaterThan(0) ? [{ productId, quantity: left.toString() }] : [];
+  });
+}
+
 export function removeFromCart(lines: CartLine[], productId: string): CartLine[] {
   return lines.filter((l) => l.productId !== productId);
 }

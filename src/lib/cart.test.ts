@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { addToCart, encodeCart, parseCart, removeFromCart } from './cart.ts';
+import { addToCart, encodeCart, parseCart, removeFromCart, takeOneFromCart } from './cart.ts';
+
+test('the stepper minus takes one unit off, and removes the line at zero', () => {
+  const lines = [{ productId: 'a', quantity: '2' }, { productId: 'b', quantity: '1' }];
+  assert.deepEqual(takeOneFromCart(lines, 'a'), [{ productId: 'a', quantity: '1' }, { productId: 'b', quantity: '1' }]);
+  assert.deepEqual(takeOneFromCart(lines, 'b'), [{ productId: 'a', quantity: '2' }]);
+  // Less than one left is not a negative line; the product simply leaves the basket.
+  assert.deepEqual(takeOneFromCart([{ productId: 'a', quantity: '0.5' }], 'a'), []);
+});
 
 test('parseCart reads id:quantity pairs', () => {
   assert.deepEqual(parseCart('a:2,b:1.500'), [

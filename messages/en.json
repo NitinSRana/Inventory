@@ -639,7 +639,6 @@
     "cartEmpty": "Nothing in the cart yet",
     "cartEmptyBody": "Scan or type a barcode to add the first item.",
     "remove": "Remove {name}",
-    "itemCount": "{count, plural, one {# item} other {# items}}",
     "total": "Total",
     "cash": "Cash",
     "card": "Card",
@@ -665,7 +664,12 @@
     "viewInSales": "View in Sales",
     "noVatRate": "This product's VAT band has no rate set, so the sale cannot be recorded correctly. Set the rate and the basket will still be here.",
     "setVatRates": "Set VAT rates",
-    "reduced": "Reduced"
+    "reduced": "Reduced",
+    "basketTitle": "Active basket ({count, plural, one {# item} other {# items}})",
+    "addOne": "One more {name}",
+    "takeOne": "One fewer {name}",
+    "vat": "VAT",
+    "totalToPay": "Total to pay"
   },
   "sales": {
     "title": "Sales",

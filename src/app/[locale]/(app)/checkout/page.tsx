@@ -2,7 +2,7 @@ import { getFormatter, getTranslations, setRequestLocale } from 'next-intl/serve
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import Decimal from 'decimal.js';
-import { ShoppingCart, Trash2 } from 'lucide-react';
+import { Banknote, CreditCard, ShoppingCart, Trash2 } from 'lucide-react';
 
 import { BarcodeField } from '@/components/barcode-field';
 import { DataList, DataRow, PageTitle } from '@/components/data-list';
@@ -13,7 +13,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
-import { addToCart, encodeCart, parseCart, removeFromCart } from '@/lib/cart';
+import { addToCart, encodeCart, parseCart, removeFromCart, takeOneFromCart } from '@/lib/cart';
 import { trimQuantity } from '@/lib/quantity';
 import { requireOrg } from '@/server/auth/session';
 import { normalizeGtin } from '@/server/catalog/ean';
@@ -170,6 +170,15 @@ export default async function CheckoutPage({
       });
 
   const total = lines.reduce((acc, l) => acc.plus(l.lineTotal), new Decimal(0)).toDecimalPlaces(2).toString();
+  // Net and VAT exactly as the till will record them, summed from the same plan.
+  // Only when the basket could be priced: the shelf-price fallback has no VAT
+  // split to show, and a made-up one would be worse than none.
+  const split = priced
+    ? {
+        net: priced.lines.reduce((acc, l) => acc.plus(l.net), new Decimal(0)).toFixed(2),
+        vat: priced.lines.reduce((acc, l) => acc.plus(l.vatAmount), new Decimal(0)).toFixed(2),
+      }
+    : null;
 
   const query = typeof gtin === 'string' ? gtin.trim() : undefined;
 
@@ -213,6 +222,17 @@ export default async function CheckoutPage({
     redirect(`/${locale}/checkout?cart=${encodeURIComponent(encodeCart(removeFromCart(current, productId)))}`);
   }
 
+  /** The basket stepper: one unit on or off, for anything not sold by weight. */
+  async function stepLine(formData: FormData) {
+    'use server';
+    await requireOrg(locale);
+    const productId = String(formData.get('productId') ?? '');
+    const current = parseCart(String(formData.get('cart') ?? ''));
+    const next =
+      formData.get('step') === 'up' ? addToCart(current, productId, '1') : takeOneFromCart(current, productId);
+    redirect(`/${locale}/checkout?cart=${encodeURIComponent(encodeCart(next))}`);
+  }
+
   async function completeSale(formData: FormData) {
     'use server';
     const { orgId, userId } = await requireOrg(locale);
@@ -248,11 +268,15 @@ export default async function CheckoutPage({
     // at a desk, and a total that scrolls away behind twenty scanned items is
     // the one number the person operating it always needs.
     //
-    // pb-56 on a phone, not pb-40: the pinned total is 130px tall sitting 80px
-    // up, so it covers 210px and the last line of the basket hid behind it.
-    <main className="flex flex-1 flex-col gap-5 p-4 pb-56 md:pb-4 lg:flex-row lg:items-start lg:gap-6">
+    //
+    // On a phone the total and tender buttons follow the basket in flow, as the
+    // Figma checkout frame (23:124) lays them out.
+    <main className="flex flex-1 flex-col gap-5 p-4 lg:flex-row lg:items-start lg:gap-6">
       <div className="flex min-w-0 flex-col gap-5 lg:flex-1">
-        <PageTitle>{t('title')}</PageTitle>
+        {/* The phone header already names the store; the title stays for screen readers. */}
+        <div className="max-md:sr-only">
+          <PageTitle>{t('title')}</PageTitle>
+        </div>
 
         {scanned ? (
           // Step two: how many. Autofocused, numeric keypad, defaults to one —
@@ -371,50 +395,93 @@ export default async function CheckoutPage({
         {lines.length === 0 ? (
           <EmptyState icon={ShoppingCart} title={t('cartEmpty')} body={t('cartEmptyBody')} />
         ) : (
-          <DataList>
-            {lines.map((l, i) => (
-              <DataRow
-                // A product can take two lines now: units from a marked-down
-                // batch at one price, the rest at shelf price.
-                key={`${l.productId}-${l.unitPrice}`}
-                title={l.product.name}
-                subtitle={
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span>
-                      {trimQuantity(l.quantity)} {l.product.unit} × {money(l.unitPrice)}
-                    </span>
-                    {/* The shelf price struck through beside it, so the shopper
-                        sees what they saved. Labelled in words, not by colour. */}
-                    {l.markedDown && (
-                      <>
-                        <s className="opacity-70">{money(l.listPrice)}</s>
-                        <Badge variant="outline">{t('reduced')}</Badge>
-                      </>
-                    )}
-                  </span>
-                }
-                value={money(l.lineTotal)}
-                meta={
-                  // One remove per product: it takes the whole product out of
-                  // the basket, so repeating it on the product's second line
-                  // would be two buttons doing one thing.
-                  lines.findIndex((x) => x.productId === l.productId) === i && (
-                  <form action={removeLine}>
-                    <input type="hidden" name="productId" value={l.productId} />
-                    <input type="hidden" name="cart" value={cartValue} />
-                    <button
-                      type="submit"
-                      aria-label={t('remove', { name: l.product.name })}
-                      className="text-muted-foreground flex size-11 items-center justify-center"
-                    >
-                      <Trash2 aria-hidden className="size-4" />
-                    </button>
-                  </form>
-                  )
-                }
-              />
-            ))}
-          </DataList>
+          <div className="bg-card overflow-hidden rounded-lg border">
+            <p className="border-b px-4 py-3 text-sm font-semibold">
+              {t('basketTitle', { count: cart.length })}
+            </p>
+            <ul className="divide-border divide-y">
+              {lines.map((l, i) => {
+                // A product can take two lines: units from a marked-down batch at
+                // one price, the rest at shelf price. The controls sit on its
+                // first line only; they act on the product, not on a price.
+                const first = lines.findIndex((x) => x.productId === l.productId) === i;
+                const inCart = cart.find((c) => c.productId === l.productId)?.quantity ?? l.quantity;
+                return (
+                  <li
+                    key={`${l.productId}-${l.unitPrice}`}
+                    className="flex min-h-16 items-center justify-between gap-3 px-4 py-3"
+                  >
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <span className="truncate text-base font-medium">{l.product.name}</span>
+                      <span className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
+                        <span className="tabular-nums">
+                          {trimQuantity(l.quantity)} {l.product.unit} × {money(l.unitPrice)}
+                        </span>
+                        {/* The shelf price struck through beside it, so the shopper
+                            sees what they saved. Labelled in words, not by colour. */}
+                        {l.markedDown && (
+                          <>
+                            <s className="opacity-70">{money(l.listPrice)}</s>
+                            <Badge variant="outline">{t('reduced')}</Badge>
+                          </>
+                        )}
+                      </span>
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-3">
+                      {first &&
+                        (l.product.isWeighed ? (
+                          // A weight is typed, not stepped: "+1" on 0.400 kg of
+                          // cheese is a kilo and a bit nobody meant.
+                          <form action={removeLine}>
+                            <input type="hidden" name="productId" value={l.productId} />
+                            <input type="hidden" name="cart" value={cartValue} />
+                            <button
+                              type="submit"
+                              aria-label={t('remove', { name: l.product.name })}
+                              className="text-muted-foreground flex size-11 items-center justify-center"
+                            >
+                              <Trash2 aria-hidden className="size-4" />
+                            </button>
+                          </form>
+                        ) : (
+                          <div className="flex items-center rounded-md border">
+                            <form action={stepLine}>
+                              <input type="hidden" name="productId" value={l.productId} />
+                              <input type="hidden" name="cart" value={cartValue} />
+                              <input type="hidden" name="step" value="down" />
+                              <button
+                                type="submit"
+                                aria-label={t('takeOne', { name: l.product.name })}
+                                className="bg-muted/50 flex size-11 items-center justify-center font-bold"
+                              >
+                                −
+                              </button>
+                            </form>
+                            <span className="min-w-8 text-center text-sm font-semibold tabular-nums">
+                              {trimQuantity(inCart)}
+                            </span>
+                            <form action={stepLine}>
+                              <input type="hidden" name="productId" value={l.productId} />
+                              <input type="hidden" name="cart" value={cartValue} />
+                              <input type="hidden" name="step" value="up" />
+                              <button
+                                type="submit"
+                                aria-label={t('addOne', { name: l.product.name })}
+                                className="bg-muted/50 flex size-11 items-center justify-center font-bold"
+                              >
+                                +
+                              </button>
+                            </form>
+                          </div>
+                        ))}
+                      <span className="text-base font-semibold tabular-nums">{money(l.lineTotal)}</span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         )}
       </div>
 
@@ -424,12 +491,26 @@ export default async function CheckoutPage({
           Tender is the completing action: picking one finishes the sale, there
           is no separate confirm step behind it. */}
       {lines.length > 0 && (
-        <aside className="bg-background fixed inset-x-4 bottom-20 z-30 flex flex-col gap-3 rounded-lg border p-3 md:static md:inset-x-auto md:bottom-auto md:z-auto md:border-0 md:p-0 lg:sticky lg:top-18 lg:w-80 lg:shrink-0 lg:self-start lg:rounded-lg lg:border lg:p-4">
-          <div className="flex items-baseline justify-between gap-3">
-            <span className="text-muted-foreground text-sm">
-              {t('itemCount', { count: cart.length })}
-            </span>
-            <span className="text-2xl font-semibold tabular-nums lg:text-3xl">{money(total)}</span>
+        <aside className="flex flex-col gap-3 lg:sticky lg:top-18 lg:w-80 lg:shrink-0 lg:self-start">
+          <div className="bg-card flex flex-col gap-2 rounded-lg border p-4">
+            {split && (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{t('subtotal')}</span>
+                  <span className="font-semibold tabular-nums">{money(split.net)}</span>
+                </div>
+                <div className="text-muted-foreground flex justify-between text-sm">
+                  <span>{t('vat')}</span>
+                  <span className="tabular-nums">{money(split.vat)}</span>
+                </div>
+              </>
+            )}
+            {/* The frame paints this blue. Blue here means "you can go there",
+                and a total is a fact, so it is the darkest text instead. */}
+            <div className={`flex items-baseline justify-between gap-3 ${split ? 'border-t pt-2' : ''}`}>
+              <span className="text-base font-semibold">{t('totalToPay')}</span>
+              <span className="text-2xl font-bold tabular-nums">{money(total)}</span>
+            </div>
           </div>
 
           <div className="flex gap-3">
@@ -437,6 +518,7 @@ export default async function CheckoutPage({
               <input type="hidden" name="cart" value={cartValue} />
               <input type="hidden" name="tenderType" value="cash" />
               <Button type="submit" variant="outline" className="h-12 w-full">
+                <Banknote aria-hidden />
                 {t('cash')}
               </Button>
             </form>
@@ -444,6 +526,7 @@ export default async function CheckoutPage({
               <input type="hidden" name="cart" value={cartValue} />
               <input type="hidden" name="tenderType" value="card" />
               <Button type="submit" className="h-12 w-full">
+                <CreditCard aria-hidden />
                 {t('card')}
               </Button>
             </form>
