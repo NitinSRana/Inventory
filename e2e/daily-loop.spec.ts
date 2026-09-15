@@ -42,7 +42,7 @@ test.describe('daily loop', () => {
 
     await expect(page.getByText(product.name)).toBeVisible();
     await page.getByLabel(/Quantity received/).fill('12');
-    await page.getByRole('button', { name: 'Receive', exact: true }).click();
+    await page.getByRole('button', { name: 'Log delivery', exact: true }).click();
 
     await expect(page.getByRole('status')).toHaveText('Delivery recorded.');
 

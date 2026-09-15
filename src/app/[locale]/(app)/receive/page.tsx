@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { Check, Lock, Search } from 'lucide-react';
 
 import { BarcodeField } from '@/components/barcode-field';
 import { DateNudgeInput } from '@/components/date-nudge-field';
@@ -10,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import Decimal from 'decimal.js';
 
 import { trimQuantity } from '@/lib/quantity';
+import { roleAtLeast } from '@/server/auth/roles';
 import { requireOrg } from '@/server/auth/session';
 import { normalizeGtin } from '@/server/catalog/ean';
 import { parseGs1 } from '@/server/catalog/gs1';
@@ -22,13 +24,28 @@ import { PageTitle } from '@/components/data-list';
 // behind auth is a cross-tenant leak waiting to happen.
 export const dynamic = 'force-dynamic';
 
+/**
+ * Laid out as the "Receive Delivery" frame. Two departures, both on purpose:
+ *
+ * - The frame picks the product from a dropdown. A 2,000-product dropdown is
+ *   unusable one-handed, so the product is still found by scanning; once found
+ *   it sits in the same bordered box the frame draws, with a way to change it.
+ * - The frame folds cases into the quantity field ("24 units (cases of 6)").
+ *   Counting in cases stays an explicit choice, because a figure that silently
+ *   means cases or units depending on context is how a delivery gets received
+ *   six times over.
+ *
+ * Unit cost is manager-only, as the frame marks it — cost is manager+ on every
+ * other screen. The action enforces that, not just the form.
+ */
 export default async function ReceivePage({ params, searchParams }: PageProps<'/[locale]/receive'>) {
   const { locale } = await params;
   setRequestLocale(locale);
 
   const { gtin, done, error } = await searchParams;
   const t = await getTranslations('receive');
-  const { orgId } = await requireOrg(locale);
+  const { orgId, role } = await requireOrg(locale);
+  const canManage = roleAtLeast(role, 'manager');
 
   const barcode = typeof gtin === 'string' ? gtin : undefined;
   // A supplier's box label, if that's what was scanned — quantity, lot,
@@ -61,7 +78,7 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
 
   async function receive(formData: FormData) {
     'use server';
-    const { orgId, userId } = await requireOrg(locale);
+    const { orgId, userId, role } = await requireOrg(locale);
     const value = (key: string) => {
       const v = formData.get(key);
       return typeof v === 'string' && v.trim() ? v.trim() : null;
@@ -89,7 +106,9 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
         quantity,
         expiryDate: value('expiryDate'),
         lotNumber: value('lotNumber'),
-        unitCost: value('unitCost'),
+        // Staff never set cost: a posted field is ignored and the batch takes
+        // the product's own cost — what the pre-filled field used to submit.
+        unitCost: roleAtLeast(role, 'manager') ? value('unitCost') : (fresh?.costPrice ?? null),
         dateType: fresh?.dateType,
         actorId: userId,
       });
@@ -101,10 +120,11 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
-      <PageTitle>{t('title')}</PageTitle>
+      <PageTitle caption={t('intro')}>{t('title')}</PageTitle>
 
       {done && (
-        <p role="status" className="text-sm">
+        <p role="status" className="bg-card flex items-center gap-2 rounded-lg border p-3 text-sm">
+          <Check aria-hidden className="size-4 shrink-0" strokeWidth={2.4} />
           {t('received')}
         </p>
       )}
@@ -119,7 +139,7 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
       )}
 
       {barcode && !product && (
-        <div className="flex flex-col items-start gap-3">
+        <div className="bg-card flex flex-col items-start gap-3 rounded-xl border p-4">
           <p role="alert" className="text-sm">
             {t('notFound', { barcode })}
           </p>
@@ -135,40 +155,29 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
       )}
 
       {product && (
-        <form action={receive} className="flex flex-col gap-4">
+        <form action={receive} className="flex flex-col gap-5">
           <input type="hidden" name="productId" value={product.id} />
           <input type="hidden" name="gtin" value={barcode} />
 
-          <div className="flex flex-col gap-1">
-            <span className="text-lg font-medium">{product.name}</span>
-            <span className="text-muted-foreground text-sm tabular-nums">
-              {trimQuantity(stock?.quantity ?? '0')} <span className="opacity-70">{product.unit}</span>{' '}
-              {t('onHand')}
-            </span>
+          <div className="flex flex-col gap-2 md:max-w-lg">
+            <span className="text-sm font-medium">{t('product')}</span>
+            <div className="bg-card flex min-h-14 items-center gap-3 rounded-lg border px-3 py-2">
+              <Search aria-hidden className="text-muted-foreground size-5 shrink-0" />
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate text-base font-medium">{product.name}</span>
+                <span className="text-muted-foreground text-sm tabular-nums">
+                  {trimQuantity(stock?.quantity ?? '0')} <span className="opacity-70">{product.unit}</span>{' '}
+                  {t('onHand')}
+                </span>
+              </span>
+              <Link
+                href={`/${locale}/receive`}
+                className="text-link inline-flex min-h-11 shrink-0 items-center text-sm font-semibold"
+              >
+                {t('change')}
+              </Link>
+            </div>
           </div>
-
-          {/* Expiry first: the field most likely to get skipped and the most
-              expensive to get wrong, so it gets the arriving focus ring and
-              a box in the other hand doesn't have to fight the date picker
-              for a one-day correction. */}
-          <Field
-            name="expiryDate"
-            label={t('expiry')}
-            hint={
-              label?.expiryDate
-                ? t('expiryFromLabel')
-                : product.shelfLifeDays != null
-                  ? t('expiryHint', { days: product.shelfLifeDays })
-                  : undefined
-            }
-          >
-            <DateNudgeInput
-              id="expiryDate"
-              name="expiryDate"
-              defaultValue={suggestedExpiry}
-              labels={{ minusDay: t('nudgeMinusDay'), plusDay: t('nudgePlusDay'), plusWeek: t('nudgePlusWeek') }}
-            />
-          </Field>
 
           {/* A product that comes in cases can be counted in cases — the boxes
               are what is stacked at the door, and the multiplication is the
@@ -188,7 +197,7 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
                   // by unitsPerCase again and silently over-receive, so it
                   // only pre-fills when the default entry mode is units.
                   defaultValue={!scannedTheCase ? (label?.quantity ?? '') : ''}
-                  className="h-14 text-right text-lg tabular-nums"
+                  className="bg-card h-14 text-lg tabular-nums"
                 />
               </Field>
               <Field name="entryUnit" label={t('countedIn')}>
@@ -196,7 +205,7 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
                   id="entryUnit"
                   name="entryUnit"
                   defaultValue={scannedTheCase ? 'case' : 'unit'}
-                  className="h-14"
+                  className="bg-card h-14"
                 >
                   <option value="unit">{t('inUnits', { unit: product.unit })}</option>
                   <option value="case">
@@ -213,10 +222,32 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
                 inputMode="decimal"
                 required
                 defaultValue={label?.quantity ?? ''}
-                className="h-14 text-right text-lg tabular-nums"
+                className="bg-card h-14 text-lg tabular-nums"
               />
             </Field>
           )}
+
+          {/* The frame's "Expiry Date (Use By)": which kind of date it is
+              changes what happens after it passes — a use-by batch cannot be
+              sold at all — so the label says which. */}
+          <Field
+            name="expiryDate"
+            label={t('expiryOfType', { type: product.dateType })}
+            hint={
+              label?.expiryDate
+                ? t('expiryFromLabel')
+                : product.shelfLifeDays != null
+                  ? t('expiryHint', { days: product.shelfLifeDays })
+                  : undefined
+            }
+          >
+            <DateNudgeInput
+              id="expiryDate"
+              name="expiryDate"
+              defaultValue={suggestedExpiry}
+              labels={{ minusDay: t('nudgeMinusDay'), plusDay: t('nudgePlusDay'), plusWeek: t('nudgePlusWeek') }}
+            />
+          </Field>
 
           {/* Anything else on the label — company-internal AIs (91-99) most
               often, whose meaning is whichever the supplier decided. Never
@@ -236,19 +267,28 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
             </div>
           )}
 
-          <FieldRow>
-            <Field name="lotNumber" label={t('lot')}>
-              <Input
-                id="lotNumber"
-                name="lotNumber"
-                autoComplete="off"
-                defaultValue={label?.lotNumber ?? ''}
-                className="h-12 font-mono"
-              />
-            </Field>
+          <Field name="lotNumber" label={t('lotOptional')}>
+            <Input
+              id="lotNumber"
+              name="lotNumber"
+              autoComplete="off"
+              defaultValue={label?.lotNumber ?? ''}
+              className="bg-card h-12 font-mono"
+            />
+          </Field>
+
+          {canManage && (
             <Field
               name="unitCost"
-              label={t('unitCost')}
+              label={
+                <span className="flex w-full items-center justify-between gap-3">
+                  {t('unitCostExVat')}
+                  <span className="text-muted-foreground inline-flex items-center gap-1 text-xs font-normal">
+                    <Lock aria-hidden className="size-3" />
+                    {t('managerOnly')}
+                  </span>
+                </span>
+              }
               hint={product.unitsPerCase ? t('unitCostPerUnit') : undefined}
             >
               <Input
@@ -256,10 +296,10 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
                 name="unitCost"
                 inputMode="decimal"
                 defaultValue={product.costPrice ?? ''}
-                className="h-12 text-right tabular-nums"
+                className="bg-card h-12 tabular-nums"
               />
             </Field>
-          </FieldRow>
+          )}
 
           {error && (
             <p role="alert" className="text-destructive text-sm">
@@ -268,7 +308,7 @@ export default async function ReceivePage({ params, searchParams }: PageProps<'/
           )}
 
           <StickyAction>
-            <Button type="submit" className="h-12 w-full sm:w-fit">
+            <Button type="submit" className="h-12 w-full sm:w-fit sm:px-8">
               {t('submit')}
             </Button>
           </StickyAction>

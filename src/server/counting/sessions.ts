@@ -254,7 +254,10 @@ export async function getVarianceReport(orgId: string, countSessionId: string) {
 
   return {
     summary: varianceSummary(variances, costs),
-    variances: variances.map((v) => ({ ...v, productName: names[v.productId] })),
+    linesCounted: lines.length,
+    // The cost each line is valued at, so a row can show its own money beside
+    // its quantity — the same figure varianceSummary totals.
+    variances: variances.map((v) => ({ ...v, productName: names[v.productId], unitCost: costs[v.productId] })),
   };
 }
 

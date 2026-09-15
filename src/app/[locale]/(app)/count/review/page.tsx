@@ -1,13 +1,13 @@
 import { getFormatter, getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import Decimal from 'decimal.js';
 
 import { CheckCircle2 } from 'lucide-react';
 
 import { BackLink } from '@/components/back-link';
-import { DataList, DataRow, HeadlineFigure, PageTitle } from '@/components/data-list';
+import { DataList, PageTitle, StatTile } from '@/components/data-list';
 import { EmptyState } from '@/components/empty-state';
-import { StickyAction } from '@/components/form';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
@@ -20,6 +20,16 @@ import { completeCountSession, getOpenSession, getVarianceReport } from '@/serve
 // behind auth is a cross-tenant leak waiting to happen.
 export const dynamic = 'force-dynamic';
 
+/**
+ * Laid out as the "Review Count Variances" frame: summary figures, one row per
+ * difference with its quantity and money, then post or go back.
+ *
+ * Departures: the frame totals "56 units" and "-3 units" across products, and a
+ * sum of kilos, litres and each is not a number, so the tiles count lines
+ * instead. The frame's summary is a black panel with red figures on it, which
+ * fails contrast; the tiles are the same StatTile Today uses. Its Post button is
+ * blue; buttons here are ink.
+ */
 export default async function CountReviewPage({
   params,
   searchParams,
@@ -53,8 +63,9 @@ export default async function CountReviewPage({
   }
 
   const [org] = await withTenant(orgId, (tx) => tx.select().from(organizations));
-  const { summary, variances } = await getVarianceReport(orgId, session.id);
+  const { summary, variances, linesCounted } = await getVarianceReport(orgId, session.id);
   const money = (v: string) => format.number(Number(v), { style: 'currency', currency: org.currencyCode });
+  const shrinkLeads = summary.linesShort > 0;
 
   async function complete() {
     'use server';
@@ -72,75 +83,98 @@ export default async function CountReviewPage({
   }
 
   return (
-    <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
+    <main className="flex flex-1 flex-col gap-6 p-4 md:max-w-3xl">
       <BackLink href={`/${locale}/count`} label={tBack('count')} />
-      <PageTitle>{t('reviewTitle')}</PageTitle>
+      <PageTitle caption={t('reviewIntro')}>{t('reviewTitle')}</PageTitle>
+
+      <div className="grid grid-cols-3 gap-2">
+        <StatTile label={t('linesCountedLabel')}>{linesCounted}</StatTile>
+        <StatTile label={t('linesDifferLabel')}>{summary.linesWithVariance}</StatTile>
+        {/* Shrinkage first when there is any: the gap between what real sales
+            say should be on the shelf and what's actually there is the reason
+            counting still exists once POS supplies consumption. */}
+        <StatTile
+          label={shrinkLeads ? t('shrinkValue') : t('gainValue')}
+          className={shrinkLeads ? 'text-destructive' : ''}
+        >
+          {shrinkLeads ? `−${money(summary.shrinkValue)}` : money(summary.gainValue)}
+        </StatTile>
+      </div>
+      {variances.length > 0 && (
+        <p className="text-muted-foreground -mt-3 text-sm">
+          {shrinkLeads ? t('shrinkHint') : t('gainHint')}
+          {summary.linesShort > 0 && summary.linesOver > 0 && (
+            <span className="tabular-nums"> {t('netImpact')}: {money(summary.netValue)}</span>
+          )}
+        </p>
+      )}
 
       {variances.length === 0 ? (
         <EmptyState icon={CheckCircle2} title={t('noVariance')} />
       ) : (
-        <>
-          {/* Shrinkage first when there is any: the gap between what real sales
-              say should be on the shelf and what's actually there is the reason
-              counting still exists once POS supplies consumption. Found stock
-              leads only when nothing is missing. */}
-          <HeadlineFigure
-            label={summary.linesShort > 0 ? t('shrinkValue') : t('gainValue')}
-            value={money(summary.linesShort > 0 ? summary.shrinkValue : summary.gainValue)}
-            className={summary.linesShort > 0 ? 'text-destructive' : undefined}
-            caption={
-              <span className="flex flex-col gap-1">
-                <span className="tabular-nums">
-                  {t('varianceCount', { count: summary.linesWithVariance })}
-                </span>
-                <span>{summary.linesShort > 0 ? t('shrinkHint') : t('gainHint')}</span>
-              </span>
-            }
-          />
-          {summary.linesShort > 0 && summary.linesOver > 0 && (
-            <p className="text-muted-foreground text-sm tabular-nums">
-              {t('netImpact')}: {money(summary.netValue)}
-            </p>
-          )}
-
-          <DataList>
-            {variances.map((v) => {
-              const short = v.delta.startsWith('-');
-              return (
-                <DataRow
-                  key={`${v.productId}-${v.batchId ?? 'none'}`}
+        <DataList>
+          {variances.map((v) => {
+            const short = v.delta.startsWith('-');
+            const value = v.unitCost ? new Decimal(v.delta).times(v.unitCost) : null;
+            return (
+              <li key={`${v.productId}-${v.batchId ?? 'none'}`}>
+                <Link
                   href={`/${locale}/products/${v.productId}`}
-                  title={v.productName}
-                  // Sign is stated in words as well as by the number, so the
-                  // direction survives a glance and a colourblind reader.
-                  subtitle={`${short ? t('short') : t('over')} · ${t('expectedVsCounted', {
-                    expected: trimQuantity(v.expected),
-                    counted: trimQuantity(v.counted),
-                  })}`}
-                  value={`${short ? '' : '+'}${trimQuantity(v.delta)}`}
-                  valueClassName={`tabular-nums ${short ? 'text-destructive' : ''}`}
-                />
-              );
-            })}
-          </DataList>
-        </>
+                  className="grid min-h-16 grid-cols-[1fr_auto] items-center gap-3 px-4 py-3"
+                >
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="truncate text-base font-medium">{v.productName}</span>
+                    <span className="text-muted-foreground truncate text-sm">
+                      {t('expectedVsCounted', {
+                        expected: trimQuantity(v.expected),
+                        counted: trimQuantity(v.counted),
+                      })}
+                    </span>
+                  </span>
+                  <span className="flex flex-col items-end gap-1">
+                    {/* Direction in words and sign as well as colour, so it
+                        survives a glance and a colourblind reader. */}
+                    <span
+                      className={`rounded-md px-2 py-0.5 text-sm font-bold tabular-nums ${
+                        short ? 'bg-destructive-subtle text-destructive' : 'bg-muted'
+                      }`}
+                    >
+                      <span className="sr-only">{short ? t('short') : t('over')} </span>
+                      {short ? '' : '+'}
+                      {trimQuantity(v.delta)}
+                    </span>
+                    {value && (
+                      <span
+                        className={`text-xs font-semibold tabular-nums ${short ? 'text-destructive' : 'text-muted-foreground'}`}
+                      >
+                        {short ? '' : '+'}
+                        {money(value.toFixed(2))}
+                      </span>
+                    )}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </DataList>
       )}
 
-      <div className="flex flex-col gap-3">
+      {/* In flow, not pinned: the frame puts both actions under the list, and
+          posting is the one write on this screen — it should be reached after
+          reading the rows, not float over them. */}
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <form action={complete} className="sm:order-2">
+          {/* This is the write. Everything before it was reversible. */}
+          <Button type="submit" className="h-12 w-full sm:w-fit sm:px-8">
+            {t('postAdjustments', { count: summary.linesWithVariance })}
+          </Button>
+        </form>
         <Link
           href={`/${locale}/count`}
-          className={buttonVariants({ variant: 'outline', className: 'h-11 w-fit' })}
+          className={buttonVariants({ variant: 'outline', className: 'bg-card h-12 w-full sm:w-fit sm:px-8' })}
         >
           {t('keepCounting')}
         </Link>
-        <form action={complete}>
-          {/* This is the write. Everything before it was reversible. */}
-          <StickyAction>
-            <Button type="submit" className="h-12 w-full sm:w-fit">
-              {t('postAdjustments', { count: summary.linesWithVariance })}
-            </Button>
-          </StickyAction>
-        </form>
       </div>
     </main>
   );

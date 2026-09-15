@@ -6,6 +6,7 @@ import { Check, ChevronRight } from 'lucide-react';
 import { DataList, DataRow, PageTitle } from '@/components/data-list';
 import { BarcodeField } from '@/components/barcode-field';
 import { Field, StickyAction } from '@/components/form';
+import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { trimQuantity } from '@/lib/quantity';
@@ -214,13 +215,26 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
 
   return (
     <main className="flex flex-1 flex-col gap-5 p-4 pb-28">
-      <div className="flex items-baseline justify-between gap-3">
-        {/* "Dairy & chilled — Chiller shelf 3", as the count frame reads. */}
-        <PageTitle caption={session.shelfLocation ?? undefined}>{session.name ?? t('title')}</PageTitle>
-        <span className="text-muted-foreground text-sm tabular-nums">
-          {t('countedSoFar', { count: lines.length })}
+      {/* The frame's scope card: "Dairy & chilled — Chiller shelf 3". The
+          frame also lists the products still to count with how many are
+          expected; that stays out. A counter who is told to expect 12 finds
+          12, and a count is a shrinkage audit only while it is blind. */}
+      <section className="bg-card flex items-center justify-between gap-3 rounded-xl border p-4">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+            {t('scopeLabel')}
+          </span>
+          <h1 className="truncate text-base font-bold">
+            {[session.name ?? t('title'), session.shelfLocation].filter(Boolean).join(' — ')}
+          </h1>
+        </div>
+        <span className="flex shrink-0 flex-col items-end gap-1">
+          <Badge variant="outline">{t('inProgress')}</Badge>
+          <span className="text-muted-foreground text-xs tabular-nums">
+            {t('countedSoFar', { count: lines.length })}
+          </span>
         </span>
-      </div>
+      </section>
 
       {taken !== undefined && (
         <p role="alert" className="text-warning text-sm">
@@ -297,7 +311,7 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
 
       {lines.length > 0 && (
         <section className="flex flex-col gap-2">
-          <h2 className="text-muted-foreground text-sm font-medium">{t('counted')}</h2>
+          <h2 className="text-muted-foreground text-sm font-semibold">{t('counted')}</h2>
           <DataList>
             {lines.map((l) => (
               <DataRow
@@ -333,12 +347,18 @@ export default async function CountPage({ params, searchParams }: PageProps<'/[l
         </section>
       )}
 
-      <Link
-        href={`/${locale}/count/review?session=${session.id}`}
-        className={buttonVariants({ variant: 'outline', className: 'h-11 w-fit' })}
-      >
-        {t('review')}
-      </Link>
+      <div className="flex flex-col gap-2">
+        <Link
+          href={`/${locale}/count/review?session=${session.id}`}
+          className={buttonVariants({
+            variant: lines.length > 0 && !product ? 'default' : 'outline',
+            className: 'h-12 w-full sm:w-fit sm:px-8',
+          })}
+        >
+          {t('review')}
+        </Link>
+        <p className="text-muted-foreground text-xs">{t('reviewHint')}</p>
+      </div>
     </main>
   );
 }
