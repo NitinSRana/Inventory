@@ -101,7 +101,7 @@ export type ProductFilters = {
  * the last-counted lookup below was comparing count_lines.product_id with
  * count_lines.id, and a category count compared a product with itself.
  */
-const ON_HAND = sql<string>`coalesce((select sum(ps.quantity) from product_stock ps where ps.product_id = "products"."id"), 0)`;
+export const ON_HAND = sql<string>`coalesce((select sum(ps.quantity) from product_stock ps where ps.product_id = "products"."id"), 0)`;
 
 export async function listProducts(orgId: string, options: ProductFilters = {}) {
   const {

@@ -3,8 +3,10 @@
 import assert from 'node:assert/strict';
 import { before, describe, test } from 'node:test';
 
+import { locations } from '@/db/schema';
+import { withTenant } from '@/db/tenant';
 import { createProduct } from '@/server/catalog/products';
-import { createSupplier, getSupplierProducts } from '@/server/catalog/suppliers';
+import { createSupplier, getSupplierProducts, listSuppliers } from '@/server/catalog/suppliers';
 import { receiveStock } from '@/server/stock/movements';
 import { createTestOrg, type TestOrg } from '@/server/testing/fixtures';
 
@@ -53,8 +55,34 @@ describe('low stock by supplier', () => {
     );
   });
 
+  test('a product stocked in two locations is one row, with both counted', async () => {
+    const split = await createProduct(org.orgId, { name: 'Mmm Split Flour', supplierId: bookers, minStock: '8' });
+    // Every tenant has one location today; the code is written for ten.
+    const [backroom] = await withTenant(org.orgId, (tx) =>
+      tx.insert(locations).values({ organizationId: org.orgId, name: 'Backroom', type: 'backroom' }).returning(),
+    );
+    await receiveStock(org.orgId, { productId: split.id, quantity: '5' });
+    await receiveStock(org.orgId, { productId: split.id, locationId: backroom.id, quantity: '5' });
+
+    const rows = (await getSupplierProducts(org.orgId, bookers)).filter((r) => r.id === split.id);
+    assert.equal(rows.length, 1, 'not one row per location');
+    assert.equal(rows[0].quantity, '10.000');
+    assert.equal(rows[0].belowMinimum, false, '10 across both rooms is not under 8, though each room is');
+  });
+
+  test('last delivery is read off receipts, and is empty for a supplier nothing has come from', async () => {
+    const quiet = await createSupplier(org.orgId, { name: 'Quiet Farm' });
+    await createProduct(org.orgId, { name: 'Never Delivered Eggs', supplierId: quiet.id });
+
+    const list = await listSuppliers(org.orgId);
+    const booked = list.find((s) => s.id === bookers);
+    assert.ok(booked?.lastDeliveryAt instanceof Date, 'Bookers has had stock received');
+    assert.equal(list.find((s) => s.id === quiet.id)?.lastDeliveryAt, null);
+  });
+
   test('another tenant sees none of it', async () => {
     const rival = await createTestOrg('Supplier Stock Rival');
     assert.deepEqual(await getSupplierProducts(rival.orgId, bookers), []);
+    assert.deepEqual(await listSuppliers(rival.orgId, { includeInactive: true }), []);
   });
 });

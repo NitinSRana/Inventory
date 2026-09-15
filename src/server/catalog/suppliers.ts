@@ -1,7 +1,9 @@
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, max, sql } from 'drizzle-orm';
 
-import { categories, productStock, products, suppliers } from '@/db/schema';
+import { categories, products, stockMovements, suppliers } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
+
+import { ON_HAND } from './products';
 
 export type SupplierInput = {
   name: string;
@@ -31,7 +33,21 @@ export async function listSuppliers(orgId: string, options: { includeInactive?: 
       .groupBy(products.supplierId);
     const countBySupplier = new Map(counts.map((c) => [c.supplierId, c.n]));
 
-    return rows.map((r) => ({ ...r, productCount: countBySupplier.get(r.id) ?? 0 }));
+    // "Last delivery" is when stock last arrived for anything this supplier
+    // brings — read off the ledger's receipts, never a date someone types in.
+    const deliveries = await tx
+      .select({ supplierId: products.supplierId, at: max(stockMovements.occurredAt) })
+      .from(stockMovements)
+      .innerJoin(products, eq(products.id, stockMovements.productId))
+      .where(eq(stockMovements.movementType, 'receipt'))
+      .groupBy(products.supplierId);
+    const deliveredBySupplier = new Map(deliveries.map((d) => [d.supplierId, d.at]));
+
+    return rows.map((r) => ({
+      ...r,
+      productCount: countBySupplier.get(r.id) ?? 0,
+      lastDeliveryAt: deliveredBySupplier.get(r.id) ?? null,
+    }));
   });
 }
 
@@ -89,10 +105,13 @@ export async function getSupplierProducts(orgId: string, supplierId: string) {
         id: products.id,
         name: products.name,
         gtin: products.gtin,
+        sku: products.sku,
         unit: products.unit,
         categoryName: categories.name,
         sellPrice: products.sellPrice,
-        quantity: sql<string>`coalesce(${productStock.quantity}, 0)::text`,
+        // Summed across locations, not joined: a join lists a product once per
+        // location it is stocked in.
+        quantity: sql<string>`${ON_HAND}::text`,
         minStock: products.minStock,
         /*
          * The one question this page could not answer: of the things this
@@ -103,18 +122,15 @@ export async function getSupplierProducts(orgId: string, supplierId: string) {
          * This is a read, and stays one. No suggested quantities, no order to
          * place — see CLAUDE.md on where that line sits.
          */
-        belowMinimum: sql<boolean>`${products.minStock} is not null
-          and coalesce(${productStock.quantity}, 0) < ${products.minStock}`,
+        belowMinimum: sql<boolean>`${products.minStock} is not null and ${ON_HAND} < ${products.minStock}`,
       })
       .from(products)
       .leftJoin(categories, eq(categories.id, products.categoryId))
-      .leftJoin(productStock, eq(productStock.productId, products.id))
       .where(eq(products.supplierId, supplierId))
       // Short first, then alphabetical: the reason someone opens a supplier is
       // usually that they are about to phone them.
       .orderBy(
-        desc(sql`${products.minStock} is not null
-          and coalesce(${productStock.quantity}, 0) < ${products.minStock}`),
+        desc(sql`${products.minStock} is not null and ${ON_HAND} < ${products.minStock}`),
         asc(products.name),
       ),
   );

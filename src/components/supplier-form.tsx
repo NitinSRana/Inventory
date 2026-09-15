@@ -31,7 +31,7 @@ export async function SupplierForm({
 
   return (
     <form action={action} className="flex flex-col gap-4 pb-32 md:pb-0">
-      <Field name="name" label={t('name')}>
+      <Field name="name" label={t('name')} required>
         <Input id="name" name="name" required defaultValue={defaults.name} className="h-12" />
       </Field>
 
@@ -61,7 +61,6 @@ export async function SupplierForm({
       </Field>
 
       <FieldRow>
-        {/* Lead time drives every reorder quantity, so say so where it's set. */}
         <Field name="leadTimeDays" label={t('leadTime')} hint={t('leadTimeHint')}>
           <Input
             id="leadTimeDays"
@@ -87,17 +86,18 @@ export async function SupplierForm({
         <div className="flex flex-wrap gap-2">
           {WEEKDAYS.map((d) => (
             // Native checkbox in a 44px label: the whole chip is the target, so
-            // it works with a gloved thumb.
+            // it works with a gloved thumb. Filled when on, as the frame draws
+            // the delivery schedule.
             <label
               key={d}
-              className="border-input flex h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm"
+              className="border-input bg-card has-checked:bg-primary has-checked:text-primary-foreground has-checked:border-primary has-focus-visible:ring-ring/50 flex h-11 min-w-14 cursor-pointer items-center justify-center rounded-lg border px-3 text-sm font-medium has-focus-visible:ring-3"
             >
               <input
                 type="checkbox"
                 name="deliveryWeekdays"
                 value={d}
                 defaultChecked={selected.has(d)}
-                className="size-4"
+                className="sr-only"
               />
               {t(`weekdays.${d}`)}
             </label>
