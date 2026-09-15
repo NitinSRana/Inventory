@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { Image as ImageIcon, PackageSearch } from 'lucide-react';
 
 import { BarcodeField } from '@/components/barcode-field';
-import { DataList, DataRow, PageTitle, SectionHeading } from '@/components/data-list';
+import { DataList, DataRow, PageTitle, SectionHeading, StatTile } from '@/components/data-list';
 import { UrgencyBadge, urgencyOf } from '@/components/expiry-urgency';
 import { StickyAction } from '@/components/form';
 import { Badge } from '@/components/ui/badge';
@@ -120,28 +120,16 @@ export default async function ScanPage({ params, searchParams }: PageProps<'/[lo
           </section>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-card flex flex-col gap-1 rounded-lg border p-3">
-              <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-                {t('currentStock')}
-              </span>
-              <span className="text-lg font-bold tabular-nums">
-                {trimQuantity(onHand)} <span className="text-sm font-normal opacity-70">{product.unit}</span>
-              </span>
-            </div>
+            <StatTile label={t('currentStock')}>
+              {trimQuantity(onHand)} <span className="text-sm font-normal opacity-70">{product.unit}</span>
+            </StatTile>
             {/* The shelf, so a worker holding the product knows where it goes
                 back. Said plainly when nobody has set one yet. */}
-            <div className="bg-card flex flex-col gap-1 rounded-lg border p-3">
-              <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-                {t('shelfLocation')}
-              </span>
-              <span
-                className={
-                  product.shelfLocation ? 'text-lg font-bold' : 'text-muted-foreground text-lg font-medium'
-                }
-              >
-                {product.shelfLocation ?? t('noShelf')}
-              </span>
-            </div>
+            <StatTile label={t('shelfLocation')}>
+              {product.shelfLocation ?? (
+                <span className="text-muted-foreground font-medium">{t('noShelf')}</span>
+              )}
+            </StatTile>
           </div>
 
           <section className="flex flex-col gap-2">

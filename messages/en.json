@@ -82,8 +82,6 @@
     "expiredUseBy": "{days, plural, one {Use by, # day ago — do not sell} other {Use by, # days ago — do not sell}}",
     "expiredBestBefore": "{days, plural, one {Best before, # day ago — mark down} other {Best before, # days ago — mark down}}",
     "units": "on hand",
-    "atRiskLabel": "At risk · next 14 days",
-    "batchSummary": "{batches, plural, one {# batch} other {# batches}}{expired, plural, =0 {} other { · # already expired}}",
     "bucketsLabel": "Jump to a group",
     "emptyTitle": "Nothing expiring",
     "buckets": {
@@ -95,7 +93,13 @@
       "expired": "Expired",
       "critical": "Next 3 days",
       "soon": "Next 14 days"
-    }
+    },
+    "metricsTitle": "Today's risk metrics",
+    "atRiskTile": "At risk value",
+    "batchesUnit": "{count, plural, one {batch} other {batches}}",
+    "mitigated": "Recovered by markdowns",
+    "mitigatedCaption": "This month, ex VAT",
+    "viewAll": "View all"
   },
   "products": {
     "title": "Products",

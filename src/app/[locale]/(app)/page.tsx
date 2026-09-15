@@ -69,7 +69,9 @@ export default async function HomePage({ params, searchParams }: PageProps<'/[lo
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-4">
-      <h1 className="text-2xl font-semibold">{org.name}</h1>
+      {/* On a phone the header already names the store, as the Today frame
+          does; the heading stays for screen readers. */}
+      <h1 className="text-2xl font-semibold max-md:sr-only">{org.name}</h1>
 
       {/* Says which role is needed, not just "no". */}
       {denied && (
@@ -85,7 +87,12 @@ export default async function HomePage({ params, searchParams }: PageProps<'/[lo
         role={session.role}
       />
 
-      <ExpiryDashboard orgId={session.orgId} locale={locale} currency={org.currencyCode} />
+      <ExpiryDashboard
+        orgId={session.orgId}
+        locale={locale}
+        currency={org.currencyCode}
+        role={session.role}
+      />
     </main>
   );
 }

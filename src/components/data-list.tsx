@@ -32,9 +32,52 @@ import { Skeleton } from '@/components/ui/skeleton';
  */
 export function DataList({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-lg border">
+    <div className="bg-card overflow-hidden rounded-lg border">
       <ul className="divide-border divide-y">{children}</ul>
     </div>
+  );
+}
+
+/**
+ * A bordered figure tile — "AT RISK VALUE / €184.20" — from the Figma redesign.
+ *
+ * Label above, number below, the number in the tile's own colour only when the
+ * number is a state of the world (expired, next 3 days). With `href` the whole
+ * tile is a 44px jump link.
+ */
+export function StatTile({
+  label,
+  caption,
+  href,
+  className = '',
+  tileClassName = '',
+  children,
+}: {
+  label: string;
+  caption?: React.ReactNode;
+  href?: string;
+  /** Classes for the figure, e.g. an urgency colour. */
+  className?: string;
+  /** Classes for the tile itself, e.g. a grid span. */
+  tileClassName?: string;
+  children: React.ReactNode;
+}) {
+  const body = (
+    <>
+      <span className="text-muted-foreground text-xs leading-tight font-semibold tracking-wider uppercase">
+        {label}
+      </span>
+      <span className={`text-base font-bold tabular-nums sm:text-lg ${className}`}>{children}</span>
+      {caption && <span className="text-muted-foreground text-xs">{caption}</span>}
+    </>
+  );
+  const box = `bg-card flex min-h-11 min-w-0 flex-col gap-1 rounded-lg border p-3 ${tileClassName}`;
+  return href ? (
+    <a href={href} className={box}>
+      {body}
+    </a>
+  ) : (
+    <div className={box}>{body}</div>
   );
 }
 
