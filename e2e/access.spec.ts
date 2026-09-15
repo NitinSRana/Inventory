@@ -28,11 +28,16 @@ for (const path of PROTECTED) {
 }
 
 test('the sign-in form offers a password and a mail link, not just one', async ({ page }) => {
+  // Two tabs now, as the redesign draws them: password first, the link one tap away.
   await page.goto('/en/sign-in');
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
   await expect(page.getByLabel('Password')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
+
+  await page.getByRole('link', { name: 'Magic link' }).click();
+  await expect(page).toHaveURL(/\/en\/sign-in\?mode=link$/);
   await expect(page.getByRole('button', { name: 'Email me a link' })).toBeVisible();
+  await expect(page.getByLabel('Password')).toHaveCount(0);
 });
 
 /**

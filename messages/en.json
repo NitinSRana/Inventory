@@ -1,14 +1,13 @@
 {
   "app": {
     "name": "Inventory",
-    "description": "What's about to expire, and what to order."
+    "description": "What's about to expire, and what's on the shelf."
   },
   "signIn": {
     "title": "Sign in",
     "subtitle": "Password, or we'll email you a link.",
     "emailLabel": "Email",
     "passwordLabel": "Password",
-    "passwordHint": "Leave blank to get a sign-in link by email instead.",
     "submit": "Sign in",
     "sendLink": "Email me a link",
     "sent": "If that address can sign in here, a link is on its way. Check your email.",
@@ -31,7 +30,14 @@
     "resetShort": "Use at least {min} characters.",
     "resetMismatch": "Those two passwords are different.",
     "resetFailed": "That didn't save. Ask for a new reset link and try again.",
-    "resetExpired": "That reset link has expired or was already used. Ask for a new one."
+    "resetExpired": "That reset link has expired or was already used. Ask for a new one.",
+    "tagline": "Expiry tracking and stock, for the shop floor",
+    "modesLabel": "How to sign in",
+    "modePassword": "Password",
+    "modeLink": "Magic link",
+    "linkHint": "We'll email you a link that signs you in — no password needed.",
+    "inviteOnlyTitle": "By invitation only",
+    "inviteOnlyBody": "Need access? Ask your store owner to invite you. This screen never creates new logins."
   },
   "scan": {
     "barcodeLabel": "Barcode",

@@ -2,8 +2,8 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { headers } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { Boxes } from 'lucide-react';
 
-import { PageTitle } from '@/components/data-list';
 import { Field } from '@/components/form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,12 +18,24 @@ import {
 } from '@/server/auth/rate-limit';
 import { signInOutcome } from '@/server/auth/sign-in';
 
+/**
+ * Laid out as the sign-in frame: the app's mark and name, Password | Magic link
+ * tabs, the form for the chosen one, and a note that accounts come by
+ * invitation.
+ *
+ * The tabs are links (`?mode=link`), so each mode is a URL and needs no client
+ * JS. Two things in the frame are not built: "Remember device" (the session
+ * already persists until sign-out; a box that changes nothing would be a lie)
+ * and "Trusted by 12,000+ stores" (not true of this product).
+ */
 export default async function SignInPage({ params, searchParams }: PageProps<'/[locale]/sign-in'>) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const { sent, error } = await searchParams;
+  const { sent, error, mode } = await searchParams;
+  const byLink = mode === 'link';
   const t = await getTranslations('signIn');
+  const tApp = await getTranslations('app');
 
   /** The magic-link path. Still the only way a newly-invited member gets in
    * the first time — claiming an invitation happens on first sign-in, and a
@@ -31,7 +43,7 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
   async function sendLink(formData: FormData) {
     'use server';
     const email = String(formData.get('email') ?? '').trim();
-    if (!email) redirect(`/${locale}/sign-in?error=1`);
+    if (!email) redirect(`/${locale}/sign-in?mode=link&error=1`);
 
     const h = await headers();
     const origin =
@@ -46,8 +58,8 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
     ]);
     // Both refuse, but a check that could not run is our fault and does not
     // clear by waiting — telling someone to wait is a dead end there.
-    if (checks.includes('unavailable')) redirect(`/${locale}/sign-in?error=unavailable`);
-    if (checks.includes('limited')) redirect(`/${locale}/sign-in?error=throttled`);
+    if (checks.includes('unavailable')) redirect(`/${locale}/sign-in?mode=link&error=unavailable`);
+    if (checks.includes('limited')) redirect(`/${locale}/sign-in?mode=link&error=throttled`);
 
     const supabase = await createClient();
     const { error } = await supabase.auth.signInWithOtp({
@@ -55,7 +67,7 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
       options: { emailRedirectTo: `${origin}/auth/confirm?next=/${locale}` },
     });
 
-    redirect(`/${locale}/sign-in?${signInOutcome(error)}`);
+    redirect(`/${locale}/sign-in?mode=link&${signInOutcome(error)}`);
   }
 
   /**
@@ -87,85 +99,112 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
     redirect(`/${locale}`);
   }
 
+  const errorText =
+    error === 'throttled'
+      ? t('throttled')
+      : error === 'unavailable'
+        ? t('unavailable')
+        : error === 'password'
+          ? t('passwordError')
+          : error === 'resetExpired'
+            ? t('resetExpired')
+            : error
+              ? t('error')
+              : null;
+
+  const tab = (active: boolean) =>
+    `flex min-h-11 items-center justify-center rounded-md px-3 text-sm ${
+      active ? 'bg-card text-foreground font-semibold shadow-sm' : 'text-muted-foreground'
+    }`;
+
   return (
-    // On a phone: full width, action in the bottom third, one-handed.
-    // On anything wider: a centred column, because a form field stretched across
-    // 1900px is unreadable and looks broken.
-    <main className="flex flex-1 flex-col justify-end p-6 sm:items-center sm:justify-center">
-      <div className="flex w-full max-w-sm flex-col gap-8 sm:rounded-xl sm:border sm:p-8">
-        <PageTitle caption={t('subtitle')}>{t('title')}</PageTitle>
+    // On a phone: full width, the form in the lower part of the screen where a
+    // thumb reaches. On anything wider: a centred column.
+    <main className="flex flex-1 flex-col justify-center gap-8 p-6 sm:items-center">
+      <div className="flex w-full max-w-sm flex-col gap-6">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <span className="bg-primary text-primary-foreground flex size-14 items-center justify-center rounded-xl">
+            <Boxes aria-hidden className="size-7" />
+          </span>
+          <p className="text-3xl font-bold tracking-tight">{tApp('name')}</p>
+          <p className="text-muted-foreground text-sm">{t('tagline')}</p>
+        </div>
+
+        {/* The page's heading for screen readers and tests; the brand above is
+            what the eye lands on. */}
+        <h1 className="sr-only">{t('title')}</h1>
+
+        <nav aria-label={t('modesLabel')} className="bg-muted grid grid-cols-2 gap-1 rounded-lg border p-1">
+          <Link href={`/${locale}/sign-in`} aria-current={byLink ? undefined : 'page'} className={tab(!byLink)}>
+            {t('modePassword')}
+          </Link>
+          <Link href={`/${locale}/sign-in?mode=link`} aria-current={byLink ? 'page' : undefined} className={tab(byLink)}>
+            {t('modeLink')}
+          </Link>
+        </nav>
 
         {sent ? (
           // Deliberately non-committal about whether that address is a member.
           // The hint underneath explains the silence, so someone who mistyped is
           // not left waiting on mail that will never come.
-          <div className="flex flex-col gap-2">
+          <div className="bg-card flex flex-col gap-2 rounded-xl border p-4">
             <p role="status" className="text-sm">
               {t('sent')}
             </p>
             <p className="text-muted-foreground text-sm">{t('sentHint')}</p>
           </div>
-        ) : (
-          <form className="flex flex-col gap-4">
-            <Field name="email" label={t('emailLabel')}>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="h-12"
-              />
+        ) : byLink ? (
+          <form action={sendLink} className="flex flex-col gap-4">
+            <Field name="email" label={t('emailLabel')} hint={t('linkHint')}>
+              <Input id="email" name="email" type="email" autoComplete="email" required className="h-12" />
             </Field>
-
-            <Field name="password" label={t('passwordLabel')} hint={t('passwordHint')}>
+            {errorText && (
+              <p role="alert" className="text-destructive text-sm">
+                {errorText}
+              </p>
+            )}
+            <Button type="submit" className="h-12 w-full">
+              {t('sendLink')}
+            </Button>
+          </form>
+        ) : (
+          <form action={signInWithPassword} className="flex flex-col gap-4">
+            <Field name="email" label={t('emailLabel')}>
+              <Input id="email" name="email" type="email" autoComplete="email" required className="h-12" />
+            </Field>
+            <Field name="password" label={t('passwordLabel')}>
               <Input
                 id="password"
                 name="password"
                 type="password"
                 autoComplete="current-password"
+                required
                 className="h-12"
               />
             </Field>
-
-            {/* Where the design puts it, beside the password. 44px tall: a
-                phone is where people most often find they have forgotten. */}
+            {/* Where the frame puts it, beside the password. 44px tall: a phone
+                is where people most often find they have forgotten. */}
             <Link
               href={`/${locale}/sign-in/forgot`}
-              className="text-link inline-flex min-h-11 items-center self-end text-sm font-semibold"
+              className="text-link -mt-2 inline-flex min-h-11 items-center self-end text-sm font-semibold"
             >
               {t('forgotLink')}
             </Link>
-
-            {error && (
+            {errorText && (
               <p role="alert" className="text-destructive text-sm">
-                {error === 'throttled'
-                  ? t('throttled')
-                  : error === 'unavailable'
-                    ? t('unavailable')
-                    : error === 'password'
-                      ? t('passwordError')
-                      : error === 'resetExpired'
-                        ? t('resetExpired')
-                        : t('error')}
+                {errorText}
               </p>
             )}
-
-            <div className="flex flex-col gap-3">
-              <Button type="submit" formAction={signInWithPassword} className="h-12 w-full">
-                {t('submit')}
-              </Button>
-              <Button
-                type="submit"
-                formAction={sendLink}
-                variant="outline"
-                className="h-12 w-full"
-              >
-                {t('sendLink')}
-              </Button>
-            </div>
+            <Button type="submit" className="h-12 w-full">
+              {t('submit')}
+            </Button>
           </form>
         )}
+
+        <section className="bg-card flex flex-col gap-1 rounded-xl border p-4">
+          <h2 className="text-sm font-bold">{t('inviteOnlyTitle')}</h2>
+          <p className="text-muted-foreground text-sm">{t('inviteOnlyBody')}</p>
+        </section>
       </div>
     </main>
   );
