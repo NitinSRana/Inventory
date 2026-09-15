@@ -112,7 +112,8 @@ test('a product page fits a phone, filters and all', async ({ page }) => {
   test.skip(!id, 'no products in this shop yet');
 
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto(`/en/products/${id}#movements`, { waitUntil: 'domcontentloaded' });
+  // Movements is a tab now; its filter row is the widest thing on the page.
+  await page.goto(`/en/products/${id}?tab=movements#movements`, { waitUntil: 'domcontentloaded' });
   const { overflow, culprits, short } = await page.evaluate(audit);
 
   expect(overflow, `scrolls sideways by ${overflow}px: ${culprits.join('; ')}`).toBeLessThanOrEqual(1);

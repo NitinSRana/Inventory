@@ -1,4 +1,4 @@
-import { ChevronLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 /**
@@ -12,9 +12,10 @@ export function BackLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className="text-muted-foreground -ml-2 inline-flex h-11 items-center gap-1 self-start pr-3 pl-2 text-sm"
+      // Blue, as the redesign draws it: a link is where you can go.
+      className="text-link -ml-2 inline-flex h-11 items-center gap-2 self-start pr-3 pl-2 text-sm font-semibold"
     >
-      <ChevronLeft aria-hidden className="size-4" />
+      <ArrowLeft aria-hidden className="size-4" />
       {label}
     </Link>
   );

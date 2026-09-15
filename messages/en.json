@@ -226,7 +226,22 @@
       "out": "Out of stock"
     },
     "moreFilters": "More filters",
-    "showingOf": "Showing {shown} of {total}"
+    "showingOf": "Showing {shown} of {total}",
+    "onHandTile": "On hand",
+    "daysCoverTile": "Days cover",
+    "daysUnit": "{days, plural, one {day} other {days}}",
+    "marginTile": "Margin",
+    "sellPriceGross": "Sell price (incl. VAT)",
+    "costPriceNet": "Cost price (ex VAT)",
+    "perUnit": "{price} / {unit}",
+    "managerOnly": "Manager only",
+    "batchesTab": "Stock batches ({count})",
+    "movementsTab": "Movements",
+    "tabsLabel": "Product history",
+    "expiresOn": "Exp: {date}",
+    "lotLabel": "Lot: {lot}",
+    "batchValue": "Val: {value}",
+    "receiveBatch": "Receive batch"
   },
   "home": {
     "signedOut": "Not signed in",

@@ -85,6 +85,8 @@ export async function getProductBatches(orgId: string, productId: string) {
         dateType: batches.dateType,
         receivedAt: batches.receivedAt,
         markdownPrice: batches.markdownPrice,
+        /** Net, as received. What a batch is worth is quantity × this. */
+        unitCost: batches.unitCost,
         quantity: stockLevels.quantity,
         // Counted by the database, exactly as the expiring_stock view does it.
         // "Today" has to mean one thing across the product; deriving it in the
