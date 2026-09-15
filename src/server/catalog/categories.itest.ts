@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { before, describe, test } from 'node:test';
 
-import { createProduct, getProduct } from '@/server/catalog/products';
+import { locations } from '@/db/schema';
+import { withTenant } from '@/db/tenant';
+import { createProduct, deactivateProduct, getProduct } from '@/server/catalog/products';
+import { receiveStock } from '@/server/stock/movements';
 import { createTestOrg, type TestOrg } from '@/server/testing/fixtures';
 
 import {
@@ -9,6 +12,7 @@ import {
   createCategory,
   deleteCategory,
   getCategory,
+  getCategorySummary,
   listCategories,
   updateCategory,
 } from './categories';
@@ -56,6 +60,32 @@ describe('categories', () => {
     const survived = await getProduct(org.orgId, p.id);
     assert.ok(survived, 'the product must not be deleted along with its category');
     assert.equal(survived!.categoryId, null);
+  });
+
+  test('the list counts each category\'s active products', async () => {
+    const c = await createCategory(org.orgId, { name: 'Counted' });
+    await createProduct(org.orgId, { name: 'Counted A', categoryId: c.id });
+    const retired = await createProduct(org.orgId, { name: 'Counted B', categoryId: c.id });
+    await deactivateProduct(org.orgId, retired.id);
+
+    const row = (await listCategories(org.orgId)).find((x) => x.id === c.id);
+    assert.equal(row?.productCount, 1, 'a deactivated product is not one of its items');
+  });
+
+  test('a product stocked in two locations is listed once, with both counted', async () => {
+    const c = await createCategory(org.orgId, { name: 'Two Rooms' });
+    const p = await createProduct(org.orgId, { name: 'Split Rice', categoryId: c.id });
+    // Every tenant has one location today; the code is written for ten.
+    const [backroom] = await withTenant(org.orgId, (tx) =>
+      tx.insert(locations).values({ organizationId: org.orgId, name: 'Backroom', type: 'backroom' }).returning(),
+    );
+    await receiveStock(org.orgId, { productId: p.id, quantity: '4' });
+    await receiveStock(org.orgId, { productId: p.id, locationId: backroom.id, quantity: '6' });
+
+    const summary = await getCategorySummary(org.orgId, c.id);
+    assert.equal(summary.productCount, 1, 'one product, not one row per location');
+    assert.equal(summary.products[0].quantity, '10.000');
+    assert.equal(summary.totalStock, '10');
   });
 
   test('another tenant sees none of it', async () => {

@@ -92,8 +92,16 @@ export type ProductFilters = {
   lowOrOut?: boolean;
 };
 
-/** Units on hand across every location, from the ledger view — never stored. */
-const ON_HAND = sql<string>`coalesce((select sum(ps.quantity) from product_stock ps where ps.product_id = ${products.id}), 0)`;
+/**
+ * Units on hand across every location, from the ledger view — never stored.
+ *
+ * The outer column is written out as "products"."id" on purpose. Drizzle
+ * renders ${products.id} inside a select list as a bare "id", and in a
+ * correlated subquery a bare "id" binds to the innermost table that has one:
+ * the last-counted lookup below was comparing count_lines.product_id with
+ * count_lines.id, and a category count compared a product with itself.
+ */
+const ON_HAND = sql<string>`coalesce((select sum(ps.quantity) from product_stock ps where ps.product_id = "products"."id"), 0)`;
 
 export async function listProducts(orgId: string, options: ProductFilters = {}) {
   const {
@@ -138,7 +146,7 @@ export async function listProducts(orgId: string, options: ProductFilters = {}) 
         lastCountedAt: sql<string | null>`(
           select max(cl.counted_at)::text from count_lines cl
           join count_sessions cs on cs.id = cl.count_session_id
-          where cl.product_id = ${products.id} and cs.status = 'completed'
+          where cl.product_id = "products"."id" and cs.status = 'completed'
         )`,
       })
       .from(products)

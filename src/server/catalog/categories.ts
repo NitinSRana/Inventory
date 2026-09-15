@@ -1,7 +1,7 @@
-import { asc, eq, sql } from 'drizzle-orm';
+import { asc, eq, getTableColumns, sql } from 'drizzle-orm';
 import Decimal from 'decimal.js';
 
-import { categories, productStock, products } from '@/db/schema';
+import { categories, products } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 import { marginPercent } from '@/server/settings/valuation';
 import { getRatesByBand } from '@/server/settings/vat';
@@ -14,7 +14,18 @@ export type CategoryInput = {
 };
 
 export async function listCategories(orgId: string) {
-  return withTenant(orgId, (tx) => tx.select().from(categories).orderBy(asc(categories.name)));
+  return withTenant(orgId, (tx) =>
+    tx
+      .select({
+        ...getTableColumns(categories),
+        /** Active products only — what the category list's "45 items" means. */
+        // "categories"."id" spelled out: Drizzle renders ${categories.id} here as a
+        // bare "id", which binds to the inner products row and counts nothing.
+        productCount: sql<number>`(select count(*)::int from products p where p.category_id = "categories"."id" and p.is_active)`,
+      })
+      .from(categories)
+      .orderBy(asc(categories.name)),
+  );
 }
 
 export async function getCategory(orgId: string, categoryId: string) {
@@ -89,10 +100,11 @@ export async function getCategorySummary(orgId: string, categoryId: string) {
         sellPrice: products.sellPrice,
         costPrice: products.costPrice,
         vatBand: products.vatBand,
-        quantity: sql<string>`coalesce(${productStock.quantity}, 0)::text`,
+        // Summed across locations, not joined: a join gives a product one row
+        // per location it is stocked in, listing and counting it twice.
+        quantity: sql<string>`coalesce((select sum(ps.quantity) from product_stock ps where ps.product_id = "products"."id"), 0)::text`,
       })
       .from(products)
-      .leftJoin(productStock, eq(productStock.productId, products.id))
       .where(eq(products.categoryId, categoryId))
       .orderBy(asc(products.name));
 

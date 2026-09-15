@@ -8,6 +8,7 @@ import { createTestOrg, type TestOrg } from '@/server/testing/fixtures';
 import { createCategory } from './categories';
 import { createProduct, deactivateProduct, listProducts, reactivateProduct } from './products';
 import { createSupplier } from './suppliers';
+import { completeCountSession, recordCount, startCountSession } from '@/server/counting/sessions';
 import { receiveStock } from '@/server/stock/movements';
 
 describe('product filters', () => {
@@ -133,6 +134,25 @@ describe('product filters', () => {
 
     const [butter] = await listProducts(org.orgId, { search: 'Low Butter' });
     assert.equal(butter.onHand, '3.000');
+  });
+
+  test('last counted is when a completed count covered that product, and only that product', async () => {
+    const counted = (await createProduct(org.orgId, { name: 'Counted Cheese' })).id;
+    const neighbour = (await createProduct(org.orgId, { name: 'Uncounted Cheese' })).id;
+    await receiveStock(org.orgId, { productId: counted, quantity: '2' });
+
+    const session = await startCountSession(org.orgId, { name: 'Cheese shelf' });
+    await recordCount(org.orgId, { countSessionId: session.id, productId: counted, countedQuantity: '2' });
+    // An open count is not a count yet.
+    let [row] = await listProducts(org.orgId, { search: 'Counted Cheese' });
+    assert.equal(row.lastCountedAt, null);
+
+    await completeCountSession(org.orgId, session.id);
+    [row] = await listProducts(org.orgId, { search: 'Counted Cheese' });
+    assert.ok(row.lastCountedAt, 'a completed count sets it');
+    const [other] = await listProducts(org.orgId, { search: 'Uncounted Cheese' });
+    assert.equal(other.id, neighbour);
+    assert.equal(other.lastCountedAt, null, 'another product on the same shop is untouched');
   });
 
   test('search matches a SKU as well as a name or barcode', async () => {

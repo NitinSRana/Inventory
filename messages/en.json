@@ -675,7 +675,17 @@
       "biweekly": "Every two weeks",
       "monthly": "Monthly",
       "quarterly": "Quarterly"
-    }
+    },
+    "addShort": "New",
+    "search": "Search categories",
+    "itemsUnit": "{count, plural, one {item} other {items}}",
+    "frequencyCount": "{frequency} count",
+    "noMatches": "No categories match that search",
+    "edit": "Edit",
+    "editTitle": "Edit category",
+    "inStock": "{quantity} in stock",
+    "noProducts": "No products in this category yet. Pick it on a product's edit form.",
+    "frequencyLabel": "Count frequency"
   },
   "checkout": {
     "title": "Checkout",

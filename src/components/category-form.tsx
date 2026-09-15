@@ -1,6 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 
-import { Field, FieldRow, NativeSelect, StickyAction } from '@/components/form';
+import { Field, FieldRow, Segmented, StickyAction } from '@/components/form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { COUNT_FREQUENCIES } from '@/db/schema';
@@ -25,7 +25,7 @@ export async function CategoryForm({
 
   return (
     <form action={action} className="flex flex-col gap-4 pb-32 md:pb-0">
-      <Field name="name" label={t('name')}>
+      <Field name="name" label={t('name')} required>
         <Input id="name" name="name" required defaultValue={defaults.name} className="h-12" />
       </Field>
 
@@ -49,19 +49,13 @@ export async function CategoryForm({
         </Field>
       </FieldRow>
 
-      <Field name="defaultCountFrequency" label={t('countFrequency')} hint={t('countFrequencyHint')}>
-        <NativeSelect
-          id="defaultCountFrequency"
-          name="defaultCountFrequency"
-          defaultValue={defaults.defaultCountFrequency ?? 'monthly'}
-        >
-          {COUNT_FREQUENCIES.map((f) => (
-            <option key={f} value={f}>
-              {t(`frequencies.${f}`)}
-            </option>
-          ))}
-        </NativeSelect>
-      </Field>
+      <Segmented
+        name="defaultCountFrequency"
+        label={t('countFrequency')}
+        hint={t('countFrequencyHint')}
+        defaultValue={defaults.defaultCountFrequency ?? 'monthly'}
+        options={COUNT_FREQUENCIES.map((f) => ({ value: f, label: t(`frequencies.${f}`) }))}
+      />
 
       {error && (
         <p role="alert" className="text-destructive text-sm">
