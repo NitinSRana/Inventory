@@ -114,30 +114,33 @@ export default async function InsightsPage({ params, searchParams }: PageProps<'
   };
 
   return (
-    <main className="flex flex-1 flex-col gap-6 p-4 pb-24">
+    <main className="flex flex-1 flex-col gap-4 p-4">
       <BackLink href={`/${locale}/more`} label={tBack('more')} />
-      <PageTitle caption={t('intro')}>{t('title')}</PageTitle>
-
-      <nav aria-label={t('periodLabel')} className="flex gap-2">
-        {PERIODS.map((p) => (
-          <Link
-            key={p}
-            href={`/${locale}/insights?days=${p}`}
-            aria-current={p === period ? 'page' : undefined}
-            className={buttonVariants({
-              variant: p === period ? 'default' : 'outline',
-              className: 'h-11',
-            })}
-          >
-            {t('lastDays', { days: p })}
-          </Link>
-        ))}
-      </nav>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <PageTitle caption={t('intro')}>{t('title')}</PageTitle>
+        {/* The frame's 7d / 30d / 90d. Links, so each period is a URL; the full
+            words stay for screen readers. */}
+        <nav aria-label={t('periodLabel')} className="bg-muted grid grid-cols-3 gap-1 rounded-lg p-1">
+          {PERIODS.map((p) => (
+            <Link
+              key={p}
+              href={`/${locale}/insights?days=${p}`}
+              aria-current={p === period ? 'page' : undefined}
+              className={`flex min-h-11 min-w-14 items-center justify-center rounded-md px-3 text-sm ${
+                p === period ? 'bg-primary text-primary-foreground font-semibold' : 'text-muted-foreground'
+              }`}
+            >
+              <span aria-hidden>{t('lastDaysShort', { days: p })}</span>
+              <span className="sr-only">{t('lastDays', { days: p })}</span>
+            </Link>
+          ))}
+        </nav>
+      </div>
 
       {/* A shop that has not traded yet gets told so, rather than being shown
           four empty charts and left to wonder which part is broken. */}
       {nothingYet ? (
-        <div className="flex flex-col items-start gap-3 rounded-lg border p-6">
+        <div className="bg-card flex flex-col items-start gap-3 rounded-xl border p-6">
           <h2 className="text-lg font-medium">{t('emptyTitle')}</h2>
           <p className="text-muted-foreground max-w-[52ch] text-sm">{t('emptyBody')}</p>
           <Link href={`/${locale}/checkout`} className={buttonVariants({ className: 'h-11' })}>
@@ -149,10 +152,10 @@ export default async function InsightsPage({ params, searchParams }: PageProps<'
           {/* Margin first, above takings. Selling more at a worse price shows up
               as a rising takings figure and a falling margin, and only one of
               those is the business getting better. */}
-          <section className="flex flex-col gap-2 rounded-lg border p-4">
+          <section className="bg-card flex flex-col gap-2 rounded-xl border p-4">
             <SectionHeading>{t('margin')}</SectionHeading>
             <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-              <p className="font-mono text-4xl font-semibold tabular-nums md:text-5xl">
+              <p className="text-4xl font-bold tracking-tight tabular-nums">
                 {money(margin.margin)}
               </p>
               {marginPercent !== null && (
@@ -167,22 +170,22 @@ export default async function InsightsPage({ params, searchParams }: PageProps<'
             </p>
           </section>
 
-          <section className="flex flex-col gap-2 rounded-lg border p-4">
+          <section className="bg-card flex flex-col gap-2 rounded-xl border p-4">
             <SectionHeading>{t('takings')}</SectionHeading>
-            <p className="font-mono text-3xl font-semibold tabular-nums">{money(revenueTotal)}</p>
+            <p className="text-3xl font-bold tracking-tight tabular-nums">{money(revenueTotal)}</p>
             {delta(takingsChange, true)}
             <TrendBars points={revenue} format={money} label={t('takingsChart', { days: period })} />
           </section>
 
           <div className="grid gap-6 md:grid-cols-2">
-            <section className="flex flex-col gap-3 rounded-lg border p-4">
+            <section className="bg-card flex flex-col gap-3 rounded-xl border p-4">
               <SectionHeading>{t('topProducts')}</SectionHeading>
               <RankedBars items={topProducts} format={money} emptyLabel={t('noSales')} />
             </section>
 
             {/* What sold vs. what's sitting there worth the most — two
                 different questions a top-5-by-revenue list alone can't answer. */}
-            <section className="flex flex-col gap-3 rounded-lg border p-4">
+            <section className="bg-card flex flex-col gap-3 rounded-xl border p-4">
               <SectionHeading>{t('topByStockValue')}</SectionHeading>
               <RankedBars items={topByStock} format={money} emptyLabel={t('noStock')} />
             </section>
@@ -191,7 +194,7 @@ export default async function InsightsPage({ params, searchParams }: PageProps<'
           {/* The other half of "what should I order": what not to. Expiry
               catches stock about to spoil; this catches stock that will
               never spoil and will never sell either. */}
-          <section className="flex flex-col gap-3 rounded-lg border p-4">
+          <section className="bg-card flex flex-col gap-3 rounded-xl border p-4">
             <SectionHeading>{t('deadStock')}</SectionHeading>
             <p className="text-muted-foreground text-sm">{t('deadStockHint', { days: period })}</p>
             {stuck.length === 0 ? (

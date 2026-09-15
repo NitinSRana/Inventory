@@ -478,7 +478,10 @@
       "who": "Who",
       "reason": "Reason"
     },
-    "showMore": "Show up to {count}"
+    "showMore": "Show up to {count}",
+    "intro": "Look into the shop's numbers, and take them away as a spreadsheet.",
+    "exportColumns": "Export columns",
+    "pointInTime": "Right now"
   },
   "suppliers": {
     "title": "Suppliers",
@@ -846,7 +849,8 @@
     "noPrior": "No earlier period to compare against yet.",
     "deadStock": "Not moving",
     "deadStockHint": "On the shelf, nothing sold in {days} days. Money that is not working.",
-    "noDeadStock": "Everything on the shelf has sold at least once. Good."
+    "noDeadStock": "Everything on the shelf has sold at least once. Good.",
+    "lastDaysShort": "{days}d"
   },
   "markdown": {
     "title": "Mark down",

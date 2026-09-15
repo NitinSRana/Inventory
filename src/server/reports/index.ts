@@ -16,7 +16,7 @@ import { SALE_OCCURRED } from '@/server/pos/checkout';
 import { getRatesByBand } from '@/server/settings/vat';
 import { grossValue } from '@/server/settings/valuation';
 
-import type { Report } from './csv';
+import type { Report, Column } from './csv';
 
 /**
  * Each report returns its own columns alongside its rows, so one table
@@ -33,6 +33,64 @@ export const REPORT_SLUGS = [
   'corrections',
 ] as const;
 export type ReportSlug = (typeof REPORT_SLUGS)[number];
+
+/**
+ * What each report's CSV carries, in order. One table rather than a literal in
+ * each builder, so the Reports list can show a report's columns without running
+ * its query — and cannot show columns the export does not have.
+ */
+export const REPORT_COLUMNS: Record<ReportSlug, Column[]> = {
+  'stock': [
+    { key: 'name', label: 'product' },
+    { key: 'gtin', label: 'barcode' },
+    { key: 'quantity', label: 'onHand', numeric: true, format: 'quantity' },
+    { key: 'unit', label: 'unit' },
+    { key: 'costPrice', label: 'unitCost', numeric: true, format: 'money' },
+    { key: 'value', label: 'value', numeric: true, format: 'money' },
+    { key: 'grossValue', label: 'grossValue', numeric: true, format: 'money' },
+  ],
+  'expiry': [
+    { key: 'productName', label: 'product' },
+    { key: 'expiryDate', label: 'expires' },
+    { key: 'daysRemaining', label: 'daysLeft', numeric: true },
+    { key: 'lotNumber', label: 'lot' },
+    { key: 'quantity', label: 'quantity', numeric: true, format: 'quantity' },
+    { key: 'valueAtRisk', label: 'valueAtRisk', numeric: true, format: 'money' },
+  ],
+  'low-stock': [
+    { key: 'supplierName', label: 'supplier' },
+    { key: 'name', label: 'product' },
+    { key: 'gtin', label: 'barcode' },
+    { key: 'quantity', label: 'onHand', numeric: true, format: 'quantity' },
+    { key: 'minStock', label: 'minimum', numeric: true, format: 'quantity' },
+    { key: 'unit', label: 'unit' },
+  ],
+  'sales': [
+    { key: 'name', label: 'product' },
+    { key: 'gtin', label: 'barcode' },
+    { key: 'quantity', label: 'quantity', numeric: true, format: 'quantity' },
+    { key: 'unit', label: 'unit' },
+    { key: 'vat', label: 'vat', numeric: true, format: 'money' },
+    { key: 'grossRevenue', label: 'grossRevenue', numeric: true, format: 'money' },
+  ],
+  'vat': [
+    { key: 'vatBand', label: 'vatBand', format: 'vatBand' },
+    { key: 'lines', label: 'lines', numeric: true },
+    { key: 'net', label: 'net', numeric: true, format: 'money' },
+    { key: 'vat', label: 'vat', numeric: true, format: 'money' },
+    { key: 'gross', label: 'grossRevenue', numeric: true, format: 'money' },
+    { key: 'effectiveRate', label: 'effectiveRate', numeric: true },
+  ],
+  'corrections': [
+    { key: 'occurredAt', label: 'when' },
+    { key: 'productName', label: 'product' },
+    { key: 'quantityDelta', label: 'change', numeric: true, format: 'quantity' },
+    { key: 'unit', label: 'unit' },
+    { key: 'saleNumber', label: 'sale' },
+    { key: 'actor', label: 'who' },
+    { key: 'note', label: 'reason' },
+  ],
+};
 
 /** Stock on hand and what it is worth. */
 async function stockOnHand(orgId: string): Promise<Report> {
@@ -57,15 +115,7 @@ async function stockOnHand(orgId: string): Promise<Report> {
   );
 
   return {
-    columns: [
-      { key: 'name', label: 'product' },
-      { key: 'gtin', label: 'barcode' },
-      { key: 'quantity', label: 'onHand', numeric: true, format: 'quantity' },
-      { key: 'unit', label: 'unit' },
-      { key: 'costPrice', label: 'unitCost', numeric: true, format: 'money' },
-      { key: 'value', label: 'value', numeric: true, format: 'money' },
-      { key: 'grossValue', label: 'grossValue', numeric: true, format: 'money' },
-    ],
+    columns: REPORT_COLUMNS['stock'],
     rows: rows.map((r) => ({
       name: r.name,
       gtin: r.gtin ?? '',
@@ -91,14 +141,7 @@ async function expiryExposure(orgId: string, days: number): Promise<Report> {
   );
 
   return {
-    columns: [
-      { key: 'productName', label: 'product' },
-      { key: 'expiryDate', label: 'expires' },
-      { key: 'daysRemaining', label: 'daysLeft', numeric: true },
-      { key: 'lotNumber', label: 'lot' },
-      { key: 'quantity', label: 'quantity', numeric: true, format: 'quantity' },
-      { key: 'valueAtRisk', label: 'valueAtRisk', numeric: true, format: 'money' },
-    ],
+    columns: REPORT_COLUMNS['expiry'],
     rows: rows.map((r) => ({
       productName: r.productName ?? '',
       expiryDate: r.expiryDate ?? '',
@@ -136,14 +179,7 @@ async function lowStock(orgId: string): Promise<Report> {
   );
 
   return {
-    columns: [
-      { key: 'supplierName', label: 'supplier' },
-      { key: 'name', label: 'product' },
-      { key: 'gtin', label: 'barcode' },
-      { key: 'quantity', label: 'onHand', numeric: true, format: 'quantity' },
-      { key: 'minStock', label: 'minimum', numeric: true, format: 'quantity' },
-      { key: 'unit', label: 'unit' },
-    ],
+    columns: REPORT_COLUMNS['low-stock'],
     rows: rows.map((r) => ({
       name: r.name,
       gtin: r.gtin ?? '',
@@ -178,14 +214,7 @@ async function salesByProduct(orgId: string, days: number): Promise<Report> {
   );
 
   return {
-    columns: [
-      { key: 'name', label: 'product' },
-      { key: 'gtin', label: 'barcode' },
-      { key: 'quantity', label: 'quantity', numeric: true, format: 'quantity' },
-      { key: 'unit', label: 'unit' },
-      { key: 'vat', label: 'vat', numeric: true, format: 'money' },
-      { key: 'grossRevenue', label: 'grossRevenue', numeric: true, format: 'money' },
-    ],
+    columns: REPORT_COLUMNS['sales'],
     rows: rows.map((r) => ({
       name: r.name,
       gtin: r.gtin ?? '',
@@ -249,14 +278,7 @@ async function vatByBand(orgId: string, days: number): Promise<Report> {
   );
 
   return {
-    columns: [
-      { key: 'vatBand', label: 'vatBand', format: 'vatBand' },
-      { key: 'lines', label: 'lines', numeric: true },
-      { key: 'net', label: 'net', numeric: true, format: 'money' },
-      { key: 'vat', label: 'vat', numeric: true, format: 'money' },
-      { key: 'gross', label: 'grossRevenue', numeric: true, format: 'money' },
-      { key: 'effectiveRate', label: 'effectiveRate', numeric: true },
-    ],
+    columns: REPORT_COLUMNS['vat'],
     rows: rows.map((r) => ({
       vatBand: r.vatBand,
       lines: String(r.lines),
@@ -311,15 +333,7 @@ async function corrections(orgId: string, days: number): Promise<Report> {
   );
 
   return {
-    columns: [
-      { key: 'occurredAt', label: 'when' },
-      { key: 'productName', label: 'product' },
-      { key: 'quantityDelta', label: 'change', numeric: true, format: 'quantity' },
-      { key: 'unit', label: 'unit' },
-      { key: 'saleNumber', label: 'sale' },
-      { key: 'actor', label: 'who' },
-      { key: 'note', label: 'reason' },
-    ],
+    columns: REPORT_COLUMNS['corrections'],
     rows: rows.map((r) => ({
       occurredAt: r.occurredAt.toISOString().slice(0, 10),
       productName: r.productName,
