@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { before, describe, test } from 'node:test';
 
+import { listMembers, setMemberDisplayName } from '@/server/auth/team';
 import { createProduct } from '@/server/catalog/products';
 import { createTestOrg, type TestOrg } from '@/server/testing/fixtures';
 import { seedVatRatesForCountry } from '@/server/settings/vat';
@@ -82,6 +83,31 @@ describe('the receipt', () => {
     const other = await createTestOrg('Receipt Neighbour');
     const posted = await checkout(org.orgId, { lines: [{ productId: milk, quantity: '1' }], tenderType: 'cash' });
     assert.equal(await getSale(other.orgId, posted.id), null, 'RLS, not just a filter');
+  });
+
+  test('names who rang it up and who voided it, as the team page names them', async () => {
+    const [me] = await listMembers(org.orgId);
+    await setMemberDisplayName(org.orgId, me.id, 'Anna');
+
+    const posted = await checkout(org.orgId, {
+      lines: [{ productId: milk, quantity: '1' }],
+      tenderType: 'card',
+      actorId: org.userId,
+    });
+    let receipt = await getSale(org.orgId, posted.id);
+    assert.equal(receipt?.soldByName, 'Anna');
+    assert.equal(receipt?.voidedByName, null, 'not voided, so nobody voided it');
+    assert.equal(receipt?.lines[0].listPrice, receipt?.lines[0].unitPrice, 'no markdown, so shelf price was paid');
+
+    await voidSale(org.orgId, posted.id, { actorId: org.userId });
+    receipt = await getSale(org.orgId, posted.id);
+    assert.equal(receipt?.voidedByName, 'Anna');
+  });
+
+  test('a sale with nobody recorded against it names nobody, rather than failing', async () => {
+    const posted = await checkout(org.orgId, { lines: [{ productId: wine, quantity: '1' }], tenderType: 'cash' });
+    const receipt = await getSale(org.orgId, posted.id);
+    assert.equal(receipt?.soldByName, null);
   });
 
   test('a voided sale still shows its receipt, marked voided', async () => {

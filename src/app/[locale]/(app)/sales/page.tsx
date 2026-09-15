@@ -1,8 +1,8 @@
 import { getFormatter, getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
-import { Receipt } from 'lucide-react';
+import { Banknote, CreditCard, Filter, Receipt, Search } from 'lucide-react';
 
-import { DataList, DataRow, PageTitle } from '@/components/data-list';
+import { PageTitle } from '@/components/data-list';
 import { EmptyState } from '@/components/empty-state';
 import { Field, FieldRow, NativeSelect } from '@/components/form';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +24,11 @@ export const dynamic = 'force-dynamic';
  *
  * Staff-readable: finding a sale is the everyday need. Voiding it is gated
  * separately, one screen in, at manager level.
+ *
+ * Laid out as the "Sales Registry" frame: search by sale number, the rest of
+ * the filters behind Filter, then one card per sale with its time, how it was
+ * paid, total and status. Completed is plain text — only Voided takes a tint,
+ * so the one that needs a second look is the one that stands out.
  */
 export default async function SalesPage({ params, searchParams }: PageProps<'/[locale]/sales'>) {
   const { locale } = await params;
@@ -45,13 +50,14 @@ export default async function SalesPage({ params, searchParams }: PageProps<'/[l
     search: one(sp.q),
     limit: limitFrom(sp.limit),
   };
-  const filtered = Boolean(
-    filters.from || filters.to || filters.tenderType || filters.status || filters.search,
-  );
+  const drawerFiltered = Boolean(filters.from || filters.to || filters.tenderType || filters.status);
+  const filtered = drawerFiltered || Boolean(filters.search);
 
   const [org] = await withTenant(orgId, (tx) => tx.select().from(organizations));
   const money = (v: string) => format.number(Number(v), { style: 'currency', currency: org.currencyCode });
   const sales = await listSales(orgId, filters);
+  const when = (s: (typeof sales)[number]) =>
+    format.dateTime(new Date(s.occurredAt), { dateStyle: 'medium', timeStyle: 'short' });
 
   // A "show more" link that keeps every filter and only raises the ceiling.
   const nextLimit = LIST_LIMITS[LIST_LIMITS.indexOf(filters.limit) + 1];
@@ -65,55 +71,89 @@ export default async function SalesPage({ params, searchParams }: PageProps<'/[l
     return `/${locale}/sales?${next}`;
   };
 
+  const tender = (type: (typeof TENDER_TYPES)[number]) => {
+    const Icon = type === 'cash' ? Banknote : CreditCard;
+    return (
+      <span className="inline-flex items-center gap-1">
+        <Icon aria-hidden className="size-4" />
+        {t(`tenderTypes.${type}`)}
+      </span>
+    );
+  };
+
   return (
-    <main className="flex flex-1 flex-col gap-4 p-4 pb-24">
+    <main className="flex flex-1 flex-col gap-4 p-4">
       <PageTitle>{t('title')}</PageTitle>
 
       {/* GET form, so the filters end up in the URL rather than in state. */}
-      <form className="flex flex-col gap-3 md:max-w-3xl">
-        <FieldRow>
-          <Field name="from" label={t('from')}>
-            <Input id="from" name="from" type="date" defaultValue={filters.from ?? ''} className="h-11" />
-          </Field>
-          <Field name="to" label={t('to')}>
-            <Input id="to" name="to" type="date" defaultValue={filters.to ?? ''} className="h-11" />
-          </Field>
-        </FieldRow>
-        <FieldRow>
-          <Field name="tender" label={t('tender')}>
-            <NativeSelect id="tender" name="tender" defaultValue={filters.tenderType ?? ''} className="h-11">
-              <option value="">{t('anyTender')}</option>
-              {TENDER_TYPES.map((tt) => (
-                <option key={tt} value={tt}>
-                  {t(`tenderTypes.${tt}`)}
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
-          <Field name="status" label={t('status')}>
-            <NativeSelect id="status" name="status" defaultValue={filters.status ?? ''} className="h-11">
-              <option value="">{t('anyStatus')}</option>
-              {SALE_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {t(`statuses.${s}`)}
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
-        </FieldRow>
-        <Field name="q" label={t('saleNumber')}>
-          <Input id="q" name="q" defaultValue={filters.search ?? ''} className="h-11 font-mono" />
-        </Field>
-        <div className="flex gap-2">
-          <Button type="submit" variant="outline" className="h-11 w-fit">
-            {t('applyFilters')}
-          </Button>
-          {filtered && (
-            <Link href={`/${locale}/sales`} className={buttonVariants({ variant: 'ghost', className: 'h-11' })}>
-              {t('clearFilters')}
-            </Link>
-          )}
+      <form role="search" className="flex flex-col gap-3 md:max-w-3xl">
+        <div className="flex items-start gap-2">
+          <label htmlFor="q" className="relative flex-1">
+            <span className="sr-only">{t('searchLabel')}</span>
+            <Search
+              aria-hidden
+              className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2"
+            />
+            <Input
+              id="q"
+              name="q"
+              type="search"
+              defaultValue={filters.search ?? ''}
+              placeholder={t('searchLabel')}
+              className="h-12 pl-10"
+            />
+          </label>
         </div>
+
+        {/* Open by itself when one of its filters is on, so an active filter is
+            never hidden behind a closed summary. */}
+        <details open={drawerFiltered} className="group">
+          <summary className={buttonVariants({ variant: 'outline', className: 'h-11 w-fit cursor-pointer gap-2' })}>
+            <Filter aria-hidden className="size-4" />
+            {t('filter')}
+          </summary>
+          <div className="flex flex-col gap-3 pt-3">
+            <FieldRow>
+              <Field name="from" label={t('from')}>
+                <Input id="from" name="from" type="date" defaultValue={filters.from ?? ''} className="h-11" />
+              </Field>
+              <Field name="to" label={t('to')}>
+                <Input id="to" name="to" type="date" defaultValue={filters.to ?? ''} className="h-11" />
+              </Field>
+            </FieldRow>
+            <FieldRow>
+              <Field name="tender" label={t('tender')}>
+                <NativeSelect id="tender" name="tender" defaultValue={filters.tenderType ?? ''} className="h-11">
+                  <option value="">{t('anyTender')}</option>
+                  {TENDER_TYPES.map((tt) => (
+                    <option key={tt} value={tt}>
+                      {t(`tenderTypes.${tt}`)}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+              <Field name="status" label={t('status')}>
+                <NativeSelect id="status" name="status" defaultValue={filters.status ?? ''} className="h-11">
+                  <option value="">{t('anyStatus')}</option>
+                  {SALE_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {t(`statuses.${s}`)}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+            </FieldRow>
+            <Button type="submit" variant="outline" className="h-11 w-fit">
+              {t('applyFilters')}
+            </Button>
+          </div>
+        </details>
+
+        {filtered && (
+          <Link href={`/${locale}/sales`} className={buttonVariants({ variant: 'ghost', className: 'h-11 w-fit' })}>
+            {t('clearFilters')}
+          </Link>
+        )}
       </form>
 
       {sales.length === 0 ? (
@@ -124,45 +164,45 @@ export default async function SalesPage({ params, searchParams }: PageProps<'/[l
         />
       ) : (
         <>
-          {/* Stacked rows on a phone, a table once there is width for one —
-              the same split Products already makes. Four facts per sale sit
-              800px apart in a two-column row on a desktop; in columns they
-              line up and can be read down. */}
-          <div className="md:hidden">
-            <DataList>
-              {sales.map((s) => (
-                <DataRow
-                  key={s.id}
+          {/* Cards on a phone, a table once there is width for one — the same
+              split Products makes. */}
+          <ul className="bg-card divide-border divide-y overflow-hidden rounded-xl border md:hidden">
+            {sales.map((s) => (
+              <li key={s.id}>
+                <Link
                   href={`/${locale}/sales/${s.id}`}
-                  title={s.saleNumber}
-                  subtitle={
-                    <>
-                      {format.dateTime(new Date(s.occurredAt), {
-                        dateStyle: 'medium',
-                        timeStyle: 'short',
-                      })}{' '}
-                      · {t(`tenderTypes.${s.tenderType}`)}
-                      {s.status === 'voided' && (
-                        <>
-                          {' '}
-                          <Badge variant="destructive">{t('voided')}</Badge>
-                        </>
-                      )}
-                    </>
-                  }
-                  value={money(s.total)}
-                />
-              ))}
-            </DataList>
-          </div>
+                  className="grid min-h-16 grid-cols-[1fr_auto] items-center gap-3 px-4 py-3"
+                >
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="truncate font-mono text-base font-bold">{s.saleNumber}</span>
+                    <span className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-sm">
+                      <span>{when(s)}</span>
+                      <span aria-hidden>•</span>
+                      {tender(s.tenderType)}
+                    </span>
+                  </span>
+                  <span className="flex flex-col items-end gap-1">
+                    <span className="text-base font-bold tabular-nums">{money(s.total)}</span>
+                    {/* Voided is a word and a tint, never colour alone. */}
+                    {s.status === 'voided' ? (
+                      <Badge variant="destructive">{t('voided')}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">{t('statuses.completed')}</span>
+                    )}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
 
-          <div className="hidden md:block">
+          <div className="bg-card hidden overflow-hidden rounded-xl border md:block">
             <Table>
-              <TableHeader>
+              <TableHeader className="bg-muted/50">
                 <TableRow>
                   <TableHead>{t('saleNumber')}</TableHead>
                   <TableHead>{t('date')}</TableHead>
                   <TableHead>{t('tender')}</TableHead>
+                  <TableHead>{t('status')}</TableHead>
                   <TableHead className="text-right">{t('total')}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -170,24 +210,20 @@ export default async function SalesPage({ params, searchParams }: PageProps<'/[l
                 {sales.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell>
-                      <Link href={`/${locale}/sales/${s.id}`} className="hover:underline">
+                      <Link href={`/${locale}/sales/${s.id}`} className="font-mono font-medium hover:underline">
                         {s.saleNumber}
                       </Link>
-                      {/* Voided is a word and a colour, never colour alone. */}
-                      {s.status === 'voided' && (
-                        <Badge variant="destructive" className="ml-2">
-                          {t('voided')}
-                        </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{when(s)}</TableCell>
+                    <TableCell>{tender(s.tenderType)}</TableCell>
+                    <TableCell>
+                      {s.status === 'voided' ? (
+                        <Badge variant="destructive">{t('voided')}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">{t('statuses.completed')}</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {format.dateTime(new Date(s.occurredAt), {
-                        dateStyle: 'medium',
-                        timeStyle: 'short',
-                      })}
-                    </TableCell>
-                    <TableCell>{t(`tenderTypes.${s.tenderType}`)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{money(s.total)}</TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums">{money(s.total)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -198,14 +234,9 @@ export default async function SalesPage({ params, searchParams }: PageProps<'/[l
               of step with a list that is still being added to at the till, no
               count query, and the back button lands on the rows it left. */}
           <div className="flex items-center gap-3">
-            <span className="text-muted-foreground text-sm tabular-nums">
-              {t('showing', { count: sales.length })}
-            </span>
+            <span className="text-muted-foreground text-sm tabular-nums">{t('showing', { count: sales.length })}</span>
             {sales.length === filters.limit && nextLimit && (
-              <Link
-                href={withLimit(nextLimit)}
-                className={buttonVariants({ variant: 'outline', className: 'h-11' })}
-              >
+              <Link href={withLimit(nextLimit)} className={buttonVariants({ variant: 'outline', className: 'h-11' })}>
                 {t('showMore', { count: nextLimit })}
               </Link>
             )}

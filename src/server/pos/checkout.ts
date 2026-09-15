@@ -5,6 +5,7 @@ import {
   SALE_STATUSES,
   TENDER_TYPES,
   locations,
+  organizationMembers,
   organizations,
   products,
   saleLines,
@@ -359,6 +360,8 @@ export async function getSale(orgId: string, saleId: string) {
         unit: products.unit,
         quantity: saleLines.quantity,
         unitPrice: saleLines.unitPrice,
+        /** The shelf price at the time; above unitPrice when a markdown applied. */
+        listPrice: saleLines.listPrice,
         vatBand: saleLines.vatBand,
         vatAmount: saleLines.vatAmount,
         lineTotal: saleLines.lineTotal,
@@ -366,7 +369,24 @@ export async function getSale(orgId: string, saleId: string) {
       .from(saleLines)
       .innerJoin(products, eq(products.id, saleLines.productId))
       .where(eq(saleLines.saleId, saleId))
-      .orderBy(products.name);
+      // A product can take two lines since markdowns (one per price), so the
+      // price keeps them in a stable order under the name.
+      .orderBy(products.name, saleLines.unitPrice);
+
+    // Who rang it up and who voided it, as the team page names them. A member
+    // removed since leaves no name, and the receipt says nothing rather than
+    // showing a bare user id.
+    const people = [sale.soldBy, sale.voidedBy].filter((v): v is string => v !== null);
+    const names = new Map(
+      people.length === 0
+        ? []
+        : (
+            await tx
+              .select({ userId: organizationMembers.userId, name: organizationMembers.displayName })
+              .from(organizationMembers)
+              .where(inArray(organizationMembers.userId, people))
+          ).map((m) => [m.userId, m.name]),
+    );
 
     /**
      * VAT grouped by band, which is the breakdown a receipt actually needs:
@@ -392,7 +412,13 @@ export async function getSale(orgId: string, saleId: string) {
       // Largest first: the standard band is usually the bulk of a basket.
       .sort((a, b) => Number(b.vat) - Number(a.vat));
 
-    return { sale, lines, vatBreakdown };
+    return {
+      sale,
+      lines,
+      vatBreakdown,
+      soldByName: sale.soldBy ? (names.get(sale.soldBy) ?? null) : null,
+      voidedByName: sale.voidedBy ? (names.get(sale.voidedBy) ?? null) : null,
+    };
   });
 }
 
