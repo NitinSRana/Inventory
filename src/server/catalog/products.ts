@@ -1,6 +1,6 @@
-import { and, asc, eq, ilike, inArray, isNull, or, type SQL } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, ilike, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
 
-import { products, UNITS, type VAT_BANDS, type DATE_TYPES, type COUNT_FREQUENCIES } from '@/db/schema';
+import { categories, products, suppliers, UNITS, type VAT_BANDS, type DATE_TYPES, type COUNT_FREQUENCIES } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 
 import { normalizeGtin } from './ean';
@@ -88,7 +88,12 @@ export type ProductFilters = {
   needsAttention?: boolean;
   limit?: number;
   includeInactive?: boolean;
+  /** Only products out of stock, or below their own minimum. */
+  lowOrOut?: boolean;
 };
+
+/** Units on hand across every location, from the ledger view — never stored. */
+const ON_HAND = sql<string>`coalesce((select sum(ps.quantity) from product_stock ps where ps.product_id = ${products.id}), 0)`;
 
 export async function listProducts(orgId: string, options: ProductFilters = {}) {
   const {
@@ -98,6 +103,7 @@ export async function listProducts(orgId: string, options: ProductFilters = {}) 
     needsAttention,
     limit = 50,
     includeInactive = false,
+    lowOrOut = false,
   } = options;
 
   const filters: SQL[] = [];
@@ -105,17 +111,39 @@ export async function listProducts(orgId: string, options: ProductFilters = {}) 
   if (categoryId) filters.push(eq(products.categoryId, categoryId));
   if (supplierId) filters.push(eq(products.supplierId, supplierId));
   if (needsAttention) filters.push(NEEDS_ATTENTION);
+  if (lowOrOut) {
+    filters.push(sql`(${ON_HAND} <= 0 or (${products.minStock} is not null and ${ON_HAND} < ${products.minStock}))`);
+  }
   if (search?.trim()) {
     const term = `%${search.trim()}%`;
     filters.push(
-      or(ilike(products.name, term), ilike(products.gtin, term), ilike(products.caseGtin, term))!,
+      or(
+        ilike(products.name, term),
+        ilike(products.gtin, term),
+        ilike(products.caseGtin, term),
+        ilike(products.sku, term),
+      )!,
     );
   }
 
   return withTenant(orgId, (tx) =>
     tx
-      .select()
+      .select({
+        ...getTableColumns(products),
+        categoryName: categories.name,
+        supplierName: suppliers.name,
+        onHand: sql<string>`${ON_HAND}::text`,
+        // When a completed count last covered it — the same definition the
+        // count schedule uses (counting/due.ts).
+        lastCountedAt: sql<string | null>`(
+          select max(cl.counted_at)::text from count_lines cl
+          join count_sessions cs on cs.id = cl.count_session_id
+          where cl.product_id = ${products.id} and cs.status = 'completed'
+        )`,
+      })
       .from(products)
+      .leftJoin(categories, eq(categories.id, products.categoryId))
+      .leftJoin(suppliers, eq(suppliers.id, products.supplierId))
       .where(filters.length ? and(...filters) : undefined)
       .orderBy(asc(products.name))
       .limit(limit),

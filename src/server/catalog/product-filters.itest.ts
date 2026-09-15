@@ -8,6 +8,7 @@ import { createTestOrg, type TestOrg } from '@/server/testing/fixtures';
 import { createCategory } from './categories';
 import { createProduct, deactivateProduct, listProducts, reactivateProduct } from './products';
 import { createSupplier } from './suppliers';
+import { receiveStock } from '@/server/stock/movements';
 
 describe('product filters', () => {
   let org: TestOrg;
@@ -96,10 +97,54 @@ describe('product filters', () => {
     await deactivateProduct(org.orgId, retired);
   });
 
+  test('each row carries its category, supplier and stock read from the ledger', async () => {
+    const [row] = await listProducts(org.orgId, { search: 'Complete Yoghurt' });
+    assert.equal(row.categoryName, 'Chilled');
+    assert.equal(row.supplierName, 'Bookers');
+    assert.equal(row.onHand, '0');
+    assert.equal(row.lastCountedAt, null, 'never counted is null, not a date');
+  });
+
+  test('low & out finds nothing on hand and below-minimum, never a well-stocked product', async () => {
+    const low = (
+      await createProduct(org.orgId, {
+        name: 'Low Butter',
+        gtin: '5012345678931',
+        sellPrice: '2.0000',
+        minStock: '5',
+      })
+    ).id;
+    const plenty = (
+      await createProduct(org.orgId, {
+        name: 'Plenty Milk',
+        gtin: '5012345678948',
+        sellPrice: '1.0000',
+        minStock: '5',
+      })
+    ).id;
+    await receiveStock(org.orgId, { productId: low, quantity: '3' });
+    await receiveStock(org.orgId, { productId: plenty, quantity: '5' });
+
+    const ids = (await listProducts(org.orgId, { lowOrOut: true })).map((p) => p.id);
+    assert.ok(ids.includes(low), '3 on hand against a minimum of 5 is low');
+    assert.ok(ids.includes(complete), 'nothing on hand is out, with or without a minimum');
+    assert.equal(ids.includes(plenty), false, 'at the minimum is not below it');
+    assert.equal(ids.includes(retired), false, 'deactivated stays hidden under this filter too');
+
+    const [butter] = await listProducts(org.orgId, { search: 'Low Butter' });
+    assert.equal(butter.onHand, '3.000');
+  });
+
+  test('search matches a SKU as well as a name or barcode', async () => {
+    const id = (await createProduct(org.orgId, { name: 'Coded Oats', sku: 'OAT-0042' })).id;
+    assert.deepEqual((await listProducts(org.orgId, { search: 'oat-00' })).map((p) => p.id), [id]);
+  });
+
   test('another tenant sees none of it, however it is filtered', async () => {
     const rival = await createTestOrg('Filter Rival');
     assert.deepEqual(await listProducts(rival.orgId, { categoryId: chilled }), []);
     assert.deepEqual(await listProducts(rival.orgId, { needsAttention: true }), []);
     assert.deepEqual(await listProducts(rival.orgId, { includeInactive: true }), []);
+    assert.deepEqual(await listProducts(rival.orgId, { lowOrOut: true }), []);
   });
 });

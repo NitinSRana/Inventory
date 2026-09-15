@@ -117,7 +117,7 @@
     "clearFilters": "Clear",
     "showMore": "Show up to {count}",
     "addTitle": "Add product",
-    "searchLabel": "Search by name or barcode",
+    "searchLabel": "Search by name, SKU or barcode",
     "empty": "No products yet",
     "emptyBody": "Import a CSV from your supplier or wholesaler. Two thousand products is one upload, not one afternoon.",
     "noMatches": "Nothing matches that search",
@@ -209,7 +209,24 @@
     "shelfLocation": "Shelf location",
     "shelfLocationHint": "Where it sits in the shop, as your staff would say it — for example Fridge Row 2.",
     "skuHint": "Your own article number. Re-importing a file matches on it when a product has no barcode.",
-    "reducedTo": "Reduced to {price}"
+    "reducedTo": "Reduced to {price}",
+    "intro": "The full catalogue and what is on the shelf.",
+    "addShort": "New",
+    "currentStock": "Current stock",
+    "lastCounted": "Last counted",
+    "neverCounted": "Never",
+    "status": "Status",
+    "stockFilter": "Stock",
+    "anyStock": "All stock levels",
+    "lowOrOut": "Low & out",
+    "inStock": "{quantity} in stock",
+    "stockStatuses": {
+      "in": "In stock",
+      "low": "Low stock",
+      "out": "Out of stock"
+    },
+    "moreFilters": "More filters",
+    "showingOf": "Showing {shown} of {total}"
   },
   "home": {
     "signedOut": "Not signed in",
