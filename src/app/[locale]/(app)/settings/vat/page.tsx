@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { redirect } from 'next/navigation';
+import { Info } from 'lucide-react';
 
 import { BackLink } from '@/components/back-link';
 import { PageTitle } from '@/components/data-list';
@@ -16,10 +17,15 @@ import { getRatesByBand, seedVatRatesForCountry, setVatRate } from '@/server/set
 // behind auth is a cross-tenant leak waiting to happen.
 export const dynamic = 'force-dynamic';
 
-export default async function VatSettingsPage({
-  params,
-  searchParams,
-}: PageProps<'/[locale]/settings/vat'>) {
+/**
+ * Laid out as the "VAT Rates Configuration" frame: one card, a row per band
+ * with its name, its band code, and the rate as a percentage on the right.
+ *
+ * The frame's amber "Compliance Check" quote is not reproduced: it is a claim
+ * about the database rather than guidance for the person setting a rate. The
+ * note that is shown says what actually happens when a rate changes.
+ */
+export default async function VatSettingsPage({ params, searchParams }: PageProps<'/[locale]/settings/vat'>) {
   const { locale } = await params;
   setRequestLocale(locale);
 
@@ -60,13 +66,13 @@ export default async function VatSettingsPage({
   }
 
   return (
-    <main className="flex flex-1 flex-col gap-6 p-4 pb-28">
+    <main className="flex flex-1 flex-col gap-5 p-4 pb-28 md:max-w-xl">
       <BackLink href={`/${locale}/more`} label={tBack('more')} />
       {/* The caption says what these are for, and what they are not for. */}
       <PageTitle caption={t('intro')}>{t('title')}</PageTitle>
 
       {seeded !== undefined && (
-        <p role="status" className="text-sm">
+        <p role="status" className="bg-card rounded-lg border p-3 text-sm">
           {t('saved')}
         </p>
       )}
@@ -77,7 +83,7 @@ export default async function VatSettingsPage({
       )}
 
       {!configured ? (
-        <form action={seed} className="flex flex-col gap-4">
+        <form action={seed} className="bg-card flex flex-col gap-4 rounded-xl border p-4">
           <Field name="country" label={t('countryLabel')} hint={t('countryHint')}>
             <NativeSelect id="country" name="country" defaultValue={org.countryCode}>
               {SEEDED_COUNTRIES.map((c) => (
@@ -87,38 +93,54 @@ export default async function VatSettingsPage({
               ))}
             </NativeSelect>
           </Field>
-          <Button type="submit" className="h-12 w-fit">
+          <Button type="submit" className="h-12 w-full sm:w-fit sm:px-8">
             {t('seed')}
           </Button>
         </form>
       ) : (
         <form action={save} className="flex flex-col gap-4">
-          {VAT_BANDS.map((band) => (
-            <Field key={band} name={band} label={t(`bands.${band}`)}>
-              <div className="flex items-center gap-2">
-                <Input
-                  id={band}
-                  name={band}
-                  inputMode="decimal"
-                  // Stored as a fraction, shown as a percentage — nobody thinks
-                  // in 0.19.
-                  // Blank, not "0", when the band was never set: a zero here
-                  // is what convinces someone VAT is configured when it is not.
-                  defaultValue={
-                    rates[band as VatBand] === undefined
-                      ? ''
-                      : (Number(rates[band as VatBand]) * 100).toFixed(2).replace(/\.00$/, '')
-                  }
-                  placeholder={t('notSet')}
-                  className="h-12 w-28 text-right tabular-nums"
-                />
-                <span className="text-muted-foreground text-sm">%</span>
-              </div>
-            </Field>
-          ))}
-          <p className="text-muted-foreground text-xs">{t('historyNote')}</p>
+          <ul className="bg-card divide-border divide-y overflow-hidden rounded-xl border">
+            {VAT_BANDS.map((band) => (
+              <li key={band} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="flex min-w-0 flex-col items-start gap-1">
+                  <label htmlFor={band} className="text-base font-semibold">
+                    {t(`bands.${band}`)}
+                  </label>
+                  <span className="bg-muted text-muted-foreground rounded border px-1.5 font-mono text-xs uppercase">
+                    <span className="sr-only">{t('bandCode')} </span>
+                    {band}
+                  </span>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Input
+                    id={band}
+                    name={band}
+                    inputMode="decimal"
+                    // Stored as a fraction, shown as a percentage — nobody thinks
+                    // in 0.19. Blank, not "0", when the band was never set: a
+                    // zero here is what convinces someone VAT is configured when
+                    // it is not.
+                    defaultValue={
+                      rates[band as VatBand] === undefined
+                        ? ''
+                        : (Number(rates[band as VatBand]) * 100).toFixed(2).replace(/\.00$/, '')
+                    }
+                    placeholder={t('notSet')}
+                    className="h-11 w-24 text-right font-semibold tabular-nums"
+                  />
+                  <span className="text-muted-foreground text-sm">%</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <p className="bg-muted flex items-start gap-2 rounded-lg border p-3 text-sm">
+            <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
+            {t('historyNote')}
+          </p>
+
           <StickyAction>
-            <Button type="submit" className="h-12 w-full sm:w-fit">
+            <Button type="submit" className="h-12 w-full sm:w-fit sm:px-8">
               {t('save')}
             </Button>
           </StickyAction>

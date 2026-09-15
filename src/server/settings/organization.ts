@@ -35,6 +35,15 @@ export async function updateOrganization(orgId: string, input: OrganizationInput
 
   const timezone = input.timezone.trim();
   if (!timezone) throw new Error('Timezone is required');
+  // The dashboard's month and the void screen's "today" are computed in SQL
+  // with `at time zone` this value, so a typo does not store quietly — it
+  // breaks those screens the next time they load. Intl knows the same IANA
+  // names Postgres does, and throws on one it does not.
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: timezone });
+  } catch {
+    throw new Error(`Unknown timezone: ${timezone}`);
+  }
 
   const [org] = await withTenant(orgId, (tx) =>
     tx

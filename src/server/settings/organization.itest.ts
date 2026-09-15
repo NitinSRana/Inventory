@@ -50,6 +50,22 @@ describe('store settings', () => {
     );
   });
 
+  test('an unknown timezone is rejected before it can break "today" for the whole shop', async () => {
+    // Stored as-is, a typo only surfaces later — as a Postgres error on every
+    // screen that asks what day or month it is in the shop.
+    await assert.rejects(
+      () => updateOrganization(org.orgId, { name: 'X', countryCode: 'DE', currencyCode: 'EUR', timezone: 'Europe/Berlinn' }),
+      /Unknown timezone/,
+    );
+    const kept = await updateOrganization(org.orgId, {
+      name: 'X',
+      countryCode: 'DE',
+      currencyCode: 'EUR',
+      timezone: 'UTC',
+    });
+    assert.equal(kept?.timezone, 'UTC', 'a real zone outside any region list is still fine');
+  });
+
   test("updating one tenant's store never touches another's", async () => {
     // updateOrganization takes only orgId, never a separate target id, so
     // there is no attacker-controlled id to smuggle a cross-tenant write

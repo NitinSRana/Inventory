@@ -557,17 +557,18 @@
       "alreadyConfigured": "Rates are already set up.",
       "invalidRate": "A rate must be between 0 and 100."
     },
-    "notSet": "Not set"
+    "notSet": "Not set",
+    "bandCode": "Band code"
   },
   "team": {
     "title": "Team",
     "intro": "Invite someone by email. They sign in with a link like everyone else, and join automatically the first time.",
-    "membersTitle": "{count, plural, one {# member} other {# members}}",
-    "pendingTitle": "{count, plural, one {# pending invitation} other {# pending invitations}}",
+    "membersTitle": "Active members ({count})",
+    "pendingTitle": "Pending invitations ({count})",
     "inviteTitle": "Invite someone",
     "emailLabel": "Email",
     "roleLabel": "Role",
-    "roleHint": "Staff scan, receive, count and write off. Managers also edit products, suppliers and orders. Owners also change settings and the team.",
+    "roleHint": "Staff scan, sell, receive and count. Managers also edit products and suppliers, correct stock and mark batches down. Owners also change settings and the team.",
     "invite": "Send invitation",
     "invitedNote": "Invitation recorded. They join when they first sign in — tell them to expect it.",
     "revoke": "Revoke",
@@ -591,7 +592,11 @@
     "noMailProvider": "No mail provider is configured, so invitations are not emailed. Add RESEND_API_KEY and MAIL_FROM to send them.",
     "nameLabel": "Name",
     "namePlaceholder": "Name",
-    "membersHint": "Names appear on stock corrections and in the audit log. Leave one blank and the user id is shown instead."
+    "membersHint": "Names appear on stock corrections and in the audit log. Leave one blank and the user id is shown instead.",
+    "inviteShort": "Invite",
+    "pending": "Pending",
+    "edit": "Edit",
+    "youSuffix": "(You)"
   },
   "nav": {
     "primary": "Main",
@@ -817,12 +822,12 @@
     "countryHint": "Changing this does not re-seed VAT rates. Adjust them separately if you move countries.",
     "currency": "Currency",
     "timezone": "Timezone",
-    "timezoneHint": "An IANA time zone name, e.g. Europe/Berlin.",
+    "timezoneHint": "What \"today\" and \"this month\" mean on the dashboard, the till and the reports.",
     "email": "Email",
     "phone": "Phone",
     "vatNumber": "VAT number",
     "address": "Address",
-    "save": "Save",
+    "save": "Save changes",
     "saved": "Saved.",
     "saveFailed": "Couldn't save that. Check the fields and try again."
   },
@@ -838,7 +843,7 @@
     "topByStockValue": "Top by stock value",
     "noStock": "Nothing on the shelf yet.",
     "emptyTitle": "Nothing to show yet",
-    "emptyBody": "Charts appear once the till has taken money or something has been written off. Ring a sale through checkout and this screen fills in.",
+    "emptyBody": "Charts appear once the till has taken money. Ring a sale through checkout and this screen fills in.",
     "goToCheckout": "Open checkout",
     "margin": "Gross margin",
     "marginPercent": "{percent}% of takings",
