@@ -70,7 +70,7 @@ All stock depletion goes through a single internal interface (`StockDepletionSou
 
 ### Stack
 
-- **Next.js 15 (App Router) + TypeScript** — single codebase, server actions, mobile-responsive
+- **Next.js 16 (App Router) + TypeScript** — single codebase, server actions, mobile-responsive
 - **Postgres via Supabase** (EU/Frankfurt) — auth, RLS, storage in one
 - **Drizzle ORM** — handles RLS and raw SQL better than Prisma for this pattern
 - **Tailwind + shadcn/ui** — fast, accessible, works on a phone

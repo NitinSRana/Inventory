@@ -40,7 +40,7 @@ Detailed patterns and code examples are in `.claude/rules/database.md`, which lo
 
 | | |
 |---|---|
-| Framework | Next.js 15, App Router, TypeScript strict |
+| Framework | Next.js 16, App Router, TypeScript strict |
 | Database | Postgres 16 via Supabase, EU region (Frankfurt) |
 | ORM | Drizzle (`src/db/schema.ts`) |
 | Auth | Supabase Auth |
