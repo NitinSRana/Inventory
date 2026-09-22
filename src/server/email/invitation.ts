@@ -1,4 +1,5 @@
 import type { Email } from './send';
+import { escapeAttribute, escapeHtml } from './escape.ts';
 
 /**
  * The invitation email.
@@ -61,22 +62,4 @@ export function invitationEmail(input: {
 </html>`;
 
   return { subject, html, text };
-}
-
-/**
- * A shop is named by its owner, so its name is untrusted input — an apostrophe
- * is likely and a script tag is possible.
- */
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-/** As above, plus the quote that would otherwise end the attribute early. */
-function escapeAttribute(value: string): string {
-  return escapeHtml(value);
 }

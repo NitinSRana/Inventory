@@ -30,6 +30,8 @@ Detailed patterns and code examples are in `.claude/rules/database.md`, which lo
 
 1. **Every query is tenant-scoped.** Wrap all DB access in `withTenant(orgId, ...)`. A query without org context returns zero rows. Never accept `organizationId` from the client; never use the `service_role` key in request-handling code.
 
+   One named exception, added with access requests: `src/server/platform/auth-admin.ts` calls the Supabase **Auth** Admin API with that key to create a login for someone the platform owner has approved. The rule exists because service_role carries `BYPASSRLS` *on a Postgres connection*; that module never obtains a database handle — it is one HTTPS call, structurally the same as `server/email/send.ts` calling Resend. Keep it that way: one file, one export, key read inside the function, never imported by tenant code.
+
 2. **`stock_movements` is append-only.** A database trigger rejects UPDATE and DELETE. Correct mistakes by posting a compensating movement. Never store a quantity column — read the `stock_levels`, `product_stock`, `expiring_stock`, or `on_order_quantities` views.
 
 3. **Stock is addressed as `(product, location, batch)`.** Every tenant has one location today; write code as if they had ten. Depletion picks batches FEFO (first-expired-first-out).
@@ -127,9 +129,11 @@ pnpm db:test         # applies 0001_init.sql + 0001_init.test.sql to a scratch D
 
 ## Out of scope — ask before building
 
-Real card/payment processing (Stripe Terminal or similar — checkout v1 records tender type only, cash/card, no actual processing), accounting integrations (Xero, DATEV, Exact), partial/line-level refunds (only whole-sale void ships), self-serve signup, multi-location transfer UI, demand forecasting, label printing, native mobile apps, offline mode, supplier portal.
+Real card/payment processing (Stripe Terminal or similar — checkout v1 records tender type only, cash/card, no actual processing), accounting integrations (Xero, DATEV, Exact), partial/line-level refunds (only whole-sale void ships), self-serve signup **without approval** (see below), multi-location transfer UI, demand forecasting, label printing, native mobile apps, offline mode, supplier portal.
 
 Several are planned for later. The schema already accommodates them — that's why they're safe to leave out now.
+
+**How a shop gets on the platform.** A stranger asks on the landing page (name, email, shop name, country); the platform owner — an environment allowlist, `PLATFORM_ADMIN_EMAILS`, not a database role — approves it at `/[locale]/admin`, which creates that shop, invites them as its owner and emails them a way in. Nobody creates a shop without a person deciding, and an approved shop starts **empty**: every tenant imports its own catalogue. Billing and unapproved self-serve signup remain out of scope. See migration 0018 and `src/server/platform/`.
 
 **Removed, not merely never built:** reorder suggestions, purchase orders, and the write-off screen were implemented, then pulled as a deliberate product decision. `stock_movements.reference_type` still allows `'purchase_order'`, `on_order_quantities` and the `waste` movement type still exist in the schema, and existing tenant data may still carry rows using them — none of that was touched. What's gone is the app-layer code that created new ones: `src/server/purchasing/*`, `recordWaste`, and the three routes. Don't rebuild any of this without confirming the decision has actually reversed.
 

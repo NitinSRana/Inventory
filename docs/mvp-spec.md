@@ -126,7 +126,7 @@ Tenant picks country; standard and reduced bands seeded. Products assigned a ban
 
 ### Explicitly OUT of the MVP
 
-Real card/payment processing (Stripe Terminal or similar) · accounting integrations (DATEV, Exact, Xero) · partial/line-level refunds · Stripe billing and self-serve signup · multi-location stock transfers (schema supports, no UI) · demand forecasting / AI reorder · shelf-edge label printing · native mobile apps · full offline mode · supplier portal · promotions and pricing engine · returns to supplier · custom report builder
+Real card/payment processing (Stripe Terminal or similar) · accounting integrations (DATEV, Exact, Xero) · partial/line-level refunds · Stripe billing, and self-serve signup without owner approval · multi-location stock transfers (schema supports, no UI) · demand forecasting / AI reorder · shelf-edge label printing · native mobile apps · full offline mode · supplier portal · promotions and pricing engine · returns to supplier · custom report builder
 
 **Removed after being built:** reorder suggestions and purchase order management (create, send, receive against, partial delivery) were implemented and then pulled as a deliberate product decision, along with the standalone write-off screen. The schema still carries what they used — `on_order_quantities`, `stock_movements.reference_type = 'purchase_order'`, the `waste` movement type — untouched; only the application code that created new rows through them is gone. Don't rebuild without confirming the decision has reversed.
 

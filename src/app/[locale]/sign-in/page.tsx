@@ -204,6 +204,12 @@ export default async function SignInPage({ params, searchParams }: PageProps<'/[
         <section className="bg-card flex flex-col gap-1 rounded-xl border p-4">
           <h2 className="text-sm font-bold">{t('inviteOnlyTitle')}</h2>
           <p className="text-muted-foreground text-sm">{t('inviteOnlyBody')}</p>
+          <Link
+            href={`/${locale}/request-access`}
+            className="text-link inline-flex min-h-11 items-center text-sm font-semibold"
+          >
+            {t('requestAccessLink')}
+          </Link>
         </section>
       </div>
     </main>

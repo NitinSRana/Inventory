@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 
-import { rateLimited } from '@/db/tenant';
+import { appQuery } from '@/db/tenant';
 
 /**
  * Throttling for actions that can be triggered before anyone is signed in.
@@ -53,6 +53,16 @@ export const SIGN_IN_PASSWORD_PER_CLIENT: Limit = { limit: 20, windowSeconds: 15
 export const PASSWORD_RESET_PER_EMAIL: Limit = { limit: 3, windowSeconds: 15 * 60 };
 export const PASSWORD_RESET_PER_CLIENT: Limit = { limit: 10, windowSeconds: 15 * 60 };
 
+/**
+ * Access requests from the landing page. Tighter and far longer-windowed than
+ * anything above: a shop owner applies once, and every submission costs the
+ * platform owner an email. Two a day per address is generous for someone who
+ * mistyped their shop name; five an hour per client stops a script filling the
+ * owner's inbox with invented shops.
+ */
+export const ACCESS_REQUEST_PER_EMAIL: Limit = { limit: 2, windowSeconds: 24 * 60 * 60 };
+export const ACCESS_REQUEST_PER_CLIENT: Limit = { limit: 5, windowSeconds: 60 * 60 };
+
 /** Postgres: relation or function does not exist. */
 const UNDEFINED_OBJECT = ['42P01', '42883'];
 
@@ -75,7 +85,7 @@ export async function checkRateLimit(
   { limit, windowSeconds }: Limit,
 ): Promise<RateLimitResult> {
   try {
-    const rows = await rateLimited(
+    const rows = await appQuery(
       sql`select app.check_rate_limit(${bucket}, ${limit}, make_interval(secs => ${windowSeconds})) as allowed`,
     );
     return rows[0]?.allowed === true ? 'ok' : 'limited';

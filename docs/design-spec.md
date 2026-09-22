@@ -46,8 +46,11 @@ Roles nest: owner ⊃ manager ⊃ staff.
 the floor sees quantities, shelf prices and expiry dates — never what the shop
 paid or what it makes.
 
-**Accounts are created by invitation.** No self-serve signup. An owner invites
-an email and picks its role; the person becomes a member on first sign-in.
+**Accounts are created by invitation, or by approval.** An owner invites an
+email and picks its role; a stranger can also ask for a shop on the landing
+page, and the platform owner approves it, which invites them as owner of a new
+empty shop. Either way a person decides and the member is claimed on first
+sign-in — there is no unapproved self-serve signup.
 Sign-in is a password *or* an emailed magic link — design for both.
 
 ---
@@ -414,7 +417,7 @@ showing them is not evidence they should return.
 - **A standalone write-off screen** — also built and pulled. Loss surfaces through a count; that is the core thesis.
 - **Real card processing** — tender type is recorded, nothing is charged.
 - **Partial or line-level refunds** — whole-sale void only.
-- Promotions or a pricing engine · shelf-edge label printing · accounting integrations · multi-location transfers · supplier portal · demand forecasting · offline mode · native apps · self-serve signup.
+- Promotions or a pricing engine · shelf-edge label printing · accounting integrations · multi-location transfers · supplier portal · demand forecasting · offline mode · native apps · unapproved self-serve signup and billing.
 
 ### Two genuinely open questions
 

@@ -470,6 +470,21 @@ begin
     raise exception 'FAIL: org A planted an invitation into org B';
   end if;
   raise notice 'PASS  cross-tenant invitation blocked by WITH CHECK';
+
+  -- Access requests live in the `app` schema precisely so no tenant role can
+  -- read them: they are other people's names and addresses, and they exist
+  -- before any organization does. Nothing protects them but the missing grant,
+  -- so the missing grant is what this checks. See 0018.
+  failed := false;
+  begin
+    perform 1 from app.signup_requests;
+  exception when others then
+    failed := true;
+  end;
+  if not failed then
+    raise exception 'FAIL: a tenant role can read app.signup_requests';
+  end if;
+  raise notice 'PASS  signup requests unreadable by a tenant role';
 end
 $t$;
 

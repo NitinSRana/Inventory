@@ -7,6 +7,7 @@ import { InventoryOverview } from './overview';
 import { buttonVariants } from '@/components/ui/button';
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
+import { RequestAccessForm } from '@/components/request-access-form';
 import { getSessionState } from '@/server/auth/session';
 
 // Reads the session, so it must never be prerendered or cached: a cached page
@@ -15,11 +16,12 @@ export const dynamic = 'force-dynamic';
 
 export default async function HomePage({ params, searchParams }: PageProps<'/[locale]'>) {
   const { locale } = await params;
-  const { denied } = await searchParams;
+  const { denied, requested, requestError } = await searchParams;
   setRequestLocale(locale);
 
   const t = await getTranslations('home');
   const tApp = await getTranslations('app');
+  const tRequest = await getTranslations('requestAccess');
   const session = await getSessionState();
 
   // Signed out gets no shell — there is no organization to name and nowhere to
@@ -28,7 +30,7 @@ export default async function HomePage({ params, searchParams }: PageProps<'/[lo
   if (session.status === 'signedOut') {
     const points = ['expiry', 'autoStock', 'margin'] as const;
     return (
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-8 p-6">
+      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-8 p-6 py-12">
         <div className="flex flex-col gap-3">
           <h1 className="text-3xl font-semibold tracking-tight">{tApp('name')}</h1>
           <p className="text-muted-foreground text-base">{tApp('description')}</p>
@@ -43,11 +45,27 @@ export default async function HomePage({ params, searchParams }: PageProps<'/[lo
           ))}
         </ul>
 
-        <div className="flex flex-col gap-3">
-          <Link href={`/${locale}/sign-in`} className={buttonVariants({ className: 'h-12' })}>
+        <section className="flex flex-col gap-4 border-t pt-8">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-xl font-bold tracking-tight">{tRequest('title')}</h2>
+            <p className="text-muted-foreground text-sm">{tRequest('intro')}</p>
+          </div>
+          <RequestAccessForm
+            locale={locale}
+            back={`/${locale}`}
+            requested={requested === '1'}
+            error={typeof requestError === 'string' ? requestError : undefined}
+          />
+        </section>
+
+        <div className="flex flex-col gap-3 border-t pt-8">
+          <p className="text-muted-foreground text-sm">{t('signInHint')}</p>
+          <Link
+            href={`/${locale}/sign-in`}
+            className={buttonVariants({ variant: 'outline', className: 'h-12 w-full sm:w-fit sm:px-8' })}
+          >
             {t('signIn')}
           </Link>
-          <p className="text-muted-foreground text-xs">{t('signInHint')}</p>
         </div>
       </main>
     );

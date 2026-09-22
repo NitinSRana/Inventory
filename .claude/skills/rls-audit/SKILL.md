@@ -29,8 +29,9 @@ Search `src/server/` and `src/app/` for database access:
 
 ## 3. service_role leakage
 
-- `SUPABASE_SERVICE_ROLE_KEY` must appear only in migration scripts and explicitly-marked background jobs.
+- `SUPABASE_SERVICE_ROLE_KEY` must appear only in migration scripts, explicitly-marked background jobs, and `src/server/platform/auth-admin.ts`.
 - Any reference inside `src/app/`, a server action, or a route handler is **critical** — that key has BYPASSRLS and voids every policy in the database.
+- The one allowed exception is `src/server/platform/auth-admin.ts`, which creates a login for an approved applicant over the Auth **API** and never opens a database connection. Check that it still holds: one export, key read inside the function, no database import, and nothing under `src/server/{stock,catalog,pos,counting,reports,settings,analytics}` importing it. If any of that has changed, it is a finding.
 
 ## 4. Client-supplied organization IDs
 

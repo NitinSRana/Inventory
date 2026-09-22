@@ -147,7 +147,7 @@ Do not frame it as replacing `/checkout`. A shop already running EposNow will ne
 
 # Do not build
 
-Per CLAUDE.md, unless the decision has explicitly reversed: reorder suggestions, purchase orders, a write-off screen, manual per-sale entry outside the till, real card processing, accounting integrations, partial refunds, multi-location transfers, label printing, offline mode, supplier portal, self-serve signup.
+Per CLAUDE.md, unless the decision has explicitly reversed: reorder suggestions, purchase orders, a write-off screen, manual per-sale entry outside the till, real card processing, accounting integrations, partial refunds, multi-location transfers, label printing, offline mode, supplier portal, self-serve signup without owner approval (owner-approved access requests are built — see CLAUDE.md).
 
 Scale-printed barcodes for weighed goods stay unbuilt on purpose — decoding a GS1 price-embedded EAN wrong sells a £40 cheese for £4, and it needs a real scale in a real shop before anyone writes that parser.
 

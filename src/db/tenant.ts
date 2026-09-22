@@ -59,11 +59,13 @@ export async function claimInvitation(userId: string, email: string): Promise<st
 /**
  * Runs an `app` schema function that has nothing to do with tenants.
  *
- * Rate limiting happens before anyone is signed in, so there is no organization
- * to scope to. Kept here rather than opening up `db`, so every route into the
- * database still passes through this one file.
+ * Rate limiting happens before anyone is signed in, and an access request is
+ * made by someone who has no shop yet, so neither has an organization to scope
+ * to. Both go through functions in the `app` schema, whose tables app_runtime
+ * cannot touch directly. Kept here rather than opening up `db`, so every route
+ * into the database still passes through this one file.
  */
-export async function rateLimited<T extends Record<string, unknown>>(query: SQL) {
+export async function appQuery<T extends Record<string, unknown>>(query: SQL) {
   return db.execute<T>(query);
 }
 

@@ -103,3 +103,41 @@ test('the new-password screen without a reset link goes back to sign-in', async 
   await expect(page).toHaveURL(/\/en\/sign-in\?error=resetExpired$/);
   await expect(page.locator('main [role="alert"]')).toBeVisible();
 });
+
+/**
+ * The access request form is the newest way to leak who is on the platform: it
+ * takes an address and could easily answer differently for one it has seen
+ * before. It must not.
+ */
+test('asking for access answers the same however many times you ask', async ({ page }) => {
+  const email = `applicant-${Date.now()}@example.com`;
+
+  const submit = async () => {
+    await page.goto('/en/request-access');
+    await page.getByLabel('Your name').fill('Anna Müller');
+    await page.getByLabel('Shop name').fill('Anna Bio-Feinkost');
+    await page.getByLabel('Email').fill(email);
+    await page.getByRole('button', { name: 'Ask for access' }).click();
+    await expect(page).toHaveURL(/\/en\/request-access\?(requested=1|requestError=(throttled|unavailable))$/);
+    return { url: page.url(), body: (await page.locator('main').innerText()).toLowerCase() };
+  };
+
+  const first = await submit();
+  const second = await submit();
+
+  expect(second.url).toBe(first.url);
+  expect(second.body).toBe(first.body);
+  // The same phrases the sign-in tests watch for. "Already" is not one of them:
+  // the page's own "Already have an account?" link says nothing about this address.
+  for (const leak of ['no such', 'not found', 'unknown', 'no account', 'not registered']) {
+    expect(first.body).not.toContain(leak);
+  }
+});
+
+test('the admin area is not there for a stranger', async ({ page }) => {
+  // 404, not a redirect to sign-in: a redirect would confirm the route exists.
+  for (const path of ['/en/admin', '/en/admin/requests']) {
+    const response = await page.goto(path);
+    expect(response?.status(), `${path} should not exist for a signed-out visitor`).toBe(404);
+  }
+});

@@ -37,7 +37,8 @@
     "modeLink": "Magic link",
     "linkHint": "We'll email you a link that signs you in — no password needed.",
     "inviteOnlyTitle": "By invitation only",
-    "inviteOnlyBody": "Need access? Ask your store owner to invite you. This screen never creates new logins."
+    "inviteOnlyBody": "Need access? Ask your store owner to invite you. This screen never creates new logins.",
+    "requestAccessLink": "Ask for access to the app"
   },
   "scan": {
     "barcodeLabel": "Barcode",
@@ -878,6 +879,60 @@
       "noShelfPrice": "This product has no shelf price to reduce from.",
       "notBelowShelf": "A markdown has to be lower than the shelf price.",
       "expiredUseBy": "This batch is past its use-by date and cannot be sold at any price."
+    }
+  },
+  "requestAccess": {
+    "title": "Ask for access",
+    "intro": "Tell us about your shop. We set up the shops we can support ourselves, so a person reads every request.",
+    "nameLabel": "Your name",
+    "shopLabel": "Shop name",
+    "emailLabel": "Email",
+    "emailHint": "The address you will sign in with.",
+    "countryLabel": "Country",
+    "countryHint": "Your shop starts with this country's VAT rates, so your first price is right.",
+    "submit": "Ask for access",
+    "sent": "Thanks — that is with us.",
+    "sentHint": "A person reads every request. If your shop is a fit, you will get an email with a link to sign in.",
+    "error": "Check the form and try again.",
+    "throttled": "That is a few requests from here already. Try again later, or reply to the email you had from us.",
+    "unavailable": "We couldn't take that just now — this one is on us, not you. Try again in a moment.",
+    "haveAccount": "Already have an account? Sign in"
+  },
+  "admin": {
+    "title": "Platform",
+    "shops": "Shops",
+    "requests": "Requests",
+    "signOut": "Sign out",
+    "shopsIntro": "Every shop on the platform, and whether anyone has actually opened it.",
+    "noShops": "No shops yet",
+    "noShopsBody": "Approve a request and the shop appears here.",
+    "shopsTile": "Shops",
+    "signedInTile": "Signed in",
+    "sellingTile": "Selling",
+    "shopColumn": "Shop",
+    "countryColumn": "Country",
+    "joinedColumn": "Signed up",
+    "peopleColumn": "People",
+    "productsColumn": "Products",
+    "salesColumn": "Sales",
+    "lastSaleColumn": "Last sale",
+    "lastSignInColumn": "Last sign-in",
+    "notSignedIn": "Never opened",
+    "requestsIntro": "Who has asked for a shop. Approving creates it and emails them a way in.",
+    "pendingHeading": "Waiting ({count})",
+    "noPending": "Nothing waiting",
+    "noPendingBody": "New requests from the landing page arrive here.",
+    "decidedHeading": "Already decided",
+    "approve": "Approve",
+    "decline": "Decline",
+    "approvedSent": "Approved. The shop is ready and they have been emailed a link to sign in.",
+    "approvedPartly": "Approved and the shop is ready, but not everything worked ({detail}). They cannot sign in until it does — approve again to retry.",
+    "approvedGone": "That request had already been dealt with. Nothing changed.",
+    "declinedDone": "Declined, and they have been told.",
+    "statuses": {
+      "approved": "Approved",
+      "declined": "Declined",
+      "pending": "Waiting"
     }
   }
 }
