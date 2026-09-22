@@ -3,7 +3,6 @@ import { and, asc, desc, eq, gte, isNotNull, lt, sql } from 'drizzle-orm';
 import {
   expiringStock,
   organizationMembers,
-  productStock,
   products,
   saleLines,
   sales,
@@ -12,6 +11,7 @@ import {
 } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 
+import { ON_HAND } from '@/server/catalog/products';
 import { SALE_OCCURRED } from '@/server/pos/checkout';
 import { getRatesByBand } from '@/server/settings/vat';
 import { grossValue } from '@/server/settings/valuation';
@@ -101,17 +101,16 @@ async function stockOnHand(orgId: string): Promise<Report> {
         name: products.name,
         gtin: products.gtin,
         unit: products.unit,
-        quantity: sql<string>`coalesce(${productStock.quantity}, '0')::text`,
+        quantity: sql<string>`${ON_HAND}::text`,
         costPrice: products.costPrice,
         vatBand: products.vatBand,
         // Rounded here, not in the component: the CSV export reads the same rows,
         // and 19.2000000 in a spreadsheet is as unhelpful as it is on screen.
-        value: sql<string>`round(coalesce(${productStock.quantity}, 0) * coalesce(${products.costPrice}, 0), 2)::text`,
+        value: sql<string>`round(${ON_HAND} * coalesce(${products.costPrice}, 0), 2)::text`,
       })
       .from(products)
-      .leftJoin(productStock, eq(productStock.productId, products.id))
       .where(eq(products.isActive, true))
-      .orderBy(desc(sql`coalesce(${productStock.quantity}, 0) * coalesce(${products.costPrice}, 0)`)),
+      .orderBy(desc(sql`${ON_HAND} * coalesce(${products.costPrice}, 0)`)),
   );
 
   return {
@@ -155,7 +154,7 @@ async function expiryExposure(orgId: string, days: number): Promise<Report> {
 
 /** Products at or under their minimum. */
 async function lowStock(orgId: string): Promise<Report> {
-  const onHand = sql`coalesce(${productStock.quantity}, 0)`;
+  const onHand = ON_HAND;
   const rows = await withTenant(orgId, (tx) =>
     tx
       .select({
@@ -167,7 +166,6 @@ async function lowStock(orgId: string): Promise<Report> {
         supplierName: suppliers.name,
       })
       .from(products)
-      .leftJoin(productStock, eq(productStock.productId, products.id))
       .leftJoin(suppliers, eq(suppliers.id, products.supplierId))
       .where(
         and(eq(products.isActive, true), isNotNull(products.minStock), lt(onHand, products.minStock)),

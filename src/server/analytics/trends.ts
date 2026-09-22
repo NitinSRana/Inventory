@@ -1,8 +1,9 @@
-import { and, desc, eq, gt, gte, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, lt, sql } from 'drizzle-orm';
 import Decimal from 'decimal.js';
 
 import { batches, productStock, products, saleLines, sales, stockMovements } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
+import { ON_HAND } from '@/server/catalog/products';
 
 /**
  * The shapes behind the charts.
@@ -177,15 +178,14 @@ export async function deadStock(orgId: string, window: Window, limit = 8) {
       .select({
         productId: products.id,
         label: products.name,
-        quantity: sql<string>`${productStock.quantity}::text`,
+        quantity: sql<string>`${ON_HAND}::text`,
         unit: products.unit,
-        value: sql<string>`round(${productStock.quantity} * coalesce(${products.costPrice}, 0), 2)::text`,
+        value: sql<string>`round(${ON_HAND} * coalesce(${products.costPrice}, 0), 2)::text`,
       })
-      .from(productStock)
-      .innerJoin(products, eq(products.id, productStock.productId))
+      .from(products)
       .where(
         and(
-          gt(productStock.quantity, '0'),
+          sql`${ON_HAND} > 0`,
           eq(products.isActive, true),
           // Nothing sold in the window. `not exists` rather than a left join:
           // one row per product either way, and no risk of a fan-out inflating
@@ -202,7 +202,7 @@ export async function deadStock(orgId: string, window: Window, limit = 8) {
           )`,
         ),
       )
-      .orderBy(desc(sql`${productStock.quantity} * coalesce(${products.costPrice}, 0)`))
+      .orderBy(desc(sql`${ON_HAND} * coalesce(${products.costPrice}, 0)`))
       .limit(limit),
   );
 }
