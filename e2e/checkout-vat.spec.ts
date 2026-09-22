@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { closeDb, currentOrgId, productByName } from './helpers';
+import { currentOrgId, productByName } from './helpers';
 
 /**
  * The money path: a basket spanning two VAT rates.
@@ -27,8 +27,6 @@ test.beforeAll(async () => {
   standard = await productByName(orgId, STANDARD);
 });
 
-test.afterAll(closeDb);
-
 test('a mixed-VAT basket totals exactly the sum of the shelf prices', async ({ page }) => {
   await page.goto('/en/checkout');
 
@@ -44,8 +42,13 @@ test('a mixed-VAT basket totals exactly the sum of the shelf prices', async ({ p
   await page.getByLabel('Quantity').fill('1');
   await page.getByRole('button', { name: 'Add to cart' }).click();
 
+  // Wait for the basket to hold both before paying: the tender form carries the
+  // basket in a hidden field rendered by the page, so clicking Card while the
+  // previous render is still up would pay for the older, shorter basket.
+  await expect(page.getByText('Active basket (2 items)')).toBeVisible();
+
   await page.getByRole('button', { name: 'Card' }).click();
-  await expect(page.getByText('Sale complete')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sale complete' })).toBeVisible();
 
   // 1.29 (7%) + 3.49 (19%) — exactly the two shelf prices, nothing added.
   await expect(page.getByText('€4.78', { exact: false })).toBeVisible();

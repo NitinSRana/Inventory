@@ -14,7 +14,17 @@ import { signedInUserId } from './session';
  * is: an assertion cannot see a row the product could not. It also means the
  * suite needs no superuser credential to run.
  */
-const sql = postgres(process.env.DATABASE_URL!, { prepare: false, max: 2 });
+// idle_timeout is not tuning: Supabase's pooler hangs up on an idle client, and
+// a suite that pauses while a browser drives the UI is idle for minutes at a
+// time. Without this the next query fails with CONNECTION_ENDED — an error
+// about the connection, in a test whose subject is the ledger. Closing first
+// means the next query opens a fresh connection instead.
+const sql = postgres(process.env.DATABASE_URL!, {
+  prepare: false,
+  max: 2,
+  idle_timeout: 20,
+  connect_timeout: 20,
+});
 
 /** Everything below runs inside a transaction with the tenant context set. */
 function withOrg<T>(orgId: string, fn: (tx: postgres.TransactionSql) => Promise<T>) {

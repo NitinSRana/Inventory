@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { closeDb, currentOrgId, latestMovement, productByName, stockOnHand } from './helpers';
+import { currentOrgId, latestMovement, productByName, stockOnHand } from './helpers';
 
 /**
  * The daily loop: receive, count, sell.
@@ -23,8 +23,6 @@ test.beforeAll(async () => {
   orgId = await currentOrgId();
   product = await productByName(orgId, PRODUCT);
 });
-
-test.afterAll(closeDb);
 
 test.describe('daily loop', () => {
   test('the shell only renders for a signed-in member', async ({ page }) => {
@@ -94,7 +92,7 @@ test.describe('daily loop', () => {
     await expect(page.getByRole('button', { name: 'Card' })).toBeVisible();
     await page.getByRole('button', { name: 'Card' }).click();
 
-    await expect(page.getByText('Sale complete')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Sale complete' })).toBeVisible();
 
     expect(await stockOnHand(orgId, product.id)).toBe(before - 2);
     const movement = await latestMovement(orgId, product.id);

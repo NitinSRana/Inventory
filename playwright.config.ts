@@ -27,6 +27,8 @@ export default defineConfig({
   reporter: process.env.CI ? [['github'], ['list']] : [['list']],
   timeout: 60_000,
   expect: { timeout: 15_000 },
+  // One close for the shared ledger pool; see e2e/global.teardown.ts.
+  globalTeardown: './e2e/global.teardown.ts',
 
   use: {
     baseURL: EXTERNAL ?? LOCAL,
@@ -49,7 +51,13 @@ export default defineConfig({
       name: 'flows',
       testMatch: /(daily-loop|checkout-vat)\.spec\.ts/,
       dependencies: ['setup'],
-      use: { storageState: STORAGE_STATE },
+      // Each of these drives several screens in one test, and a dev server
+      // compiles every route the first time it is asked for while the database
+      // answers from Frankfurt. Posting a count also recomputes consumption
+      // rates before it redirects. The default minute is the clock running out
+      // on a correct flow, which reads as a broken one.
+      timeout: 180_000,
+      use: { storageState: STORAGE_STATE, navigationTimeout: 90_000 },
     },
     // Separate from the flows because it sets its own viewport per test and
     // asserts on measurements rather than on the ledger. Same session.
