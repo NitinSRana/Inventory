@@ -47,6 +47,8 @@ describe('access requests', () => {
     assert.equal(shop.orgs.length, 1);
     assert.equal(shop.orgs[0].name, 'Approved Grocer');
     assert.equal(shop.orgs[0].countryCode, 'DE');
+    assert.equal(shop.orgs[0].currencyCode, 'EUR');
+    assert.equal(shop.orgs[0].timezone, 'Europe/Berlin');
     assert.equal(shop.locations.length, 1);
     assert.equal(shop.locations[0].isDefault, true);
     assert.equal(shop.invitations.length, 1);
@@ -61,6 +63,22 @@ describe('access requests', () => {
     const [stored] = (await listRequests()).filter((r) => r.id === request.id);
     assert.equal(stored.status, 'approved');
     assert.equal(stored.organizationId, result.orgId);
+  });
+
+  test('a British shop is created in pounds, on London time', async () => {
+    const email = `british-${crypto.randomUUID()}@example.com`;
+    const request = await requestFor(email, 'British Grocer', 'GB');
+
+    const result = await approveRequest(request.id, admin, 'https://example.com/en/sign-in');
+    assert.equal(result.outcome, 'approved');
+    if (result.outcome !== 'approved') return;
+
+    const [org] = await withTenant(result.orgId, (tx) => tx.select().from(organizations));
+    assert.equal(org.currencyCode, 'GBP', 'or every price renders in the wrong currency');
+    assert.equal(org.timezone, 'Europe/London');
+
+    const rates = await getRatesByBand(result.orgId);
+    assert.equal(rates.standard, '0.2000', 'UK VAT, not the column default');
   });
 
   test('approving twice converges on the same shop rather than building a second', async () => {

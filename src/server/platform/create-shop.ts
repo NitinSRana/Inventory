@@ -5,6 +5,8 @@ import { withTenant } from '@/db/tenant';
 import { inviteMember } from '@/server/auth/team';
 import { seedVatRatesForCountry } from '@/server/settings/vat';
 
+import { defaultsForCountry } from './country-defaults';
+
 /**
  * Creates a shop, from approval.
  *
@@ -44,10 +46,15 @@ export async function createShop(input: NewShop): Promise<ShopCreated> {
   const countryCode = input.countryCode.trim().toUpperCase();
   if (countryCode.length !== 2) throw new Error('Country must be a 2-letter code');
 
+  // Currency and timezone come from the country, not from the column defaults:
+  // a British shop created with euros on Berlin time prices every product
+  // wrongly and rolls over "today" an hour early.
+  const { currencyCode, timezone } = defaultsForCountry(countryCode);
+
   const locationId = await withTenant(input.id, async (tx) => {
     await tx
       .insert(organizations)
-      .values({ id: input.id, name, countryCode })
+      .values({ id: input.id, name, countryCode, currencyCode, timezone })
       .onConflictDoNothing({ target: organizations.id });
 
     // Select first rather than upsert: the default location has no natural key
