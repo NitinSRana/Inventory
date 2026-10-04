@@ -41,7 +41,7 @@ const items = await db.select().from(products);
 
 **Never use the Supabase `service_role` key in request-handling code.** It has `BYPASSRLS`; one accidental use and tenant isolation is gone. It belongs only in migrations and trusted background jobs.
 
-The single exception is `src/server/platform/auth-admin.ts`, which creates a login for an approved applicant through the Supabase **Auth** API. It never opens a database connection, so the BYPASSRLS hazard this rule is about cannot arise. Any other use of the key in request code is still a bug.
+The single exception is `src/server/platform/auth-admin.ts`, which creates a login and mints set-password links through the Supabase **Auth** API. It never opens a database connection, so the BYPASSRLS hazard this rule is about cannot arise. It has exactly one importer, `server/platform/provision.ts`; tenant code calls that instead. Any other use of the key in request code is still a bug.
 
 **Never accept `organizationId` from the client.** Derive it server-side from the session.
 

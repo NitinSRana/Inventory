@@ -9,7 +9,6 @@
     "emailLabel": "Email",
     "passwordLabel": "Password",
     "submit": "Sign in",
-    "sendLink": "Email me a link",
     "sent": "If that address can sign in here, a link is on its way. Check your email.",
     "sentHint": "Accounts are created by invitation, so nothing arrives for an address that hasn't been added yet.",
     "error": "That didn't work. Check the address and try again.",
@@ -32,10 +31,6 @@
     "resetFailed": "That didn't save. Ask for a new reset link and try again.",
     "resetExpired": "That reset link has expired or was already used. Ask for a new one.",
     "tagline": "Expiry tracking and stock, for the shop floor",
-    "modesLabel": "How to sign in",
-    "modePassword": "Password",
-    "modeLink": "Magic link",
-    "linkHint": "We'll email you a link that signs you in — no password needed.",
     "inviteOnlyTitle": "By invitation only",
     "inviteOnlyBody": "Need access? Ask your store owner to invite you. This screen never creates new logins.",
     "requestAccessLink": "Ask for access to the app"

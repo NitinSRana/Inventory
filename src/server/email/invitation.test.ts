@@ -5,7 +5,7 @@ import { invitationEmail } from './invitation.ts';
 
 const base = {
   organizationName: 'Demo Grocer',
-  signInUrl: 'https://inventory.example.com/en/sign-in',
+  setPasswordUrl: 'https://inventory.example.com/en/sign-in',
 };
 
 test('names the shop in the subject, so two invitations are tellable apart', () => {
@@ -55,7 +55,7 @@ test("an apostrophe in a shop name does not break the markup, and is the likely 
 test('escapes the url too, so a crafted redirect cannot break out of the attribute', () => {
   const { html } = invitationEmail({
     ...base,
-    signInUrl: 'https://example.com/"><script>alert(1)</script>',
+    setPasswordUrl: 'https://example.com/"><script>alert(1)</script>',
   });
   assert.ok(!html.includes('<script>alert(1)'), 'the attribute is not escapable');
   assert.ok(html.includes('&quot;'));

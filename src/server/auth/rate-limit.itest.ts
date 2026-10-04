@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
 import {
-  SIGN_IN_PER_EMAIL,
+  SIGN_IN_PASSWORD_PER_EMAIL,
   checkRateLimit,
   hashedBucket,
   type Limit,
@@ -41,7 +41,7 @@ describe('rate limiting', () => {
   test('the stored bucket holds no email address', async () => {
     const email = 'someone@example.com';
     const bucket = await hashedBucket('signin-email', email);
-    await checkRateLimit(bucket, SIGN_IN_PER_EMAIL);
+    await checkRateLimit(bucket, SIGN_IN_PASSWORD_PER_EMAIL);
 
     const rows = await adminSql`select bucket from app.rate_limits where bucket = ${bucket}`;
     assert.equal(rows.length >= 1, true);

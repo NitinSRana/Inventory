@@ -56,7 +56,7 @@ export async function provisionShop(input: {
   // link tab — worse, but not a lost approval.
   const setPasswordUrl =
     (await passwordSetupLink(ownerEmail, site.origin, site.locale)) ??
-    `${site.origin}/${site.locale}/sign-in?mode=link`;
+    `${site.origin}/${site.locale}/sign-in`;
 
   const mail = await sendEmail({
     to: ownerEmail,
@@ -64,4 +64,27 @@ export async function provisionShop(input: {
   });
 
   return { orgId: shop.orgId, email: ownerEmail, shopName, login, mail: mail.status, vat: shop.vat };
+}
+
+/**
+ * The same first-sign-in treatment, for someone a shop owner invites.
+ *
+ * An invitation used to create a row and send an email, and nothing else — no
+ * auth account at all. The person then had no password and no way to make one,
+ * so the magic-link tab was their only door, and that door is now gone. This
+ * gives them what an owner gets: a login, and a link that asks them to choose
+ * a password.
+ *
+ * Lives here rather than in the team screen so that auth-admin.ts keeps exactly
+ * one importer. The service_role key stays in a module no tenant code touches,
+ * which is the property the rule in CLAUDE.md is actually protecting.
+ */
+export async function prepareMemberSignIn(
+  email: string,
+  site: Site,
+): Promise<{ login: LoginResult; setPasswordUrl: string }> {
+  const login = await createLogin(email);
+  const setPasswordUrl =
+    (await passwordSetupLink(email, site.origin, site.locale)) ?? `${site.origin}/${site.locale}/sign-in`;
+  return { login, setPasswordUrl };
 }

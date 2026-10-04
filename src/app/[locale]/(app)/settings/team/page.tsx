@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { organizations } from '@/db/schema';
 import { withTenant } from '@/db/tenant';
 import { invitationEmail } from '@/server/email/invitation';
+import { prepareMemberSignIn } from '@/server/platform/provision';
 import { mailIsConfigured, sendEmail } from '@/server/email/send';
 import { requireRole } from '@/server/auth/session';
 import { ROLE_RANK, type Role } from '@/server/auth/roles';
@@ -78,11 +79,16 @@ export default async function TeamPage({ params, searchParams }: PageProps<'/[lo
     const origin =
       h.get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? `http://${h.get('host') ?? 'localhost:3000'}`;
 
+    // The login is created here, not on their first sign-in: without an auth
+    // account there is no password to set and no link that can be issued, which
+    // is what left invited staff with no way in at all.
+    const { setPasswordUrl } = await prepareMemberSignIn(address.trim().toLowerCase(), { origin, locale });
+
     const result = await sendEmail({
       to: address.trim().toLowerCase(),
       ...invitationEmail({
         organizationName: org.name,
-        signInUrl: `${origin}/${locale}/sign-in`,
+        setPasswordUrl,
         invitedByEmail: inviterEmail,
       }),
     });

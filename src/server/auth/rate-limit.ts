@@ -31,8 +31,6 @@ export type RateLimitResult = 'ok' | 'limited' | 'unavailable';
  * stops someone walking through a list of addresses, which the first bucket
  * alone would never notice.
  */
-export const SIGN_IN_PER_EMAIL: Limit = { limit: 3, windowSeconds: 15 * 60 };
-export const SIGN_IN_PER_CLIENT: Limit = { limit: 10, windowSeconds: 15 * 60 };
 
 /**
  * Password attempts get their own buckets, not shared with magic-link's.

@@ -16,11 +16,11 @@ export function invitationEmail(input: {
   /** The shop, so a person invited to two of them can tell which is which. */
   organizationName: string;
   /** Absolute, because a relative link in an email goes nowhere. */
-  signInUrl: string;
+  setPasswordUrl: string;
   /** Named so the recipient knows this was a person, not a robot. */
   invitedByEmail?: string | null;
 }): Omit<Email, 'to'> {
-  const { organizationName, signInUrl, invitedByEmail } = input;
+  const { organizationName, setPasswordUrl, invitedByEmail } = input;
 
   const from = invitedByEmail ? ` by ${invitedByEmail}` : '';
   const subject = `You have been added to ${organizationName}`;
@@ -28,11 +28,11 @@ export function invitationEmail(input: {
   const text = [
     `You have been added to ${organizationName}${from}.`,
     '',
-    'Sign in here:',
-    signInUrl,
+    'Choose a password and sign in:',
+    setPasswordUrl,
     '',
-    'Use the same email address this message was sent to. You do not need a password:',
-    'the link above opens the "Magic link" tab, which emails you a one-click sign-in link.',
+    'This link can only be used once and expires shortly. If it has expired,',
+    'use "Forgot password" on the sign-in screen to get a new one.',
   ].join('\n');
 
   // Inline styles and a table-free layout: mail clients strip stylesheets, and
@@ -48,15 +48,14 @@ export function invitationEmail(input: {
         }.
       </p>
       <p style="margin:0 0 24px;">
-        <a href="${escapeAttribute(signInUrl)}"
+        <a href="${escapeAttribute(setPasswordUrl)}"
            style="display:inline-block;background:#1c1c1a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:6px;font-size:15px;">
-          Sign in
+          Choose a password
         </a>
       </p>
       <p style="margin:0;font-size:13px;line-height:1.5;color:#6b6b66;">
-        Use the same email address this message was sent to. You do not need a
-        password &mdash; the button above opens the <strong>Magic link</strong> tab,
-        which emails you a one-click sign-in link.
+        This link can only be used once and expires shortly. If it has expired, use
+        &ldquo;Forgot password&rdquo; on the sign-in screen to get a new one.
       </p>
     </div>
   </body>
