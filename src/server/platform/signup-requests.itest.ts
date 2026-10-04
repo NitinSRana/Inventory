@@ -11,6 +11,7 @@ import { adminSql } from '@/server/testing/fixtures';
 import { approveRequest, declineRequest, listRequests, submitRequest } from './signup-requests';
 
 const admin = crypto.randomUUID();
+const SITE = { origin: 'https://example.com', locale: 'en' };
 
 async function requestFor(email: string, shopName: string, countryCode = 'DE') {
   await submitRequest({ email, contactName: 'Anna Müller', shopName, countryCode });
@@ -44,7 +45,7 @@ describe('access requests', () => {
     const email = `approve-${crypto.randomUUID()}@example.com`;
     const request = await requestFor(email, 'Approved Grocer', 'DE');
 
-    const result = await approveRequest(request.id, admin, 'https://example.com/en/sign-in?mode=link');
+    const result = await approveRequest(request.id, admin, SITE);
     assert.equal(result.outcome, 'approved');
     if (result.outcome !== 'approved') return;
 
@@ -78,7 +79,7 @@ describe('access requests', () => {
     const email = `british-${crypto.randomUUID()}@example.com`;
     const request = await requestFor(email, 'British Grocer', 'GB');
 
-    const result = await approveRequest(request.id, admin, 'https://example.com/en/sign-in');
+    const result = await approveRequest(request.id, admin, SITE);
     assert.equal(result.outcome, 'approved');
     if (result.outcome !== 'approved') return;
 
@@ -94,8 +95,8 @@ describe('access requests', () => {
     const email = `double-${crypto.randomUUID()}@example.com`;
     const request = await requestFor(email, 'Double Grocer');
 
-    const first = await approveRequest(request.id, admin, 'https://example.com/en/sign-in');
-    const second = await approveRequest(request.id, admin, 'https://example.com/en/sign-in');
+    const first = await approveRequest(request.id, admin, SITE);
+    const second = await approveRequest(request.id, admin, SITE);
     assert.equal(first.outcome, 'approved');
     assert.equal(second.outcome, 'approved');
     if (first.outcome !== 'approved' || second.outcome !== 'approved') return;
@@ -129,7 +130,7 @@ describe('access requests', () => {
     assert.equal(named[0].n, 0);
 
     // And a declined request cannot be approved by a later click.
-    const after = await approveRequest(request.id, admin, 'https://example.com/en/sign-in');
+    const after = await approveRequest(request.id, admin, SITE);
     assert.equal(after.outcome, 'notPending');
   });
 });

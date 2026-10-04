@@ -1,11 +1,10 @@
 import { sql } from 'drizzle-orm';
 
 import { appQuery } from '@/db/tenant';
-import { accessDeclinedEmail } from '@/server/email/access-request';
-import { invitationEmail } from '@/server/email/invitation';
+import { accessApprovedEmail, accessDeclinedEmail } from '@/server/email/access-request';
 import { sendEmail, type SendResult } from '@/server/email/send';
 
-import { createLogin, type LoginResult } from './auth-admin';
+import { createLogin, passwordSetupLink, type LoginResult } from './auth-admin';
 import { createShop } from './create-shop';
 
 /**
@@ -115,7 +114,7 @@ export type ApproveResult =
 export async function approveRequest(
   id: string,
   adminUserId: string,
-  signInUrl: string,
+  site: { origin: string; locale: string },
 ): Promise<ApproveResult> {
   const [request] = (await listRequests()).filter((r) => r.id === id);
   if (!request || request.status === 'declined') return { outcome: 'notPending' };
@@ -137,9 +136,17 @@ export async function approveRequest(
   });
 
   const login = await createLogin(request.email);
+
+  // Minted after the login exists, because a recovery link needs an account to
+  // recover. If it cannot be minted the email still goes, pointing at the magic
+  // link tab — worse, but not a lost approval.
+  const setPasswordUrl =
+    (await passwordSetupLink(request.email, site.origin, site.locale)) ??
+    `${site.origin}/${site.locale}/sign-in?mode=link`;
+
   const mail = await sendEmail({
     to: request.email,
-    ...invitationEmail({ organizationName: request.shopName, signInUrl }),
+    ...accessApprovedEmail({ shopName: request.shopName, setPasswordUrl }),
   });
 
   return {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { accessDeclinedEmail, accessRequestEmail } from './access-request.ts';
+import { accessApprovedEmail, accessDeclinedEmail, accessRequestEmail } from './access-request.ts';
 
 /**
  * Every field in the notification was typed by a stranger into a public form.
@@ -47,4 +47,33 @@ test('the decline says which shop and offers a reply, without a reason', () => {
   assert.match(email.subject, /Anna's Bio-Feinkost/);
   assert.ok(email.text.includes('reply'));
   assert.ok(email.html.includes('Anna&#39;s Bio-Feinkost'));
+});
+
+test('the approval carries the set-password link and names the shop', () => {
+  const url = 'https://example.com/auth/confirm?token_hash=abc&type=recovery&next=%2Fen%2Fsign-in%2Freset-password';
+  const email = accessApprovedEmail({ shopName: "Anna's Bio-Feinkost", setPasswordUrl: url });
+
+  assert.match(email.subject, /Anna's Bio-Feinkost/);
+  assert.ok(email.text.includes(url), 'the plain-text part carries the link verbatim');
+  // &amp; in the href is correct HTML for a literal &, and is what mail clients
+  // turn back into a working multi-parameter URL.
+  assert.ok(email.html.includes('type=recovery'), 'the button points at the recovery link');
+  assert.ok(email.html.includes('Anna&#39;s Bio-Feinkost'));
+});
+
+test('the approval tells them what to do when the link has expired', () => {
+  // Single-use and short-lived: an approval opened the next morning is the
+  // common case, and a dead end there reads as "the product is broken".
+  const email = accessApprovedEmail({ shopName: 'Twice Grocer', setPasswordUrl: 'https://example.com/x' });
+  assert.match(email.text, /Forgot password/);
+  assert.match(email.html, /Forgot password/);
+});
+
+test('a script tag in the shop name cannot open a tag in the approval', () => {
+  const email = accessApprovedEmail({
+    shopName: '<script>alert(1)</script>',
+    setPasswordUrl: 'https://example.com/x',
+  });
+  assert.equal(email.html.includes('<script>'), false);
+  assert.ok(email.html.includes('&lt;script&gt;'));
 });

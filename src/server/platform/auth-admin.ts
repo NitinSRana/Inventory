@@ -16,9 +16,9 @@
  * call to the Auth API, structurally the same as server/email/send.ts calling
  * Resend, so the hazard the rule protects against cannot arise here.
  *
- * Kept to one file with one export so that stays true: nothing under
+ * Kept to one file so that stays true: nothing under
  * server/{stock,catalog,pos,counting,reports,settings,analytics} imports this,
- * and the key is read inside the function rather than at module load, with no
+ * and the key is read inside each function rather than at module load, with no
  * NEXT_PUBLIC_ prefix, so it cannot reach the browser bundle.
  */
 
@@ -62,5 +62,68 @@ export async function createLogin(email: string): Promise<LoginResult> {
   } catch (e) {
     console.error('Creating a login failed:', e);
     return 'failed';
+  }
+}
+
+/**
+ * A one-time link that signs this address in and lands it on the set-password
+ * screen.
+ *
+ * This is what the approval email sends, and it is why onboarding no longer
+ * depends on Supabase's own mail: the link is minted here and delivered by
+ * Resend, alongside the rest of the product's email. The recipient never needs
+ * a magic link, never types a password they were given, and never sees a
+ * password box before they have chosen what goes in it.
+ *
+ * `type: 'recovery'` rather than `magiclink`, because /sign-in/reset-password
+ * is the screen that sets a password and a recovery token is what authorises
+ * it. The token is single-use and expires on the project's OTP window, so an
+ * approval email left unopened for a day needs Forgot password instead — the
+ * email says so.
+ *
+ * Returns null rather than throwing, so a link that cannot be minted degrades
+ * to the plain sign-in URL instead of losing the approval.
+ */
+export async function passwordSetupLink(
+  email: string,
+  origin: string,
+  locale: string,
+): Promise<string | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+
+  try {
+    const response = await fetch(`${url}/auth/v1/admin/generate_link`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        type: 'recovery',
+        email: email.trim().toLowerCase(),
+        redirect_to: `${origin}/auth/confirm`,
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) {
+      console.error(`Minting a set-password link failed: ${response.status}`);
+      return null;
+    }
+
+    const body: unknown = await response.json();
+    const hash =
+      typeof body === 'object' && body !== null && 'hashed_token' in body
+        ? String((body as { hashed_token: unknown }).hashed_token)
+        : '';
+    if (!hash) return null;
+
+    const next = encodeURIComponent(`/${locale}/sign-in/reset-password`);
+    return `${origin}/auth/confirm?token_hash=${hash}&type=recovery&next=${next}`;
+  } catch (e) {
+    console.error('Minting a set-password link failed:', e);
+    return null;
   }
 }

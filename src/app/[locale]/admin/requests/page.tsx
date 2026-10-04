@@ -44,11 +44,7 @@ export default async function AdminRequestsPage({ params, searchParams }: PagePr
     const origin =
       h.get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? `http://${h.get('host') ?? 'localhost:3000'}`;
 
-    const result = await approveRequest(
-      String(formData.get('id')),
-      session.userId,
-      `${origin}/${locale}/sign-in?mode=link`,
-    );
+    const result = await approveRequest(String(formData.get('id')), session.userId, { origin, locale });
     redirect(
       `/${locale}/admin/requests?${
         result.outcome === 'approved' ? `approved=${result.login}-${result.mail}` : 'approved=gone'
