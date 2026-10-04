@@ -1,11 +1,11 @@
 import { sql } from 'drizzle-orm';
 
 import { appQuery } from '@/db/tenant';
-import { accessApprovedEmail, accessDeclinedEmail } from '@/server/email/access-request';
+import { accessDeclinedEmail } from '@/server/email/access-request';
 import { sendEmail, type SendResult } from '@/server/email/send';
 
-import { createLogin, passwordSetupLink, type LoginResult } from './auth-admin';
-import { createShop } from './create-shop';
+import type { LoginResult } from './auth-admin';
+import { provisionShop, type Site } from './provision';
 
 /**
  * Access requests: the queue between a stranger filling in the landing-page form
@@ -114,7 +114,7 @@ export type ApproveResult =
 export async function approveRequest(
   id: string,
   adminUserId: string,
-  site: { origin: string; locale: string },
+  site: Site,
 ): Promise<ApproveResult> {
   const [request] = (await listRequests()).filter((r) => r.id === id);
   if (!request || request.status === 'declined') return { outcome: 'notPending' };
@@ -127,37 +127,16 @@ export async function approveRequest(
   // Declined or vanished between the read and the claim.
   if (!orgId) return { outcome: 'notPending' };
 
-  const shop = await createShop({
-    id: orgId,
-    name: request.shopName,
+  const built = await provisionShop({
+    orgId,
+    shopName: request.shopName,
     countryCode: request.countryCode,
     ownerEmail: request.email,
-    invitedBy: adminUserId,
+    adminUserId,
+    site,
   });
 
-  const login = await createLogin(request.email);
-
-  // Minted after the login exists, because a recovery link needs an account to
-  // recover. If it cannot be minted the email still goes, pointing at the magic
-  // link tab — worse, but not a lost approval.
-  const setPasswordUrl =
-    (await passwordSetupLink(request.email, site.origin, site.locale)) ??
-    `${site.origin}/${site.locale}/sign-in?mode=link`;
-
-  const mail = await sendEmail({
-    to: request.email,
-    ...accessApprovedEmail({ shopName: request.shopName, setPasswordUrl }),
-  });
-
-  return {
-    outcome: 'approved',
-    orgId: shop.orgId,
-    email: request.email,
-    shopName: request.shopName,
-    login,
-    mail: mail.status,
-    vat: shop.vat,
-  };
+  return { outcome: 'approved', ...built };
 }
 
 /** Declines a request and tells the applicant, briefly. */

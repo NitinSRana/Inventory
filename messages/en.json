@@ -933,6 +933,17 @@
       "approved": "Approved",
       "declined": "Declined",
       "pending": "Waiting"
-    }
+    },
+    "newShop": "Create a shop",
+    "newShopIntro": "Set one up directly, without waiting for a request. The owner is emailed a link to choose a password.",
+    "newShopNameLabel": "Shop name",
+    "newShopEmailLabel": "Owner email",
+    "newShopEmailHint": "The address they will sign in with.",
+    "newShopCountryLabel": "Country",
+    "newShopCountryHint": "Sets the currency, timezone and VAT rates. It cannot be changed here later.",
+    "newShopSubmit": "Create shop",
+    "newShopError": "Check the shop name, email and country, then try again.",
+    "newShopDone": "{shop} is ready and {email} has been emailed a link to choose a password.",
+    "newShopPartly": "{shop} was created, but not everything worked ({detail}). They cannot sign in until it does."
   }
 }

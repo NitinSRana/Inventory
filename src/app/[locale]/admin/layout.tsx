@@ -37,6 +37,9 @@ export default async function AdminLayout({
           <Link href={`/${locale}/admin/requests`} className="inline-flex min-h-11 items-center font-medium">
             {t('requests')}
           </Link>
+          <Link href={`/${locale}/admin/new`} className="inline-flex min-h-11 items-center font-medium">
+            {t('newShop')}
+          </Link>
         </nav>
         <span className="text-muted-foreground ml-auto flex items-center gap-3 text-sm">
           <span className="max-w-48 truncate">{session.email}</span>

@@ -5,6 +5,7 @@ import { PageTitle, StatTile } from '@/components/data-list';
 import { EmptyState } from '@/components/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { one } from '@/lib/search-params';
 import { requirePlatformAdmin } from '@/server/platform/admins';
 import { listShops } from '@/server/platform/shops';
 
@@ -20,10 +21,15 @@ export const dynamic = 'force-dynamic';
  * arrived — and it is the one thing no tenant-scoped query can answer, since
  * auth.users is outside the app's reach. See app.platform_shops() in 0018.
  */
-export default async function AdminShopsPage({ params }: PageProps<'/[locale]/admin'>) {
+export default async function AdminShopsPage({ params, searchParams }: PageProps<'/[locale]/admin'>) {
   const { locale } = await params;
   setRequestLocale(locale);
   await requirePlatformAdmin();
+
+  const sp = await searchParams;
+  const created = one(sp.created);
+  const createdShop = one(sp.shop) ?? '';
+  const createdEmail = one(sp.email) ?? '';
 
   const t = await getTranslations('admin');
   const format = await getFormatter();
@@ -38,6 +44,14 @@ export default async function AdminShopsPage({ params }: PageProps<'/[locale]/ad
   return (
     <main className="flex flex-1 flex-col gap-4 p-4">
       <PageTitle caption={t('shopsIntro')}>{t('shops')}</PageTitle>
+
+      {created && (
+        <p role="status" className="bg-card rounded-lg border p-3 text-sm">
+          {created === 'ok'
+            ? t('newShopDone', { shop: createdShop, email: createdEmail })
+            : t('newShopPartly', { shop: createdShop, detail: created })}
+        </p>
+      )}
 
       {shops.length === 0 ? (
         <EmptyState icon={Store} title={t('noShops')} body={t('noShopsBody')} />
