@@ -62,12 +62,16 @@ export async function requestAccess(formData: FormData) {
   if (checks.includes('unavailable')) redirect(`${back}?requestError=unavailable`);
   if (checks.includes('limited')) redirect(`${back}?requestError=throttled`);
 
-  await submitRequest({ email, contactName, shopName, countryCode });
+  const queued = await submitRequest({ email, contactName, shopName, countryCode });
 
   // The row is what the owner acts on; the email is only how they find out.
   // A mail failure is logged and never changes what the applicant is told.
+  //
+  // No row, no email: a repeat submission from an address that is already
+  // waiting changes nothing the owner can act on, and mailing them about a
+  // shop the queue does not contain sends them looking for it.
   const owner = process.env.PLATFORM_ADMIN_EMAILS?.split(',')[0]?.trim();
-  if (owner) {
+  if (owner && queued) {
     const result = await sendEmail({
       to: owner,
       ...accessRequestEmail({
@@ -81,7 +85,7 @@ export async function requestAccess(formData: FormData) {
     if (result.status !== 'sent') {
       console.error(`Access request notification not sent (${result.status}) for ${shopName}`);
     }
-  } else {
+  } else if (!owner && queued) {
     console.error('PLATFORM_ADMIN_EMAILS is not set, so nobody was told about an access request.');
   }
 

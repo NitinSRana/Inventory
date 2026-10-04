@@ -25,7 +25,16 @@ describe('access requests', () => {
     assert.equal(first.status, 'pending');
     assert.equal(first.shopName, 'Twice Grocer');
 
-    await submitRequest({ email, contactName: 'Someone Else', shopName: 'Different Name', countryCode: 'GB' });
+    const again = await submitRequest({
+      email,
+      contactName: 'Someone Else',
+      shopName: 'Different Name',
+      countryCode: 'GB',
+    });
+    // False is what stops the owner being emailed about a shop the queue does
+    // not contain — the "Access request: Store32" with no Store32 row.
+    assert.equal(again, false, 'the duplicate reports that it queued nothing');
+
     const rows = (await listRequests('pending')).filter((r) => r.email === email);
     assert.equal(rows.length, 1, 'one pending row per address');
     assert.equal(rows[0].shopName, 'Twice Grocer', 'the first submission is the one that stands');

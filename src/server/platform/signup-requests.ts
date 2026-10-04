@@ -62,19 +62,23 @@ const asRequest = (r: Row): SignupRequest => ({
 /**
  * Records a request from the public form.
  *
- * Returns nothing, and that is the guarantee: a second submission from the same
- * address is silently the same row, so the page cannot say anything that would
- * tell a stranger whether that address had applied — or been approved — before.
+ * Returns whether a row was actually queued — false when the address already
+ * has a pending request, which the database discards. That answer is for the
+ * server alone: it decides whether the owner is worth emailing, and nothing
+ * else branches on it. The page's reply to the applicant stays identical for a
+ * new address, a duplicate and an approved one, which is the guarantee that
+ * keeps this form from telling a stranger who is already on the platform.
  */
 export async function submitRequest(input: {
   email: string;
   contactName: string;
   shopName: string;
   countryCode: string;
-}): Promise<void> {
-  await appQuery(
-    sql`select app.request_signup(${input.email}, ${input.contactName}, ${input.shopName}, ${input.countryCode})`,
+}): Promise<boolean> {
+  const rows = await appQuery<{ queued: boolean }>(
+    sql`select app.request_signup(${input.email}, ${input.contactName}, ${input.shopName}, ${input.countryCode}) as queued`,
   );
+  return rows[0]?.queued === true;
 }
 
 export async function listRequests(status?: SignupStatus): Promise<SignupRequest[]> {
