@@ -31,8 +31,8 @@ export function invitationEmail(input: {
     'Sign in here:',
     signInUrl,
     '',
-    'Use the same email address this message was sent to. If you do not have a',
-    'password yet, leave the password box empty and it will email you a sign-in link.',
+    'Use the same email address this message was sent to. You do not need a password:',
+    'the link above opens the "Magic link" tab, which emails you a one-click sign-in link.',
   ].join('\n');
 
   // Inline styles and a table-free layout: mail clients strip stylesheets, and
@@ -54,8 +54,9 @@ export function invitationEmail(input: {
         </a>
       </p>
       <p style="margin:0;font-size:13px;line-height:1.5;color:#6b6b66;">
-        Use the same email address this message was sent to. No password yet? Leave
-        the password box empty and we will email you a sign-in link.
+        Use the same email address this message was sent to. You do not need a
+        password &mdash; the button above opens the <strong>Magic link</strong> tab,
+        which emails you a one-click sign-in link.
       </p>
     </div>
   </body>
